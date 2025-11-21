@@ -21,7 +21,7 @@ services:
   - type: web
     name: cleverbadge-frontend-production
     branch: main
-    env: static
+    runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
@@ -37,4 +37,4 @@ databases:
   - name: cleverbadge-db
     databaseName: cleverbadge
     user: cleverbadge
-    plan: starter
+    plan: free
