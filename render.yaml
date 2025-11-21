@@ -10,8 +10,6 @@ services:
         fromDatabase:
           name: cleverbadge-db
           property: connectionString
-      - key: PORT
-        value: 10000
 
   - type: static
     name: cleverbadge-client
