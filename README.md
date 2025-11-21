@@ -27,15 +27,15 @@ Clever Badge is an online skills assessment tool.
    GRANT ALL ON SCHEMA public TO cleverbadge_user;
    ```
 4. **Setup Environment Variables**:
-   - Copy `server/.env.example` to `server/.env`.
-   - Update `DATABASE_URL` in `server/.env`:
+   - Copy `backend/.env.example` to `backend/.env`.
+   - Update `DATABASE_URL` in `backend/.env`:
    ```env
    DATABASE_URL="postgresql://cleverbadge_user:secure_password@localhost:5432/cleverbadge?schema=public"
    ```
 
-### Server
+### Backend
 ```bash
-cd server
+cd backend
 npm install
 # Create .env file if you haven't already
 cp .env.example .env
@@ -44,9 +44,9 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
-### Client
+### Frontend
 ```bash
-cd client
+cd frontend
 npm install
 npm run dev
 ```

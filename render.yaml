@@ -1,31 +1,43 @@
 services:
+
+  # Production Backend Services
   - type: web
-    name: cleverbadge-server
+    name: cleverbadge-backend-production
+    branch: main
     runtime: node
-    rootDir: server
+    plan: free
+    rootDir: backend
     buildCommand: npm install && npx prisma generate
     startCommand: npx prisma migrate deploy && node index.js
+    domains:
+      - api.cleverbadge.com
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: cleverbadge-db
           property: connectionString
 
-  - type: static
-    name: cleverbadge-client
-    runtime: static
-    rootDir: client
-    buildCommand: npm install && npm run build
-    publishDir: dist
+  # Production Frontend Service
+  - type: web
+    name: cleverbadge-frontend-production
+    branch: main
+    env: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    domains:
+      - cleverbadge.com
+      - www.cleverbadge.com
     envVars:
       - key: VITE_API_URL
         fromService:
           type: web
-          name: cleverbadge-server
+          name: cleverbadge-backend-production
           property: url
 
+# Database Service (shared between Production and Testing environments)
 databases:
   - name: cleverbadge-db
     databaseName: cleverbadge
     user: cleverbadge
-    plan: free
+    plan: starter
