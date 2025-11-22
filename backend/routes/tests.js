@@ -1,5 +1,8 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const auth = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
+const asyncHandler = require('../middleware/asyncHandler');
 const router = express.Router();
 
 // Get all tests
@@ -56,44 +59,38 @@ router.get('/:slug', async (req, res) => {
 });
 
 // Create a new test
-router.post('/', async (req, res) => {
-    try {
-        const { title, slug, questions } = req.body; // questions = [{ id: 'q1', weight: 1 }, ...]
+router.post('/', auth, requireRole(['ADMIN', 'AUTHOR']), asyncHandler(async (req, res) => {
+    const { title, slug, questions } = req.body; // questions = [{ id: 'q1', weight: 1 }, ...]
 
-        if (!title || !slug || !questions || !Array.isArray(questions)) {
-            return res.status(400).json({ error: 'Title, slug, and questions array are required' });
-        }
+    if (!title || !slug || !questions || !Array.isArray(questions)) {
+        return res.status(400).json({ error: 'Title, slug, and questions array are required' });
+    }
 
-        // Transaction to create test and link questions
-        const test = await prisma.$transaction(async (tx) => {
-            const newTest = await tx.test.create({
-                data: {
-                    title,
-                    slug,
-                    is_active: true
-                }
-            });
-
-            for (const q of questions) {
-                await tx.testQuestion.create({
-                    data: {
-                        test_id: newTest.id,
-                        question_id: q.id,
-                        weight: q.weight || 1
-                    }
-                });
+    // Transaction to create test and link questions
+    const test = await prisma.$transaction(async (tx) => {
+        const newTest = await tx.test.create({
+            data: {
+                title,
+                slug,
+                is_active: true,
+                created_by: req.user.id
             }
-
-            return newTest;
         });
 
-        res.json(test);
-    } catch (error) {
-        if (error.code === 'P2002') {
-            return res.status(400).json({ error: 'Slug already exists' });
+        for (const q of questions) {
+            await tx.testQuestion.create({
+                data: {
+                    test_id: newTest.id,
+                    question_id: q.id,
+                    weight: q.weight || 1
+                }
+            });
         }
-        res.status(500).json({ error: error.message });
-    }
-});
+
+        return newTest;
+    });
+
+    res.status(201).json(test);
+}));
 
 module.exports = router;
