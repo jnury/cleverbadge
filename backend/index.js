@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const config = require('./lib/config');
 const prisma = require('./lib/prisma');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = config.port;
@@ -26,6 +27,9 @@ app.get('/health', async (req, res) => {
         res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
     }
 });
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
