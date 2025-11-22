@@ -1,31 +1,69 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import api from '../../lib/api';
-import { clsx } from 'clsx';
+import { cn } from '../../lib/utils';
 
 export function QuestionRunner() {
     const { state } = useLocation();
     const { slug } = useParams();
     const navigate = useNavigate();
 
-    // If accessed directly without state, redirect to landing
-    if (!state?.assessmentId) {
-        // In a real app, we might try to recover session or redirect
-        return <div className="text-center pt-20">Invalid session. Please restart.</div>;
-    }
-
-    const { assessmentId, questions, testTitle } = state;
+    const { assessmentId, questions, testTitle } = state || {};
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState({}); // { questionId: [selectedOptions] }
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
-    const currentQuestionObj = questions[currentIndex];
-    const currentQuestion = currentQuestionObj.question;
-    const isLast = currentIndex === questions.length - 1;
+    // Fetch existing answers on mount
+    useEffect(() => {
+        async function fetchAnswers() {
+            if (!assessmentId) {
+                setError('Invalid session. Please restart.');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await api.get(`/assessments/${assessmentId}/answers`);
+                const existingAnswers = {};
+                response.data.answers.forEach(ans => {
+                    existingAnswers[ans.question_id] = ans.selected_options;
+                });
+                setAnswers(existingAnswers);
+            } catch (err) {
+                console.error('Failed to fetch answers:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchAnswers();
+    }, [assessmentId]);
+
+    // Auto-save answer when it changes with debounce
+    const saveAnswer = useCallback(async (questionId, selectedOptions) => {
+        if (!assessmentId) return;
+
+        setSaving(true);
+        try {
+            await api.post(`/assessments/${assessmentId}/answer`, {
+                question_id: questionId,
+                selected_options: selectedOptions,
+            });
+        } catch (err) {
+            console.error('Failed to save answer:', err);
+            // Don't block user, just log error
+        } finally {
+            setSaving(false);
+        }
+    }, [assessmentId]);
 
     const handleOptionToggle = (option) => {
+        const currentQuestion = questions[currentIndex].question;
         const currentSelected = answers[currentQuestion.id] || [];
         let newSelected;
 
@@ -43,6 +81,9 @@ export function QuestionRunner() {
             ...prev,
             [currentQuestion.id]: newSelected
         }));
+
+        // Auto-save with debounce
+        setTimeout(() => saveAnswer(currentQuestion.id, newSelected), 300);
     };
 
     const handleNext = () => {
@@ -53,13 +94,23 @@ export function QuestionRunner() {
         }
     };
 
+    const handlePrevious = () => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+        }
+    };
+
     const handleSubmit = async () => {
+        if (!window.confirm('Are you sure you want to submit? You cannot change your answers after submission.')) {
+            return;
+        }
+
         setSubmitting(true);
         try {
             // Format answers for API
-            const formattedAnswers = Object.entries(answers).map(([qId, selected]) => ({
-                question_id: qId,
-                selected_options: selected
+            const formattedAnswers = questions.map(q => ({
+                question_id: q.question.id,
+                selected_options: answers[q.question.id] || [],
             }));
 
             const res = await api.post('/assessments/submit', {
@@ -69,54 +120,113 @@ export function QuestionRunner() {
 
             navigate(`/t/${slug}/result`, { state: { result: res.data } });
         } catch (err) {
-            alert('Failed to submit assessment');
+            setError(err.response?.data?.error?.message || 'Failed to submit assessment');
             setSubmitting(false);
         }
     };
 
+    if (loading) {
+        return <div className="text-center pt-20">Loading your progress...</div>;
+    }
+
+    if (error || !assessmentId || !questions || questions.length === 0) {
+        return <div className="text-center pt-20 text-red-600">{error || 'Invalid session. Please restart.'}</div>;
+    }
+
+    const currentQuestionObj = questions[currentIndex];
+    const currentQuestion = currentQuestionObj.question;
     const currentSelected = answers[currentQuestion.id] || [];
+    const isLast = currentIndex === questions.length - 1;
+    const progress = ((currentIndex + 1) / questions.length) * 100;
 
     return (
-        <div className="max-w-3xl mx-auto pt-10 px-4">
-            <div className="mb-6 flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-700">{testTitle}</h2>
-                <span className="text-sm text-gray-500">Question {currentIndex + 1} of {questions.length}</span>
+        <div className="min-h-screen bg-gray-50 py-8">
+            {/* Progress Bar */}
+            <div className="fixed top-0 left-0 right-0 h-2 bg-gray-200 z-50">
+                <div
+                    className="h-full bg-tech-blue transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                />
             </div>
 
-            <Card className="mb-8">
-                <h3 className="text-xl font-medium mb-6">{currentQuestion.content}</h3>
+            <div className="max-w-3xl mx-auto px-4 pt-8">
+                {/* Saving Indicator */}
+                {saving && (
+                    <div className="text-sm text-gray-500 text-right mb-2">
+                        Saving...
+                    </div>
+                )}
 
-                <div className="space-y-3">
-                    {currentQuestion.options.map((option, idx) => {
-                        const isSelected = currentSelected.includes(option);
-                        return (
-                            <label
-                                key={idx}
-                                className={clsx(
-                                    "flex items-center p-4 rounded-lg border cursor-pointer transition-all",
-                                    isSelected
-                                        ? "border-tech-blue bg-primary/5 text-primary"
-                                        : "border-gray-200 hover:border-tech-blue/50 hover:bg-gray-50"
-                                )}
-                            >
-                                <input
-                                    type={currentQuestion.type === 'SINGLE' ? 'radio' : 'checkbox'}
-                                    name={currentQuestion.id}
-                                    checked={isSelected}
-                                    onChange={() => handleOptionToggle(option)}
-                                    className="w-5 h-5 text-copper border-gray-300 focus:ring-tech-blue mr-3"
-                                />
-                                <span>{option}</span>
-                            </label>
-                        );
-                    })}
+                {/* Question Counter */}
+                <div className="text-center mb-6">
+                    <p className="text-gray-600">
+                        Question {currentIndex + 1} of {questions.length}
+                    </p>
                 </div>
-            </Card>
 
-            <div className="flex justify-end">
-                <Button onClick={handleNext} disabled={submitting}>
-                    {isLast ? (submitting ? 'Submitting...' : 'Submit Assessment') : 'Next Question'}
-                </Button>
+                {/* Question Card */}
+                <Card className="p-8 mb-6">
+                    <h2 className="text-2xl font-semibold text-primary-teal mb-6">
+                        {currentQuestion.content}
+                    </h2>
+
+                    <div className="space-y-3">
+                        {currentQuestion.options?.map((option, idx) => {
+                            const isMultiple = currentQuestion.type === 'MULTIPLE';
+                            const isSelected = currentSelected.includes(option);
+
+                            return (
+                                <label
+                                    key={idx}
+                                    className={cn(
+                                        "flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all",
+                                        isSelected
+                                            ? "border-tech-blue bg-tech-blue/10 text-primary-teal"
+                                            : "border-gray-300 hover:border-tech-blue/50"
+                                    )}
+                                >
+                                    <input
+                                        type={isMultiple ? 'checkbox' : 'radio'}
+                                        name={`question-${currentQuestion.id}`}
+                                        value={option}
+                                        checked={isSelected}
+                                        onChange={() => handleOptionToggle(option)}
+                                        className="mr-3 h-5 w-5"
+                                    />
+                                    <span className="text-lg">{option}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </Card>
+
+                {/* Navigation */}
+                <div className="flex justify-between">
+                    <Button
+                        variant="secondary"
+                        onClick={handlePrevious}
+                        disabled={currentIndex === 0}
+                    >
+                        Previous
+                    </Button>
+
+                    {isLast ? (
+                        <Button
+                            variant="primary"
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Test'}
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            onClick={handleNext}
+                        >
+                            Next
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );
