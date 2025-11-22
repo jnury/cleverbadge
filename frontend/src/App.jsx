@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
 import { TestLanding } from './pages/candidate/TestLanding';
 import { QuestionRunner } from './pages/candidate/QuestionRunner';
 import { TestResult } from './pages/candidate/TestResult';
@@ -11,6 +12,9 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
         <Routes>
+          {/* Home */}
+          <Route path="/" element={<HomePage />} />
+
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
 
