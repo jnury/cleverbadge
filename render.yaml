@@ -7,8 +7,8 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate
-    startCommand: npx prisma migrate deploy && node index.js
+    buildCommand: npm install
+    startCommand: node index.js
     domains:
       - api.cleverbadge.com
     envVars:

@@ -4,14 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Clever Badge is an online skills assessment tool with a React frontend and Express/Prisma backend. Candidates take tests via shareable links, and admins manage tests and review results.
+Clever Badge is an online skills assessment tool. Candidates take tests via shareable links, and admins manage tests and review results.
 
 ## Tech Stack
-
-- **Frontend**: React 19 + Vite + TailwindCSS 4.1 + React Router 7
-- **Backend**: Express 5.1 + Prisma 6.19 (CommonJS)
-- **Database**: PostgreSQL
-- **Deployment**: Render.com (configuration in `render.yaml`)
 
 ## Development Commands
 
@@ -19,19 +14,12 @@ Clever Badge is an online skills assessment tool with a React frontend and Expre
 ```bash
 npm install              # Install dependencies
 npm run dev              # Start development server with nodemon on port 3000
-npx prisma migrate dev   # Create and apply a new migration
-npx prisma migrate deploy # Apply migrations (production)
-npx prisma generate      # Regenerate Prisma Client after schema changes
-npx prisma studio        # Open Prisma Studio GUI for database inspection
 ```
 
 ### Frontend (from `/frontend`)
 ```bash
 npm install              # Install dependencies
 npm run dev              # Start Vite dev server (default port 5173)
-npm run build            # Build for production (outputs to dist/)
-npm run preview          # Preview production build locally
-npm run lint             # Run ESLint
 ```
 
 ### Testing Individual Endpoints
@@ -74,14 +62,9 @@ PORT=3000
 JWT_SECRET="supersecretkey_change_me"
 ```
 
-After database setup, run migrations from `/backend`:
-```bash
-npx prisma migrate dev --name init
-```
-
 ## Architecture
 
-### Data Model (Prisma Schema)
+### Data Model
 
 The application uses a relational model with the following key entities:
 
@@ -137,8 +120,6 @@ Use these colors consistently. Primary buttons should use copper gradients, seco
 
 ## Important Notes
 
-- The backend runs in **CommonJS** mode (`type: "commonjs"` in package.json)
-- Prisma schema uses UUIDs for all primary keys
 - Questions can be bulk-imported from YAML (see `/backend/questions.yaml` for format)
 - The `render.yaml` deployment config expects environment variables to be set via Render dashboard
 - JWT_SECRET exists in .env.example but authentication is not yet fully implemented

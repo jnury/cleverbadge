@@ -2,11 +2,6 @@
 
 Clever Badge is an online skills assessment tool.
 
-## Tech Stack
-- **Frontend**: React (Vite) + TailwindCSS
-- **Backend**: Node.js (Express)
-- **Database**: PostgreSQL (Prisma ORM)
-
 ## Getting Started
 
 ### Prerequisites
@@ -39,8 +34,6 @@ cd backend
 npm install
 # Create .env file if you haven't already
 cp .env.example .env
-# Run migrations
-npx prisma migrate dev --name init
 npm run dev
 ```
 
