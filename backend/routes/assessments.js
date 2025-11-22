@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const asyncHandler = require('../middleware/asyncHandler');
 const router = express.Router();
 
 // Start an assessment
@@ -130,5 +131,84 @@ router.post('/submit', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Save individual answer (for progress persistence)
+router.post('/:assessment_id/answer', asyncHandler(async (req, res) => {
+    const { assessment_id } = req.params;
+    const { question_id, selected_options } = req.body;
+
+    if (!question_id || !Array.isArray(selected_options)) {
+        return res.status(400).json({
+            error: {
+                message: 'question_id and selected_options array are required',
+                code: 'INVALID_INPUT',
+            }
+        });
+    }
+
+    // Check if assessment exists and is not completed
+    const assessment = await prisma.assessment.findUnique({
+        where: { id: assessment_id },
+    });
+
+    if (!assessment) {
+        return res.status(404).json({
+            error: {
+                message: 'Assessment not found',
+                code: 'NOT_FOUND',
+            }
+        });
+    }
+
+    if (assessment.status === 'COMPLETED') {
+        return res.status(400).json({
+            error: {
+                message: 'Cannot modify completed assessment',
+                code: 'ASSESSMENT_COMPLETED',
+            }
+        });
+    }
+
+    // Upsert answer (create or update)
+    const answer = await prisma.assessmentAnswer.upsert({
+        where: {
+            assessment_id_question_id: {
+                assessment_id,
+                question_id,
+            }
+        },
+        update: {
+            selected_options,
+        },
+        create: {
+            assessment_id,
+            question_id,
+            selected_options,
+        },
+    });
+
+    res.json({
+        success: true,
+        answer: {
+            question_id: answer.question_id,
+            selected_options: answer.selected_options,
+        }
+    });
+}));
+
+// Get all answers for an assessment
+router.get('/:assessment_id/answers', asyncHandler(async (req, res) => {
+    const { assessment_id } = req.params;
+
+    const answers = await prisma.assessmentAnswer.findMany({
+        where: { assessment_id },
+        select: {
+            question_id: true,
+            selected_options: true,
+        },
+    });
+
+    res.json({ answers });
+}));
 
 module.exports = router;
