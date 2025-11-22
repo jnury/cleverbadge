@@ -10,21 +10,27 @@ export function TestLanding() {
     const navigate = useNavigate();
     const [test, setTest] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [validationError, setValidationError] = useState('');
     const [name, setName] = useState('');
 
     useEffect(() => {
         api.get(`/tests/${slug}`)
             .then(res => setTest(res.data))
-            .catch(err => setError(err.response?.data?.error || 'Failed to load test'))
+            .catch(err => setLoadError(err.response?.data?.error || 'Failed to load test'))
             .finally(() => setLoading(false));
     }, [slug]);
 
     const handleStart = async () => {
+        if (!name.trim()) {
+            setValidationError('Please enter your name to continue');
+            return;
+        }
+
         try {
             const res = await api.post('/assessments/start', {
                 test_id: test.id,
-                candidate_name: name || 'Anonymous'
+                candidate_name: name.trim()
             });
             // Store assessment ID and questions in state/context or pass via navigation state
             // For simplicity, we'll pass via navigation state
@@ -36,12 +42,12 @@ export function TestLanding() {
                 }
             });
         } catch (err) {
-            alert('Failed to start assessment');
+            setValidationError(err.response?.data?.error?.message || 'Failed to start assessment');
         }
     };
 
     if (loading) return <div className="text-center pt-20">Loading...</div>;
-    if (error) return <div className="text-center pt-20 text-red-600">{error}</div>;
+    if (loadError) return <div className="text-center pt-20 text-red-600">{loadError}</div>;
 
     return (
         <div className="max-w-2xl mx-auto pt-20 px-4">
@@ -50,15 +56,30 @@ export function TestLanding() {
                 <p className="text-gray-600 mb-8">You are about to start the assessment.</p>
 
                 <div className="max-w-xs mx-auto mb-6">
-                    <label className="block text-left text-sm font-medium text-gray-700 mb-1">Your Name (Optional)</label>
+                    <label className="block text-left text-sm font-medium text-gray-700 mb-1">
+                        Your Name <span className="text-red-600">*</span>
+                    </label>
                     <Input
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => {
+                            setName(e.target.value);
+                            if (validationError) setValidationError(''); // Clear error on input
+                        }}
                         placeholder="John Doe"
+                        required
                     />
                 </div>
 
-                <Button onClick={handleStart}>
+                {validationError && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-4 max-w-xs mx-auto">
+                        {validationError}
+                    </div>
+                )}
+
+                <Button
+                    onClick={handleStart}
+                    disabled={!name.trim()}
+                >
                     Start Assessment
                 </Button>
             </Card>
