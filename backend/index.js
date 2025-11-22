@@ -10,6 +10,7 @@ const PORT = config.port;
 const questionsRouter = require('./routes/questions');
 const testsRouter = require('./routes/tests');
 const assessmentsRouter = require('./routes/assessments');
+const authRouter = require('./routes/auth');
 
 app.use(cors());
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/questions', questionsRouter);
 app.use('/api/tests', testsRouter);
 app.use('/api/assessments', assessmentsRouter);
+app.use('/api/auth', authRouter);
 
 app.get('/health', async (req, res) => {
     try {
