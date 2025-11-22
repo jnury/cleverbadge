@@ -4,6 +4,7 @@ import { QuestionRunner } from './pages/candidate/QuestionRunner';
 import { TestResult } from './pages/candidate/TestResult';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { LoginPage } from './pages/auth/LoginPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -19,7 +20,14 @@ function App() {
           <Route path="/t/:slug/result" element={<TestResult />} />
 
           {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </div>
     </Router>
