@@ -12,6 +12,17 @@ model User {
   id            String   @id @default(uuid())
   username      String   @unique
   password_hash String
+  role          UserRole @default(AUTHOR)
+  created_at    DateTime @default(now())
+
+  // Relations
+  created_tests     Test[]     @relation("TestCreator")
+  created_questions Question[] @relation("QuestionCreator")
+}
+
+enum UserRole {
+  ADMIN
+  AUTHOR
 }
 
 model Question {
@@ -22,7 +33,9 @@ model Question {
   correct_answers Json?
   tags            String[]
   created_at      DateTime @default(now())
-  
+  created_by      String
+
+  creator         User     @relation("QuestionCreator", fields: [created_by], references: [id])
   test_questions  TestQuestion[]
   answers         AssessmentAnswer[]
 }
@@ -38,7 +51,9 @@ model Test {
   slug        String   @unique
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
+  created_by  String
 
+  creator     User     @relation("TestCreator", fields: [created_by], references: [id])
   questions   TestQuestion[]
   assessments Assessment[]
 }
@@ -57,7 +72,7 @@ model TestQuestion {
 model Assessment {
   id             String   @id @default(uuid())
   test_id        String
-  candidate_name String?
+  candidate_name String
   score          Float?
   status         AssessmentStatus @default(STARTED)
   created_at     DateTime @default(now())
