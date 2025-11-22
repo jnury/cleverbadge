@@ -1,13 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-
-dotenv.config();
-
+const config = require('./lib/config');
 const prisma = require('./lib/prisma');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 
 const questionsRouter = require('./routes/questions');
 const testsRouter = require('./routes/tests');
