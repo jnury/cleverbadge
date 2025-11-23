@@ -33,11 +33,17 @@ const createAssessmentsRouter = (sql, schema) => {
           WHERE id = ${test_id}
         `;
 
-        if (tests.length === 0 || !tests[0].is_enabled) {
-          return res.status(404).json({ error: 'Test not found or disabled' });
+        if (tests.length === 0) {
+          return res.status(404).json({ error: 'Test not found' });
         }
 
         const test = tests[0];
+
+        if (!test.is_enabled) {
+          return res.status(403).json({
+            error: 'This test is currently disabled and cannot be started.'
+          });
+        }
 
         const assessments = await sql`
           INSERT INTO ${sql(schema)}.assessments (test_id, candidate_name, status)
@@ -304,7 +310,21 @@ describe('Assessments API Endpoints', () => {
       .expect(404);
 
     expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toBe('Test not found or disabled');
+    expect(response.body.error).toBe('Test not found');
+  });
+
+  it('should POST /api/assessments/start - return 403 for disabled test', async () => {
+    const disabledTestId = '550e8400-e29b-41d4-a716-446655440021'; // From seed data
+    const response = await request(app)
+      .post('/api/assessments/start')
+      .send({
+        test_id: disabledTestId,
+        candidate_name: 'Test Candidate'
+      })
+      .expect(403);
+
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.error).toBe('This test is currently disabled and cannot be started.');
   });
 
   it('should POST /api/assessments/:id/answer - save answer', async () => {

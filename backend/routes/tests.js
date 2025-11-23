@@ -77,11 +77,18 @@ router.get('/slug/:slug',
         WHERE slug = ${req.params.slug}
       `;
 
-      if (tests.length === 0 || !tests[0].is_enabled) {
-        return res.status(404).json({ error: 'Test not found or disabled' });
+      if (tests.length === 0) {
+        return res.status(404).json({ error: 'Test not found' });
       }
 
       const test = tests[0];
+
+      // Check if test is enabled
+      if (!test.is_enabled) {
+        return res.status(403).json({
+          error: 'This test is currently disabled and not available.'
+        });
+      }
 
       // Count questions
       const questionCountResult = await sql`

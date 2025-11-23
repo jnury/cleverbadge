@@ -41,11 +41,18 @@ const createTestRouter = (sql, schema) => {
           WHERE slug = ${req.params.slug}
         `;
 
-        if (tests.length === 0 || !tests[0].is_enabled) {
-          return res.status(404).json({ error: 'Test not found or disabled' });
+        if (tests.length === 0) {
+          return res.status(404).json({ error: 'Test not found' });
         }
 
         const test = tests[0];
+
+        // Check if test is enabled
+        if (!test.is_enabled) {
+          return res.status(403).json({
+            error: 'This test is currently disabled and not available.'
+          });
+        }
 
         const questionCountResult = await sql`
           SELECT COUNT(*) as count
@@ -151,13 +158,13 @@ describe('Tests API Endpoints', () => {
     expect(response.body.is_enabled).toBeUndefined();
   });
 
-  it('should GET /api/tests/slug/:slug - return 404 for disabled test', async () => {
+  it('should GET /api/tests/slug/:slug - return 403 for disabled test', async () => {
     const response = await request(app)
       .get('/api/tests/slug/disabled-test')
-      .expect(404);
+      .expect(403);
 
     expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toBe('Test not found or disabled');
+    expect(response.body.error).toBe('This test is currently disabled and not available.');
   });
 
   it('should GET /api/tests/slug/:slug - return 404 for non-existent test', async () => {
@@ -166,7 +173,7 @@ describe('Tests API Endpoints', () => {
       .expect(404);
 
     expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toBe('Test not found or disabled');
+    expect(response.body.error).toBe('Test not found');
   });
 
   it('should GET /api/tests/:id - return test by id with questions', async () => {

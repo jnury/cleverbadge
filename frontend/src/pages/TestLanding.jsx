@@ -13,8 +13,11 @@ const TestLanding = () => {
   useEffect(() => {
     // Fetch test by slug
     fetch(`${apiUrl}/api/tests/slug/${slug}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Test not found or disabled');
+      .then(async res => {
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Test not found');
+        }
         return res.json();
       })
       .then(data => {
