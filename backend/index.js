@@ -8,6 +8,7 @@ import cors from 'cors';
 import { sql } from './db/index.js';
 import questionsRouter from './routes/questions.js';
 import testsRouter from './routes/tests.js';
+import assessmentsRouter from './routes/assessments.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '0.2.1',
+    version: '0.2.2',
     environment: NODE_ENV
   });
 });
@@ -34,6 +35,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/questions', questionsRouter);
 app.use('/api/tests', testsRouter);
+app.use('/api/assessments', assessmentsRouter);
 
 // Test database connection on startup
 app.listen(PORT, async () => {
