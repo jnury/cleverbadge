@@ -563,7 +563,7 @@ base_url=http://localhost:3000
   ```bash
   # In Render shell
   export DATABASE_ADMIN_URL="postgresql://cleverbadge_admin:PASSWORD@host:5432/db"
-  export NODE_ENV="testing"
+  export NODE_ENV="staging"
   npm run db:push
   ```
 
@@ -580,7 +580,7 @@ base_url=http://localhost:3000
 ## Notes
 
 - **No rollback between phases** - each phase builds on previous
-- **Testing environment** on Render uses `testing` schema
+- **Staging environment** on Render uses `staging` schema
 - **Keep phases small** - if a phase feels too big, split it
 - **Version control** - commit after each completed feature
 - **Documentation** - update docs as features are completed

@@ -19,17 +19,12 @@ Clever Badge uses a multi-environment deployment strategy where:
    - Not deployed to Render
    - Uses local PostgreSQL instance
 
-2. **Testing** (`testing` schema)
-   - Automated testing and CI/CD
-   - Deployed to Render
-   - Domain: `testing-api.cleverbadge.com`, `testing.cleverbadge.com`
-
-3. **Staging** (`staging` schema)
+2. **Staging** (`staging` schema)
    - Pre-production testing
    - Deployed to Render
    - Domain: `staging-api.cleverbadge.com`, `staging.cleverbadge.com`
 
-4. **Production** (`production` schema)
+3. **Production** (`production` schema)
    - Live application
    - Deployed to Render
    - Domain: `api.cleverbadge.com`, `cleverbadge.com`
@@ -40,7 +35,6 @@ Each environment uses its own PostgreSQL schema:
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS development;
-CREATE SCHEMA IF NOT EXISTS testing;
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS production;
 ```
@@ -79,7 +73,6 @@ GRANT ALL PRIVILEGES ON DATABASE cleverbadge TO cleverbadge_admin;
 
 -- 2. Create environment-specific runtime users
 CREATE USER cleverbadge_dev WITH PASSWORD 'STRONG_DEV_PASSWORD_HERE';
-CREATE USER cleverbadge_test WITH PASSWORD 'STRONG_TEST_PASSWORD_HERE';
 CREATE USER cleverbadge_staging WITH PASSWORD 'STRONG_STAGING_PASSWORD_HERE';
 CREATE USER cleverbadge_prod WITH PASSWORD 'STRONG_PROD_PASSWORD_HERE';
 
@@ -94,52 +87,43 @@ CREATE USER cleverbadge_prod WITH PASSWORD 'STRONG_PROD_PASSWORD_HERE';
 ```sql
 -- Create all environment schemas
 CREATE SCHEMA IF NOT EXISTS development;
-CREATE SCHEMA IF NOT EXISTS testing;
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS production;
 
 -- Grant admin user full access to all schemas
 GRANT ALL PRIVILEGES ON SCHEMA development TO cleverbadge_admin;
-GRANT ALL PRIVILEGES ON SCHEMA testing TO cleverbadge_admin;
 GRANT ALL PRIVILEGES ON SCHEMA staging TO cleverbadge_admin;
 GRANT ALL PRIVILEGES ON SCHEMA production TO cleverbadge_admin;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA development TO cleverbadge_admin;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA testing TO cleverbadge_admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA staging TO cleverbadge_admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA production TO cleverbadge_admin;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA development GRANT ALL ON TABLES TO cleverbadge_admin;
-ALTER DEFAULT PRIVILEGES IN SCHEMA testing GRANT ALL ON TABLES TO cleverbadge_admin;
 ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT ALL ON TABLES TO cleverbadge_admin;
 ALTER DEFAULT PRIVILEGES IN SCHEMA production GRANT ALL ON TABLES TO cleverbadge_admin;
 
 -- Grant environment users USAGE on their schema ONLY
 GRANT USAGE ON SCHEMA development TO cleverbadge_dev;
-GRANT USAGE ON SCHEMA testing TO cleverbadge_test;
 GRANT USAGE ON SCHEMA staging TO cleverbadge_staging;
 GRANT USAGE ON SCHEMA production TO cleverbadge_prod;
 
 -- Grant READ/WRITE on tables (no CREATE/DROP/ALTER rights)
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA development TO cleverbadge_dev;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA testing TO cleverbadge_test;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA staging TO cleverbadge_staging;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA production TO cleverbadge_prod;
 
 -- Ensure future tables get same permissions
 ALTER DEFAULT PRIVILEGES IN SCHEMA development GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cleverbadge_dev;
-ALTER DEFAULT PRIVILEGES IN SCHEMA testing GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cleverbadge_test;
 ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cleverbadge_staging;
 ALTER DEFAULT PRIVILEGES IN SCHEMA production GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO cleverbadge_prod;
 
 -- Grant sequence usage (for auto-incrementing IDs)
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA development TO cleverbadge_dev;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA testing TO cleverbadge_test;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA staging TO cleverbadge_staging;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA production TO cleverbadge_prod;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA development GRANT USAGE ON SEQUENCES TO cleverbadge_dev;
-ALTER DEFAULT PRIVILEGES IN SCHEMA testing GRANT USAGE ON SEQUENCES TO cleverbadge_test;
 ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT USAGE ON SEQUENCES TO cleverbadge_staging;
 ALTER DEFAULT PRIVILEGES IN SCHEMA production GRANT USAGE ON SEQUENCES TO cleverbadge_prod;
 
@@ -163,7 +147,6 @@ For each backend service, set these environment variables in Render dashboard:
 - `DATABASE_URL`: **Environment-specific user** connection string (NOT the admin user!)
   - Production: `postgresql://cleverbadge_prod:PASSWORD@host:5432/cleverbadge`
   - Staging: `postgresql://cleverbadge_staging:PASSWORD@host:5432/cleverbadge`
-  - Testing: `postgresql://cleverbadge_test:PASSWORD@host:5432/cleverbadge`
   - Development: `postgresql://cleverbadge_dev:PASSWORD@host:5432/cleverbadge`
 
 **Migrations Only (NOT in runtime env vars):**
@@ -177,7 +160,7 @@ For each backend service, set these environment variables in Render dashboard:
 - `PORT`: `3000` (default)
 
 **Environment-specific:**
-- `NODE_ENV`: `testing`, `staging`, or `production` (also determines database schema automatically)
+- `NODE_ENV`: `staging` or `production` (also determines database schema automatically)
 
 ### Example: Production Backend
 
@@ -265,7 +248,7 @@ For each backend service, set these environment variables in Render dashboard:
 For each frontend service, set in Render dashboard:
 
 - `VITE_API_URL`: Backend URL for this environment
-- `VITE_ENV`: `testing`, `staging`, or `production`
+- `VITE_ENV`: `staging` or `production`
 
 ### Example: Production Frontend
 
@@ -363,9 +346,9 @@ services:
       - key: NODE_ENV
         value: staging
 
-  # Testing Backend
+  # Staging Backend (development/testing branch)
   - type: web
-    name: cleverbadge-backend-testing
+    name: cleverbadge-backend-staging
     branch: develop
     runtime: node
     plan: free
@@ -373,16 +356,16 @@ services:
     buildCommand: npm install
     startCommand: node index.js
     domains:
-      - testing-api.cleverbadge.com
+      - staging-api.cleverbadge.com
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: cleverbadge-db
           property: connectionString
       - key: DB_SCHEMA
-        value: testing
+        value: staging
       - key: NODE_ENV
-        value: testing
+        value: staging
 
   # Production Frontend
   - type: web
@@ -417,21 +400,21 @@ services:
       - key: VITE_ENV
         value: staging
 
-  # Testing Frontend
+  # Staging Frontend (development/testing branch)
   - type: web
-    name: cleverbadge-frontend-testing
+    name: cleverbadge-frontend-staging
     branch: develop
     runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     domains:
-      - testing.cleverbadge.com
+      - staging.cleverbadge.com
     envVars:
       - key: VITE_API_URL
-        value: https://testing-api.cleverbadge.com
+        value: https://staging-api.cleverbadge.com
       - key: VITE_ENV
-        value: testing
+        value: staging
 
 # Shared Database
 databases:
@@ -447,16 +430,13 @@ To support multiple environments:
 
 - **`main` branch**: Production deployments
 - **`staging` branch**: Staging deployments
-- **`develop` branch**: Testing deployments
-- **Feature branches**: Merge to develop → staging → main
+- **Feature branches**: Merge to staging → main
 
 Workflow:
 1. Develop feature on feature branch
-2. Merge to `develop` → auto-deploy to testing environment
-3. Test in testing environment
-4. Merge to `staging` → auto-deploy to staging environment
-5. Final QA in staging
-6. Merge to `main` → auto-deploy to production
+2. Merge to `staging` → auto-deploy to staging environment
+3. Test in staging environment
+4. Merge to `main` → auto-deploy to production
 
 ## Version Management
 
@@ -595,7 +575,7 @@ Current setup (free tier):
 
 ### Database connection errors
 - Verify schema exists: `\dn` in psql
-- Check `DB_SCHEMA` matches schema name
+- Check `NODE_ENV` matches schema name
 - Verify `search_path` is set in connection
 
 ### Migrations fail
@@ -606,7 +586,7 @@ Current setup (free tier):
 ## First Deployment Checklist
 
 - [ ] Create database on Render
-- [ ] Create all schemas (testing, staging, production)
+- [ ] Create all schemas (staging, production)
 - [ ] Deploy backend services (set env vars!)
 - [ ] Run migrations on each backend
 - [ ] Create admin users for each environment

@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
+import { isAnswerCorrect } from '../utils/scoring.js';
 
 const router = express.Router();
 
@@ -46,6 +47,7 @@ router.post('/start',
       const assessment = assessments[0];
 
       // Get all questions for this test (WITHOUT correct_answers)
+      // Order by question_id to maintain consistent insertion order
       const testQuestionsData = await sql`
         SELECT
           q.id,
@@ -56,7 +58,7 @@ router.post('/start',
         FROM ${sql(dbSchema)}.test_questions tq
         INNER JOIN ${sql(dbSchema)}.questions q ON tq.question_id = q.id
         WHERE tq.test_id = ${test_id}
-        ORDER BY tq.id
+        ORDER BY q.id
       `;
 
       // Add question numbers
@@ -207,28 +209,21 @@ router.post('/:assessmentId/submit',
       for (const answer of answers) {
         maxScore += answer.weight;
 
-        // Check if answer is correct
-        let isCorrect = false;
+        // Check if answer is correct using utility function
+        const correct = isAnswerCorrect(
+          answer.type,
+          answer.selected_options,
+          answer.correct_answers
+        );
 
-        if (answer.type === 'SINGLE') {
-          // SINGLE: correct if selected_options has exactly 1 item AND it's in correct_answers
-          isCorrect = answer.selected_options.length === 1 &&
-                     answer.correct_answers.includes(answer.selected_options[0]);
-        } else {
-          // MULTIPLE: arrays must match (order-independent)
-          const selectedSorted = [...answer.selected_options].sort((a, b) => a - b);
-          const correctSorted = [...answer.correct_answers].sort((a, b) => a - b);
-          isCorrect = JSON.stringify(selectedSorted) === JSON.stringify(correctSorted);
-        }
-
-        if (isCorrect) {
+        if (correct) {
           totalScore += answer.weight;
         }
 
         // Update answer with is_correct
         await sql`
           UPDATE ${sql(dbSchema)}.assessment_answers
-          SET is_correct = ${isCorrect}
+          SET is_correct = ${correct}
           WHERE id = ${answer.id}
         `;
       }

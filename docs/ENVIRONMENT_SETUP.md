@@ -9,7 +9,7 @@ Quick reference for environment-aware architecture setup.
 ```env
 # RUNTIME (use environment-specific user with limited permissions)
 DATABASE_URL="postgresql://cleverbadge_dev:pass@host:5432/db"
-NODE_ENV="development"               # development|testing|staging|production (determines schema)
+NODE_ENV="development"               # development|staging|production (determines schema)
 JWT_SECRET="your-secret-here"
 PORT=3000
 
@@ -18,7 +18,7 @@ PORT=3000
 ```
 
 **CRITICAL:**
-- `DATABASE_URL` must use runtime user (cleverbadge_dev, cleverbadge_test, cleverbadge_staging, cleverbadge_prod)
+- `DATABASE_URL` must use runtime user (cleverbadge_dev, cleverbadge_staging, cleverbadge_prod)
 - Runtime users have READ/WRITE permissions only (no schema changes)
 - `NODE_ENV` automatically determines database schema (development → development schema, etc.)
 - **No separate DB_SCHEMA variable** - ensures you never mix environment and schema
@@ -29,7 +29,7 @@ PORT=3000
 
 ```env
 VITE_API_URL=http://localhost:3000   # Backend URL
-VITE_ENV=development                 # development|testing|staging|production
+VITE_ENV=development                 # development|staging|production
 ```
 
 ## PostgreSQL Schema Isolation
@@ -38,7 +38,6 @@ All environments share one database but use separate schemas:
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS development;
-CREATE SCHEMA IF NOT EXISTS testing;
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS production;
 ```
@@ -51,7 +50,6 @@ CREATE SCHEMA IF NOT EXISTS production;
 - **Visibility**: Hidden in production only
 - **Colors**:
   - Development: Yellow banner
-  - Testing: Blue banner
   - Staging: Purple banner
   - Production: No banner
 

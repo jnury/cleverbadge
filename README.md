@@ -29,6 +29,12 @@ Clever Badge allows administrators to create and manage skills assessment tests,
 - **Styling**: Tailwind CSS
 - **Routing**: React Router
 
+### Testing
+- **Unit/Integration**: Vitest
+- **E2E**: Playwright
+- **CI/CD**: GitHub Actions
+- **Coverage**: c8
+
 ### Deployment
 - **Platform**: Render.com
 - **Services**: 2 web services (backend + static frontend) + 1 PostgreSQL database
@@ -253,23 +259,44 @@ npm run build            # Build for production
 npm run preview          # Preview production build
 ```
 
+### Testing
+
+**Backend:**
+```bash
+npm test              # Run all backend tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Generate coverage report
+```
+
+**Frontend:**
+```bash
+npm test              # Run component tests
+npm run test:e2e      # Run Playwright E2E tests
+npm run test:coverage # Generate coverage report
+```
+
+**CI/CD:**
+- All tests run automatically on push to develop/staging/main
+- Render.com deploys triggered only on staging/main (if tests pass)
+- Manual push required (prevents unnecessary CI runs)
+
 ## Environment Variables
 
 ### Backend Required
 - `DATABASE_URL`: PostgreSQL connection string
-- `DB_SCHEMA`: Database schema name (development/testing/staging/production)
 - `JWT_SECRET`: Secret for signing JWT tokens
 - `PORT`: Server port (default: 3000)
-- `NODE_ENV`: Environment (development/testing/staging/production)
+- `NODE_ENV`: Environment (development/staging/production) - also determines database schema
 
 ### Frontend Required
 - `VITE_API_URL`: Backend API URL
-- `VITE_ENV`: Environment name (development/testing/staging/production)
+- `VITE_ENV`: Environment name (development/staging/production)
 
 ### Multi-Environment Support
 
 Clever Badge supports multiple environments using PostgreSQL schema isolation:
-- Each environment (development, testing, staging, production) uses its own database schema
+- Each environment (development, staging, production) uses its own database schema
+- Schema is automatically determined from NODE_ENV
 - All environments can share the same PostgreSQL instance on Render
 - Environment banner displays on non-production frontends
 - Footer shows frontend and backend versions on all pages

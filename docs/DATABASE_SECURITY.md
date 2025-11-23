@@ -18,7 +18,7 @@ Clever Badge implements a secure multi-environment database architecture using P
 **Purpose:** Schema migrations and structural changes ONLY
 
 **Permissions:**
-- Full access to all schemas (development, testing, staging, production)
+- Full access to all schemas (development, staging, production)
 - Can CREATE, ALTER, DROP tables
 - Can GRANT permissions
 - Can modify schema structure
@@ -45,11 +45,6 @@ Each environment has a dedicated runtime user with restricted permissions.
 - Permissions: SELECT, INSERT, UPDATE, DELETE on tables
 - No schema modification rights
 
-#### Testing: `cleverbadge_test`
-- Schema: `testing`
-- Permissions: SELECT, INSERT, UPDATE, DELETE on tables
-- No schema modification rights
-
 #### Staging: `cleverbadge_staging`
 - Schema: `staging`
 - Permissions: SELECT, INSERT, UPDATE, DELETE on tables
@@ -70,7 +65,6 @@ Each environment has a dedicated runtime user with restricted permissions.
 **Connection Strings:**
 ```
 Development: postgresql://cleverbadge_dev:DEV_PASSWORD@localhost:5432/cleverbadge
-Testing:     postgresql://cleverbadge_test:TEST_PASSWORD@host:5432/cleverbadge
 Staging:     postgresql://cleverbadge_staging:STAGING_PASSWORD@host:5432/cleverbadge
 Production:  postgresql://cleverbadge_prod:PROD_PASSWORD@host:5432/cleverbadge
 ```
@@ -168,8 +162,8 @@ Admin credentials are **never** stored in application environment variables:
 
 - [ ] Create PostgreSQL database on Render
 - [ ] Create admin user (`cleverbadge_admin`)
-- [ ] Create all runtime users (dev, test, staging, prod)
-- [ ] Create all schemas (development, testing, staging, production)
+- [ ] Create all runtime users (dev, staging, prod)
+- [ ] Create all schemas (development, staging, production)
 - [ ] Grant admin user full access to all schemas
 - [ ] Grant each runtime user limited access to its schema only
 
@@ -177,7 +171,7 @@ Admin credentials are **never** stored in application environment variables:
 
 - [ ] Set `DATABASE_URL` with **runtime user** in Render dashboard
 - [ ] Verify `DATABASE_URL` does NOT use admin user
-- [ ] Set `DB_SCHEMA` to match environment
+- [ ] Set `NODE_ENV` to match environment (determines schema automatically)
 - [ ] Deploy application
 - [ ] Run migrations manually with admin user via Render shell
 - [ ] Verify application can read/write data
@@ -316,7 +310,7 @@ openssl rand -base64 32
    ```bash
    # Use admin user
    export DATABASE_ADMIN_URL=postgresql://cleverbadge_admin:PASSWORD@localhost:5432/cleverbadge
-   export DB_SCHEMA=development
+   export NODE_ENV=development
    npm run db:push
    ```
 
@@ -332,7 +326,7 @@ openssl rand -base64 32
    ```bash
    # In Render shell for staging service
    export DATABASE_ADMIN_URL=postgresql://cleverbadge_admin:PASSWORD@host:5432/cleverbadge
-   export DB_SCHEMA=staging
+   export NODE_ENV=staging
    npm run db:push
    ```
 
@@ -342,7 +336,7 @@ openssl rand -base64 32
    ```bash
    # In Render shell for production service
    export DATABASE_ADMIN_URL=postgresql://cleverbadge_admin:PASSWORD@host:5432/cleverbadge
-   export DB_SCHEMA=production
+   export NODE_ENV=production
    npm run db:push
    ```
 

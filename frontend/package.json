@@ -1,12 +1,19 @@
 {
   "name": "cleverbadge-frontend",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "description": "Clever Badge Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test --reporter=line",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -14,10 +21,17 @@
     "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "@vitest/ui": "^4.0.13",
     "autoprefixer": "^10.4.16",
+    "happy-dom": "^20.0.10",
+    "jsdom": "^27.2.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
-    "vite": "^5.0.5"
+    "vite": "^5.0.5",
+    "vitest": "^4.0.13"
   }
 }

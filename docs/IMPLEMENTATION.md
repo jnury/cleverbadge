@@ -156,7 +156,7 @@ JWT_SECRET="your_jwt_secret_change_in_production"
 **CRITICAL - Database User Security:**
 
 **Runtime Connection (`DATABASE_URL`):**
-- MUST use environment-specific user (cleverbadge_dev, cleverbadge_test, etc.)
+- MUST use environment-specific user (cleverbadge_dev, cleverbadge_staging, cleverbadge_prod)
 - These users have **READ/WRITE permissions ONLY**
 - CANNOT create/alter/drop tables (prevents accidental schema changes)
 - Can only access their designated schema
@@ -168,9 +168,8 @@ JWT_SECRET="your_jwt_secret_change_in_production"
 - Keep commented out in .env, uncomment only when running migrations
 
 **Environment Configuration:**
-- `NODE_ENV`: Controls environment AND database schema (development, testing, staging, production)
+- `NODE_ENV`: Controls environment AND database schema (development, staging, production)
   - `NODE_ENV=development` → uses `development` schema + `cleverbadge_dev` user
-  - `NODE_ENV=testing` → uses `testing` schema + `cleverbadge_test` user
   - `NODE_ENV=staging` → uses `staging` schema + `cleverbadge_staging` user
   - `NODE_ENV=production` → uses `production` schema + `cleverbadge_prod` user
 - **Schema is automatically derived from NODE_ENV** - no separate DB_SCHEMA variable
@@ -375,7 +374,6 @@ export const currentSchema = dbSchema;
 **Note on Schema Isolation:**
 - Each environment uses its own PostgreSQL schema, automatically determined from `NODE_ENV`
 - `NODE_ENV=development` → `development` schema
-- `NODE_ENV=testing` → `testing` schema
 - `NODE_ENV=staging` → `staging` schema
 - `NODE_ENV=production` → `production` schema
 - This ensures you can never accidentally mix environments
@@ -383,7 +381,6 @@ export const currentSchema = dbSchema;
 - Before first use in each environment, create the schema:
   ```sql
   CREATE SCHEMA IF NOT EXISTS development;
-  CREATE SCHEMA IF NOT EXISTS testing;
   CREATE SCHEMA IF NOT EXISTS staging;
   CREATE SCHEMA IF NOT EXISTS production;
   ```
@@ -922,7 +919,6 @@ function EnvironmentBanner() {
 
   const envColors = {
     development: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    testing: 'bg-blue-100 text-blue-800 border-blue-300',
     staging: 'bg-purple-100 text-purple-800 border-purple-300'
   };
 

@@ -1,20 +1,20 @@
 services:
-  # Testing Backend Service
+  # Staging Backend Service
   - type: web
-    name: cleverbadge-backend-testing
-    branch: testing
+    name: cleverbadge-backend-staging
+    branch: staging
     runtime: node
     plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: node index.js
     domains:
-      - api-testing.cleverbadge.com
+      - api-staging.cleverbadge.com
     envVars:
       - key: DATABASE_URL
-        sync: false  # Set manually with cleverbadge_test user
+        sync: false  # Set manually with cleverbadge_staging user
       - key: NODE_ENV
-        value: testing
+        value: staging
       - key: JWT_SECRET
         sync: false  # Set manually in Render dashboard
       - key: PORT
@@ -41,21 +41,21 @@ services:
       - key: PORT
         value: 3000
 
-  # Testing Frontend Service
+  # Staging Frontend Service
   - type: web
-    name: cleverbadge-frontend-testing
-    branch: testing
+    name: cleverbadge-frontend-staging
+    branch: staging
     runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     domains:
-      - testing.cleverbadge.com
+      - staging.cleverbadge.com
     envVars:
       - key: VITE_API_URL
-        value: https://api-testing.cleverbadge.com
+        value: https://api-staging.cleverbadge.com
       - key: VITE_ENV
-        value: testing
+        value: staging
     routes:
       - type: rewrite
         source: /*

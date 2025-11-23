@@ -10,6 +10,8 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 
 **Backend:** Node.js + Express + postgres-js (raw SQL) + PostgreSQL + argon2 + JWT
 **Frontend:** React + Vite + Tailwind CSS + React Router
+**Testing:** Vitest (unit/integration) + Playwright (E2E) + c8 (coverage)
+**CI/CD:** GitHub Actions
 **Deployment:** Render.com (2 web services + PostgreSQL)
 **Language:** JavaScript only (no TypeScript)
 
@@ -26,7 +28,8 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 - Keep evything simple so a beginer/medium experimented developer can understand and maintain the code.
 - No external library except if it greatly simplify the code and it's a very well maintened library. Always ask me if you want to add a library and expose the pros/cons of building your own code vs adding a library.
 - Each time you touch the code, update version in package.json with the following rule: if you just implemented a new important feature, increment the minor version digit; else increment the patch version digit.
-- Commit the repository only when I ask. When you create a commit. Always push after you commited.
+- Commit the repository only when I ask. NEVER push to git - user will push manually to control CI/CD costs.
+- Always run tests locally before committing: `npm test` (backend and frontend). Tests must pass before any commit.
 - If you learn something interesting and usefull for the rest of the project, update this CLAUDE.md file in section "Today I learned". But before, ask me if your new knowledge is correct.
 - If you made a mistake in your interpretation of the specs, architecture, features etc. update this CLAUDE.md file in section "Never again". But before, ask me if your new knowledge is correct.
 - Always ask questions when you need clarification or if you have the choice between multiple solutions.
@@ -34,6 +37,33 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 
 ## Always Think Step by Step
 - Read specification → Check dependencies → Validate data flow → Implement incrementally → Test immediately
+
+## Testing Strategy
+
+**Stack:**
+- Backend: Vitest (unit, integration, API tests) + Postgres with transaction rollback
+- Frontend: Vitest (component tests) + Playwright (E2E tests)
+- Database: PostgreSQL everywhere (local, CI, Render)
+
+**Running tests:**
+```bash
+# Backend
+cd backend
+npm test                 # Run all tests
+npm run test:watch       # Watch mode
+npm run test:coverage    # With coverage
+
+# Frontend
+cd frontend
+npm test                 # Component tests
+npm run test:e2e         # E2E tests with Playwright
+npm run test:coverage    # Coverage report
+```
+
+**CI/CD:**
+- Tests run on push to develop, staging, main
+- Render deploys only on staging/main and only if tests pass
+- GitHub Actions uses environment secrets for deploy hooks
 
 ## Today I learned
 - When using playwright, always add ' --reporter=line' so you don't have to wait for results
