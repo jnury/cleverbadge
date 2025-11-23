@@ -115,7 +115,8 @@ const QuestionRunner = () => {
       navigate(`/t/${slug}/result`, {
         state: {
           score: data.score_percentage,
-          candidateName
+          candidateName,
+          passThreshold: data.pass_threshold
         }
       });
     } catch (err) {

@@ -76,7 +76,8 @@ const TestsTab = () => {
         body: JSON.stringify({
           title: test.title,
           description: test.description,
-          is_enabled: !test.is_enabled
+          is_enabled: !test.is_enabled,
+          pass_threshold: test.pass_threshold ?? 0
         })
       });
 
@@ -184,6 +185,10 @@ const TestsTab = () => {
                     </span>
                     <span>
                       Questions: <span className="font-medium text-gray-700">{test.question_count}</span>
+                    </span>
+                    <span>
+                      Pass Threshold: <span className="font-medium text-gray-700">{test.pass_threshold ?? 0}%</span>
+                      {(test.pass_threshold ?? 0) === 0 && <span className="text-gray-500 ml-1">(neutral)</span>}
                     </span>
                   </div>
                 </div>

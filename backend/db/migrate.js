@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import postgres from 'postgres';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -34,21 +34,39 @@ async function runMigrations() {
     await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS ${dbSchema}`);
     console.log(`✅ Schema "${dbSchema}" ready`);
 
-    // 2. Read migration file
-    const migrationPath = join(__dirname, 'migrations', '001_initial_schema.sql');
-    console.log(`📄 Reading migration file: ${migrationPath}`);
-    let migrationSQL = readFileSync(migrationPath, 'utf-8');
+    // 2. Get all migration files
+    const migrationsDir = join(__dirname, 'migrations');
+    const migrationFiles = readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort(); // Sort alphabetically (001, 002, etc.)
 
-    // 3. Replace __SCHEMA__ placeholder with actual schema name
-    migrationSQL = migrationSQL.replaceAll('__SCHEMA__', dbSchema);
+    console.log(`📄 Found ${migrationFiles.length} migration file(s)`);
 
-    // 4. Run the migration
-    console.log(`🚀 Applying migration...`);
-    await sql.unsafe(migrationSQL);
-    console.log(`✅ Migration completed successfully`);
+    // 3. Run each migration
+    for (const filename of migrationFiles) {
+      console.log(`\n🚀 Running migration: ${filename}`);
+      const migrationPath = join(migrationsDir, filename);
+      let migrationSQL = readFileSync(migrationPath, 'utf-8');
 
-    // 5. Verify tables were created
-    console.log(`🔍 Verifying tables...`);
+      // Replace __SCHEMA__ placeholder with actual schema name
+      migrationSQL = migrationSQL.replaceAll('__SCHEMA__', dbSchema);
+
+      // Run the migration
+      try {
+        await sql.unsafe(migrationSQL);
+        console.log(`✅ ${filename} completed successfully`);
+      } catch (error) {
+        // If error is "column already exists" or "relation already exists", skip it
+        if (error.code === '42701' || error.code === '42P07') {
+          console.log(`⚠️  ${filename} already applied (skipping)`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // 4. Verify tables were created
+    console.log(`\n🔍 Verifying tables...`);
     const tables = await sql`
       SELECT table_name
       FROM information_schema.tables
@@ -59,7 +77,7 @@ async function runMigrations() {
     console.log(`📋 Tables in "${dbSchema}" schema:`);
     tables.forEach(t => console.log(`   - ${t.table_name}`));
 
-    console.log(`\n🎉 Migration successful!`);
+    console.log(`\n🎉 All migrations completed successfully!`);
   } catch (error) {
     console.error(`❌ Migration failed:`, error.message);
     console.error(error);

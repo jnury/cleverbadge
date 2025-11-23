@@ -300,12 +300,19 @@ router.post('/:assessmentId/submit',
         RETURNING *
       `;
 
+      // Get test pass_threshold
+      const tests = await sql`
+        SELECT pass_threshold FROM ${sql(dbSchema)}.tests
+        WHERE id = ${assessment.test_id}
+      `;
+
       res.json({
         assessment_id: assessmentId,
         score_percentage: parseFloat(updatedAssessments[0].score_percentage),
         total_questions: answers.length,
         status: 'COMPLETED',
-        completed_at: updatedAssessments[0].completed_at
+        completed_at: updatedAssessments[0].completed_at,
+        pass_threshold: tests[0]?.pass_threshold ?? 0
       });
     } catch (error) {
       console.error('Error submitting assessment:', error);

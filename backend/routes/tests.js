@@ -119,14 +119,15 @@ router.post('/',
   body('slug').notEmpty().withMessage('Slug is required').isString().withMessage('Slug must be a string')
     .matches(/^[a-z0-9-]+$/).withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
+  body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, slug, is_enabled } = req.body;
+      const { title, description, slug, is_enabled, pass_threshold } = req.body;
 
       const newTests = await sql`
-        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, is_enabled)
-        VALUES (${title}, ${description || null}, ${slug}, ${is_enabled ?? false})
+        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, is_enabled, pass_threshold)
+        VALUES (${title}, ${description || null}, ${slug}, ${is_enabled ?? false}, ${pass_threshold ?? 0})
         RETURNING *
       `;
 
@@ -149,10 +150,11 @@ router.put('/:id',
   body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
   body('description').optional().isString().withMessage('Description must be a string'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
+  body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, is_enabled } = req.body;
+      const { title, description, is_enabled, pass_threshold } = req.body;
 
       const updatedTests = await sql`
         UPDATE ${sql(dbSchema)}.tests
@@ -160,6 +162,7 @@ router.put('/:id',
           title = ${title},
           description = ${description},
           is_enabled = ${is_enabled},
+          pass_threshold = ${pass_threshold !== undefined ? pass_threshold : sql`pass_threshold`},
           updated_at = NOW()
         WHERE id = ${req.params.id}
         RETURNING *
@@ -216,7 +219,7 @@ router.get('/:testId/questions',
         FROM ${sql(dbSchema)}.test_questions tq
         JOIN ${sql(dbSchema)}.questions q ON q.id = tq.question_id
         WHERE tq.test_id = ${req.params.testId}
-        ORDER BY tq.created_at ASC
+        ORDER BY q.created_at ASC
       `;
 
       res.json({ questions });

@@ -8,7 +8,8 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
     title: '',
     description: '',
     slug: '',
-    is_enabled: false
+    is_enabled: false,
+    pass_threshold: 0
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,7 +20,8 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
         title: test.title || '',
         description: test.description || '',
         slug: test.slug || '',
-        is_enabled: test.is_enabled || false
+        is_enabled: test.is_enabled || false,
+        pass_threshold: test.pass_threshold ?? 0
       });
     }
   }, [test]);
@@ -56,6 +58,11 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
       newErrors.slug = 'Slug is required';
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
       newErrors.slug = 'Slug must contain only lowercase letters, numbers, and hyphens';
+    }
+
+    const threshold = parseInt(formData.pass_threshold);
+    if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+      newErrors.pass_threshold = 'Pass threshold must be between 0 and 100';
     }
 
     setErrors(newErrors);
@@ -138,6 +145,19 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
           </div>
         )}
       </div>
+
+      <Input
+        label="Pass Threshold (%)"
+        name="pass_threshold"
+        type="number"
+        min="0"
+        max="100"
+        value={formData.pass_threshold}
+        onChange={handleChange}
+        error={errors.pass_threshold}
+        placeholder="0"
+        help="Set to 0 for neutral scoring (no pass/fail). Set to 1-100 to show pass/fail based on score."
+      />
 
       <div className="flex items-center">
         <input

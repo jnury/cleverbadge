@@ -283,7 +283,8 @@ Create a new test.
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
   "slug": "javascript-fundamentals",
-  "is_enabled": true
+  "is_enabled": true,
+  "pass_threshold": 70
 }
 ```
 
@@ -292,6 +293,7 @@ Create a new test.
 - `description`: Optional, string, max 2000 characters
 - `slug`: Required, string, 3-100 characters, alphanumeric and hyphens only, unique
 - `is_enabled`: Optional, boolean, default: false
+- `pass_threshold`: Optional, integer, 0-100, default: 0 (0 = neutral scoring, >0 = pass/fail mode)
 
 **Success Response (201):**
 ```json
@@ -301,6 +303,7 @@ Create a new test.
   "description": "Test your knowledge of JavaScript basics",
   "slug": "javascript-fundamentals",
   "is_enabled": true,
+  "pass_threshold": 70,
   "created_at": "2025-01-23T10:30:00.000Z",
   "updated_at": "2025-01-23T10:30:00.000Z"
 }
@@ -336,6 +339,7 @@ Retrieve all tests.
       "description": "Test your knowledge of JavaScript basics",
       "slug": "javascript-fundamentals",
       "is_enabled": true,
+      "pass_threshold": 70,
       "question_count": 25,
       "created_at": "2025-01-23T10:30:00.000Z",
       "updated_at": "2025-01-23T10:30:00.000Z"
@@ -389,6 +393,7 @@ Retrieve full test details including questions.
   "description": "Test your knowledge of JavaScript basics",
   "slug": "javascript-fundamentals",
   "is_enabled": true,
+  "pass_threshold": 70,
   "questions": [
     {
       "question_id": "uuid",
@@ -417,7 +422,8 @@ Update test details.
 {
   "title": "JavaScript Advanced",
   "description": "Updated description",
-  "is_enabled": false
+  "is_enabled": false,
+  "pass_threshold": 80
 }
 ```
 
@@ -431,6 +437,7 @@ Update test details.
   "description": "Updated description",
   "slug": "javascript-fundamentals",
   "is_enabled": false,
+  "pass_threshold": 80,
   "updated_at": "2025-01-23T11:00:00.000Z"
 }
 ```
@@ -609,7 +616,8 @@ Finalize and score the assessment.
   "score_percentage": 85.5,
   "total_questions": 25,
   "status": "COMPLETED",
-  "completed_at": "2025-01-23T11:00:00.000Z"
+  "completed_at": "2025-01-23T11:00:00.000Z",
+  "pass_threshold": 70
 }
 ```
 

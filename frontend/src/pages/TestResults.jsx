@@ -7,7 +7,7 @@ const TestResults = () => {
   const location = useLocation();
 
   // Get data from navigation state
-  const { score, candidateName } = location.state || {};
+  const { score, candidateName, passThreshold } = location.state || {};
 
   // Redirect if no state
   if (score === undefined) {
@@ -16,23 +16,33 @@ const TestResults = () => {
   }
 
   const scoreNum = parseFloat(score);
+  const threshold = passThreshold ?? 0;
 
-  // Determine result status
-  let status = 'passed';
-  let statusColor = 'text-green-600';
-  let statusBg = 'bg-green-50';
-  let statusBorder = 'border-green-200';
+  // Determine result status based on pass_threshold
+  let status = '';
+  let statusColor = '';
+  let statusBg = '';
+  let statusBorder = '';
 
-  if (scoreNum < 50) {
-    status = 'needs improvement';
-    statusColor = 'text-red-600';
-    statusBg = 'bg-red-50';
-    statusBorder = 'border-red-200';
-  } else if (scoreNum < 75) {
-    status = 'good';
-    statusColor = 'text-yellow-600';
-    statusBg = 'bg-yellow-50';
-    statusBorder = 'border-yellow-200';
+  if (threshold === 0) {
+    // Neutral mode - no pass/fail, just show score
+    status = 'Score';
+    statusColor = 'text-gray-700';
+    statusBg = 'bg-gray-50';
+    statusBorder = 'border-gray-200';
+  } else {
+    // Pass/fail mode based on threshold
+    if (scoreNum >= threshold) {
+      status = 'Passed';
+      statusColor = 'text-green-600';
+      statusBg = 'bg-green-50';
+      statusBorder = 'border-green-200';
+    } else {
+      status = 'Not Passed';
+      statusColor = 'text-red-600';
+      statusBg = 'bg-red-50';
+      statusBorder = 'border-red-200';
+    }
   }
 
   return (
