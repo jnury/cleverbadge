@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../../utils/api';
+import QuestionsTab from './QuestionsTab';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -67,17 +68,21 @@ const AdminDashboard = () => {
 
       {/* Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          {/* Placeholder content */}
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              {tabs.find(t => t.id === activeTab)?.label}
-            </h2>
-            <p className="text-gray-600">
-              Content coming in Phase 3
-            </p>
+        {activeTab === 'questions' && <QuestionsTab />}
+
+        {activeTab !== 'questions' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            {/* Placeholder content */}
+            <div className="text-center py-12">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                {tabs.find(t => t.id === activeTab)?.label}
+              </h2>
+              <p className="text-gray-600">
+                Content coming in Phase 3
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

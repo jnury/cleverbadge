@@ -1,0 +1,227 @@
+import React, { useState } from 'react';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
+import Select from '../../components/ui/Select';
+
+const QuestionForm = ({ question, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState({
+    text: question?.text || '',
+    type: question?.type || 'SINGLE',
+    options: question?.options || ['', ''],
+    correct_answers: question?.correct_answers || [],
+    tags: question?.tags?.join(', ') || ''
+  });
+
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleAddOption = () => {
+    if (formData.options.length < 10) {
+      setFormData(prev => ({
+        ...prev,
+        options: [...prev.options, '']
+      }));
+    }
+  };
+
+  const handleRemoveOption = (index) => {
+    if (formData.options.length > 2) {
+      setFormData(prev => ({
+        ...prev,
+        options: prev.options.filter((_, i) => i !== index),
+        correct_answers: prev.correct_answers.filter(ans => ans !== prev.options[index])
+      }));
+    }
+  };
+
+  const handleOptionChange = (index, value) => {
+    const newOptions = [...formData.options];
+    const oldValue = newOptions[index];
+    newOptions[index] = value;
+
+    // Update correct_answers if this option was selected
+    const newCorrectAnswers = formData.correct_answers.map(ans =>
+      ans === oldValue ? value : ans
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      options: newOptions,
+      correct_answers: newCorrectAnswers
+    }));
+  };
+
+  const handleCorrectAnswerToggle = (option) => {
+    setFormData(prev => {
+      if (prev.type === 'SINGLE') {
+        return { ...prev, correct_answers: [option] };
+      } else {
+        const isSelected = prev.correct_answers.includes(option);
+        return {
+          ...prev,
+          correct_answers: isSelected
+            ? prev.correct_answers.filter(ans => ans !== option)
+            : [...prev.correct_answers, option]
+        };
+      }
+    });
+  };
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.text.trim()) {
+      newErrors.text = 'Question text is required';
+    } else if (formData.text.length < 10) {
+      newErrors.text = 'Question must be at least 10 characters';
+    } else if (formData.text.length > 1000) {
+      newErrors.text = 'Question must be at most 1000 characters';
+    }
+
+    const nonEmptyOptions = formData.options.filter(opt => opt.trim());
+    if (nonEmptyOptions.length < 2) {
+      newErrors.options = 'At least 2 options are required';
+    }
+
+    if (formData.correct_answers.length === 0) {
+      newErrors.correct_answers = 'At least one correct answer must be selected';
+    }
+
+    if (formData.type === 'SINGLE' && formData.correct_answers.length > 1) {
+      newErrors.correct_answers = 'Single choice questions can only have one correct answer';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validate()) return;
+
+    setSubmitting(true);
+
+    try {
+      const submitData = {
+        text: formData.text.trim(),
+        type: formData.type,
+        options: formData.options.filter(opt => opt.trim()),
+        correct_answers: formData.correct_answers,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
+      };
+
+      await onSubmit(submitData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Textarea
+        label="Question Text"
+        value={formData.text}
+        onChange={(e) => setFormData(prev => ({ ...prev, text: e.target.value }))}
+        error={errors.text}
+        required
+        rows={3}
+        placeholder="Enter your question..."
+      />
+
+      <Select
+        label="Question Type"
+        value={formData.type}
+        onChange={(e) => setFormData(prev => ({
+          ...prev,
+          type: e.target.value,
+          correct_answers: e.target.value === 'SINGLE' ? [prev.correct_answers[0]].filter(Boolean) : prev.correct_answers
+        }))}
+        options={[
+          { value: 'SINGLE', label: 'Single Choice' },
+          { value: 'MULTIPLE', label: 'Multiple Choice' }
+        ]}
+        required
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Answer Options <span className="text-red-500">*</span>
+        </label>
+
+        <div className="space-y-2">
+          {formData.options.map((option, index) => (
+            <div key={index} className="flex gap-2 items-start">
+              <input
+                type={formData.type === 'SINGLE' ? 'radio' : 'checkbox'}
+                checked={formData.correct_answers.includes(option)}
+                onChange={() => handleCorrectAnswerToggle(option)}
+                disabled={!option.trim()}
+                className="mt-3"
+              />
+              <input
+                type="text"
+                value={option}
+                onChange={(e) => handleOptionChange(index, e.target.value)}
+                placeholder={`Option ${index + 1}`}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+              />
+              {formData.options.length > 2 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger"
+                  onClick={() => handleRemoveOption(index)}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {errors.options && <p className="mt-1 text-sm text-red-600">{errors.options}</p>}
+        {errors.correct_answers && <p className="mt-1 text-sm text-red-600">{errors.correct_answers}</p>}
+
+        {formData.options.length < 10 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={handleAddOption}
+            className="mt-2"
+          >
+            Add Option
+          </Button>
+        )}
+      </div>
+
+      <Input
+        label="Tags (comma-separated)"
+        value={formData.tags}
+        onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+        placeholder="e.g., math, easy, algebra"
+      />
+
+      <div className="flex gap-3 justify-end pt-4">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          loading={submitting}
+        >
+          {question ? 'Update Question' : 'Create Question'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+export default QuestionForm;
