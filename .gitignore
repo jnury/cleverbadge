@@ -57,4 +57,8 @@ yarn-debug.log*
 
 # Local database backups
 *.sql
+!backend/db/migrations/*.sql
 *.dump
+
+# Misc
+*.tmp

@@ -8,13 +8,14 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 
 ## Tech Stack
 
-**Backend:** Node.js + Express + Drizzle ORM + PostgreSQL + argon2 + JWT
+**Backend:** Node.js + Express + postgres-js (raw SQL) + PostgreSQL + argon2 + JWT
 **Frontend:** React + Vite + Tailwind CSS + React Router
 **Deployment:** Render.com (2 web services + PostgreSQL)
 **Language:** JavaScript only (no TypeScript)
 
 ## Key Architecture Decisions
 
+- **Database Layer:** Raw SQL with postgres-js for full control and multi-schema support
 - **Authentication:** Admin only (argon2 + JWT), candidates are anonymous
 - **Validation:** express-validator for all request validation
 - **State Management:** React Router navigation state (no global state library)
@@ -111,7 +112,7 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 **Backend:**
 ```bash
 npm run dev          # Start with nodemon
-npm run db:push      # Apply Drizzle schema
+npm run migrate      # Run SQL migrations to create/update schema
 npm run create-admin # Create admin user
 ```
 
@@ -138,7 +139,7 @@ npm run build        # Production build
 - Runtime users: `cleverbadge_dev`, `cleverbadge_test`, `cleverbadge_staging`, `cleverbadge_prod`
 - Runtime users have **READ/WRITE data permissions ONLY** (no schema modification rights)
 - Admin user: `cleverbadge_admin` with **FULL access to all schemas**
-- Admin user used ONLY for migrations and schema changes via `npm run db:push`
+- Admin user used ONLY for migrations and schema changes via `npm run migrate`
 - **NEVER use admin user for runtime** - applications must use environment-specific users
 - `DATABASE_URL` (runtime) = environment user connection string
 - `DATABASE_ADMIN_URL` (migrations only) = admin user connection string

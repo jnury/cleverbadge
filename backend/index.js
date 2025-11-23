@@ -5,8 +5,8 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { db } from './db/index.js';
-import { sql } from 'drizzle-orm';
+import { sql } from './db/index.js';
+import questionsRouter from './routes/questions.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,10 +25,13 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '0.1.0',
+    version: '0.2.0',
     environment: NODE_ENV
   });
 });
+
+// API routes
+app.use('/api/questions', questionsRouter);
 
 // Test database connection on startup
 app.listen(PORT, async () => {
@@ -37,7 +40,7 @@ app.listen(PORT, async () => {
   console.log(`🗄️  Database schema: ${NODE_ENV}`);
 
   try {
-    await db.execute(sql`SELECT 1`);
+    await sql`SELECT 1 as test`;
     console.log('✅ Database connected successfully');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
