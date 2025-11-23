@@ -26,11 +26,14 @@ beforeAll(async () => {
   await testSql.unsafe(`DROP SCHEMA IF EXISTS ${TEST_SCHEMA} CASCADE`);
   await testSql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
-  // Run migration with __SCHEMA__ replacement
-  const migrationSQL = fs.readFileSync('./db/migrations/001_initial_schema.sql', 'utf8');
-  const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  // Run migrations with __SCHEMA__ replacement
+  const migration1SQL = fs.readFileSync('./db/migrations/001_initial_schema.sql', 'utf8');
+  const testMigration1SQL = migration1SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration1SQL);
 
-  await testSql.unsafe(testMigrationSQL);
+  const migration2SQL = fs.readFileSync('./db/migrations/002_add_pass_threshold.sql', 'utf8');
+  const testMigration2SQL = migration2SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration2SQL);
 
   // Seed test data
   await seedTestData();
@@ -156,8 +159,8 @@ async function seedTestData() {
 
   for (const t of tests) {
     await testSql.unsafe(`
-      INSERT INTO ${TEST_SCHEMA}.tests (id, title, slug, description, is_enabled)
-      VALUES ('${t.id}', '${t.title}', '${t.slug}', '${t.description}', ${t.is_enabled})
+      INSERT INTO ${TEST_SCHEMA}.tests (id, title, slug, description, is_enabled, pass_threshold)
+      VALUES ('${t.id}', '${t.title}', '${t.slug}', '${t.description}', ${t.is_enabled}, 0)
     `);
   }
 

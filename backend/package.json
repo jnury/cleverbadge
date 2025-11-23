@@ -9,10 +9,10 @@
     "start": "node index.js",
     "migrate": "node db/migrate.js",
     "create-admin": "node scripts/create-admin.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test": "NODE_ENV=test JWT_SECRET=test-secret-key vitest run",
+    "test:watch": "NODE_ENV=test JWT_SECRET=test-secret-key vitest",
+    "test:ui": "NODE_ENV=test JWT_SECRET=test-secret-key vitest --ui",
+    "test:coverage": "NODE_ENV=test JWT_SECRET=test-secret-key vitest run --coverage"
   },
   "dependencies": {
     "argon2": "^0.44.0",
