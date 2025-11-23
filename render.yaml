@@ -2,7 +2,7 @@ services:
   # Testing Backend Service
   - type: web
     name: cleverbadge-backend-testing
-    branch: develop
+    branch: testing
     runtime: node
     plan: free
     rootDir: backend
@@ -44,7 +44,7 @@ services:
   # Testing Frontend Service
   - type: web
     name: cleverbadge-frontend-testing
-    branch: develop
+    branch: testing
     runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
