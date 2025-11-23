@@ -14,6 +14,8 @@ test.describe('Questions Management', () => {
   });
 
   test('should display questions list', async ({ page }) => {
+    // Wait for the tab content to load
+    await page.waitForSelector('h2:has-text("Questions")');
     await expect(page.locator('h2:has-text("Questions")')).toBeVisible();
   });
 
@@ -33,27 +35,33 @@ test.describe('Questions Management', () => {
 
     await page.fill('input[placeholder*="tags"]', 'math, easy');
 
-    await page.click('button[type="submit"]');
+    await page.locator('form button[type="submit"]').click();
 
     await expect(page.locator('text=Question created successfully')).toBeVisible();
     await expect(page.locator('text=What is 2+2?')).toBeVisible();
   });
 
   test('should filter questions by type', async ({ page }) => {
-    await page.selectOption('select', 'SINGLE');
-    // Verify filtered results
+    // Wait for questions to load
+    await page.waitForSelector('select');
+
+    // Select the filter dropdown (first select is for filtering)
+    await page.locator('select').first().selectOption('SINGLE');
+
+    // Verify filtered results - should show count
+    await expect(page.locator('text=/Showing \\d+ of \\d+ questions/')).toBeVisible();
   });
 
   test('should edit a question', async ({ page }) => {
-    await page.click('button:has-text("Edit")').first();
+    await page.locator('button:has-text("Edit")').first().click();
     await page.fill('textarea[placeholder*="question"]', 'Updated question text');
-    await page.click('button:has-text("Update Question")');
+    await page.locator('form button[type="submit"]').click();
     await expect(page.locator('text=Question updated successfully')).toBeVisible();
   });
 
   test('should delete a question', async ({ page }) => {
-    await page.click('button:has-text("Delete")').first();
-    await page.click('button:has-text("Delete Question")');
+    await page.locator('button:has-text("Delete")').first().click();
+    await page.locator('button:has-text("Delete Question")').click();
     await expect(page.locator('text=Question deleted successfully')).toBeVisible();
   });
 });

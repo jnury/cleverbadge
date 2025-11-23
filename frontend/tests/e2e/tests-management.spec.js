@@ -26,7 +26,8 @@ test.describe('Tests Management', () => {
     await page.fill('input[name="slug"]', 'e2e-test-assessment');
     await page.check('input[name="is_enabled"]');
 
-    await page.click('button:has-text("Create Test")');
+    // Click the submit button inside the modal
+    await page.locator('form button[type="submit"]').click();
 
     // Wait for modal to close and test to appear
     await expect(page.locator('text=E2E Test Assessment')).toBeVisible();
@@ -46,10 +47,10 @@ test.describe('Tests Management', () => {
     // Wait for tests to load
     await page.waitForSelector('button:has-text("Edit")');
 
-    await page.click('button:has-text("Edit")').first();
+    await page.locator('button:has-text("Edit")').first().click();
     await page.fill('input[name="title"]', 'Updated Test Title');
     await page.fill('textarea[name="description"]', 'Updated description');
-    await page.click('button:has-text("Update Test")');
+    await page.locator('form button[type="submit"]').click();
 
     await expect(page.locator('text=Updated Test Title')).toBeVisible();
   });
@@ -79,7 +80,7 @@ test.describe('Tests Management', () => {
     // Grant clipboard permissions
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await page.click('button:has-text("Copy URL")').first();
+    await page.locator('button:has-text("Copy URL")').first().click();
 
     // Check that alert appeared
     page.on('dialog', async dialog => {
@@ -92,7 +93,7 @@ test.describe('Tests Management', () => {
     // Wait for tests to load
     await page.waitForSelector('button:has-text("Questions")');
 
-    await page.click('button:has-text("Questions")').first();
+    await page.locator('button:has-text("Questions")').first().click();
 
     // Modal should open
     await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
@@ -104,7 +105,7 @@ test.describe('Tests Management', () => {
     // Wait for tests to load
     await page.waitForSelector('button:has-text("Questions")');
 
-    await page.click('button:has-text("Questions")').first();
+    await page.locator('button:has-text("Questions")').first().click();
 
     // Wait for modal and questions to load
     await page.waitForSelector('select');
@@ -133,7 +134,7 @@ test.describe('Tests Management', () => {
         await dialog.accept();
       });
 
-      await page.click('button:has-text("Remove")').first();
+      await page.locator('button:has-text("Remove")').first().click();
 
       // Wait for removal
       await page.waitForTimeout(500);
@@ -152,7 +153,7 @@ test.describe('Tests Management', () => {
       await dialog.accept();
     });
 
-    await page.click('button:has-text("Delete")').first();
+    await page.locator('button:has-text("Delete")').first().click();
 
     // Wait for deletion to complete
     await page.waitForTimeout(500);

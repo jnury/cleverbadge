@@ -9,7 +9,7 @@ Clever Badge allows administrators to create and manage skills assessment tests,
 ### Key Features
 
 - **Candidate Experience**: Take tests via `/t/:slug` links, one question at a time with navigation
-- **Admin Dashboard**: Manage tests, import questions via YAML, view detailed results and analytics
+- **Admin Dashboard**: Full UI for managing tests and questions, import questions via YAML, view detailed results and analytics
 - **Question Types**: Single-choice and multiple-choice questions with weighted scoring
 - **Analytics**: Per-question success rates to identify difficult questions
 
@@ -199,7 +199,7 @@ questions:
     tags: ["geography", "europe"]
 ```
 
-Import via admin dashboard or API:
+Import via API (admin dashboard UI for questions available, but YAML import still supported):
 ```bash
 curl -X POST http://localhost:3000/api/questions/import \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -231,15 +231,17 @@ curl -X POST http://localhost:3000/api/questions/import \
 - ✅ SINGLE and MULTIPLE choice questions
 - ✅ Weighted scoring
 - ✅ Admin authentication
-- ✅ YAML question import/delete
+- ✅ YAML question import
+- ✅ **Admin UI for question management** (create, edit, delete, filter by type/tags)
+- ✅ **Admin UI for test management** (create, edit, delete, add/remove questions, enable/disable)
+- ✅ **Assessments list view** (filter by test/status, sort by date/score)
 - ✅ Test enable/disable
 - ✅ Detailed assessment results
 - ✅ Per-question success rate analytics
 
 ### Post-MVP (v2+)
-- ⏳ Web UI for question creation/editing
 - ⏳ Test categories and tags
-- ⏳ Admin analytics dashboard
+- ⏳ Enhanced analytics dashboard
 - ⏳ CSV export
 - ⏳ Time limits
 - ⏳ Candidate answer review

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../../utils/api';
 import TestsTab from './TestsTab';
 import QuestionsTab from './QuestionsTab';
+import AssessmentsTab from './AssessmentsTab';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -72,16 +73,11 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg shadow p-6">
           {activeTab === 'tests' && <TestsTab />}
           {activeTab === 'questions' && <QuestionsTab />}
-          {activeTab === 'assessments' && (
-            <div className="text-center py-12">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Assessments</h2>
-              <p className="text-gray-600">Content coming in Phase 3</p>
-            </div>
-          )}
+          {activeTab === 'assessments' && <AssessmentsTab />}
           {activeTab === 'analytics' && (
             <div className="text-center py-12">
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Analytics</h2>
-              <p className="text-gray-600">Content coming in Phase 3</p>
+              <p className="text-gray-600">Content coming in Phase 4</p>
             </div>
           )}
         </div>

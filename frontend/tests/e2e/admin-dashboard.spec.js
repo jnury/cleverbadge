@@ -39,12 +39,12 @@ test.describe('Admin Dashboard', () => {
     await page.waitForURL('/admin');
 
     // Click Questions tab
-    await page.click('button:has-text("Questions")');
-    await expect(page.locator('h2')).toContainText('Questions');
+    await page.locator('button:has-text("Questions")').click();
+    await expect(page.locator('h2:has-text("Questions")')).toBeVisible();
 
     // Click Assessments tab
-    await page.click('button:has-text("Assessments")');
-    await expect(page.locator('h2')).toContainText('Assessments');
+    await page.locator('button:has-text("Assessments")').click();
+    await expect(page.locator('h2:has-text("Assessments")')).toBeVisible();
   });
 
   test('should logout and redirect to login', async ({ page }) => {
