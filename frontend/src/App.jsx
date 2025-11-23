@@ -1,10 +1,12 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import EnvironmentBanner from './components/EnvironmentBanner';
 
 function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">
+        <EnvironmentBanner />
         <Routes>
           <Route path="/" element={
             <div className="flex items-center justify-center min-h-screen">
