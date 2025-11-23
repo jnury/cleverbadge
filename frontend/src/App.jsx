@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import Footer from './components/Footer';
+import TestLanding from './pages/TestLanding';
+import QuestionRunner from './pages/QuestionRunner';
+import TestResults from './pages/TestResults';
 
 function App() {
   return (
@@ -18,14 +21,14 @@ function App() {
                     Clever Badge
                   </h1>
                   <p className="text-gray-600">
-                    Frontend v{import.meta.env.VITE_VERSION}
-                  </p>
-                  <p className="text-gray-600">
-                    Environment: {import.meta.env.VITE_ENV}
+                    Online Skills Assessment Platform
                   </p>
                 </div>
               </div>
             } />
+            <Route path="/t/:slug" element={<TestLanding />} />
+            <Route path="/t/:slug/run" element={<QuestionRunner />} />
+            <Route path="/t/:slug/result" element={<TestResults />} />
           </Routes>
         </main>
 
