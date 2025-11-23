@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // GET all tests
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const allTests = await sql`
       SELECT * FROM ${sql(dbSchema)}.tests
@@ -29,6 +30,7 @@ router.get('/', async (req, res) => {
 
 // GET test by ID (admin view with questions)
 router.get('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
@@ -104,6 +106,7 @@ router.get('/slug/:slug',
 
 // POST create test
 router.post('/',
+  authenticateToken,
   body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
   body('description').optional().isString().withMessage('Description must be a string'),
   body('slug').notEmpty().withMessage('Slug is required').isString().withMessage('Slug must be a string')
@@ -134,6 +137,7 @@ router.post('/',
 
 // PUT update test
 router.put('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
   body('description').optional().isString().withMessage('Description must be a string'),
@@ -168,6 +172,7 @@ router.put('/:id',
 
 // DELETE test
 router.delete('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
@@ -192,6 +197,7 @@ router.delete('/:id',
 
 // POST add questions to test
 router.post('/:id/questions',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   body('questions').isArray({ min: 1 }).withMessage('Questions must be a non-empty array'),
   body('questions.*.question_id').isUUID().withMessage('Each question_id must be a valid UUID'),

@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // GET all questions
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const allQuestions = await sql`
       SELECT * FROM ${sql(dbSchema)}.questions
@@ -29,6 +30,7 @@ router.get('/', async (req, res) => {
 
 // GET question by ID
 router.get('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
@@ -52,6 +54,7 @@ router.get('/:id',
 
 // POST create question
 router.post('/',
+  authenticateToken,
   body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
   body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
   body('options').isArray({ min: 1 }).withMessage('Options must be a non-empty array'),
@@ -81,6 +84,7 @@ router.post('/',
 
 // PUT update question
 router.put('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
   body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
@@ -122,6 +126,7 @@ router.put('/:id',
 
 // DELETE question
 router.delete('/:id',
+  authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
