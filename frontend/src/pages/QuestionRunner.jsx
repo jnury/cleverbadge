@@ -32,25 +32,25 @@ const QuestionRunner = () => {
   // Get current answer
   const currentAnswer = answers[currentQuestion.id] || [];
 
-  const handleOptionChange = (option) => {
+  const handleOptionChange = (optionIndex) => {
     if (currentQuestion.type === 'SINGLE') {
       // Single choice - replace selection
       setAnswers({
         ...answers,
-        [currentQuestion.id]: [option]
+        [currentQuestion.id]: [optionIndex]
       });
     } else {
       // Multiple choice - toggle selection
       const current = answers[currentQuestion.id] || [];
-      if (current.includes(option)) {
+      if (current.includes(optionIndex)) {
         setAnswers({
           ...answers,
-          [currentQuestion.id]: current.filter(o => o !== option)
+          [currentQuestion.id]: current.filter(o => o !== optionIndex)
         });
       } else {
         setAnswers({
           ...answers,
-          [currentQuestion.id]: [...current, option]
+          [currentQuestion.id]: [...current, optionIndex]
         });
       }
     }
@@ -152,7 +152,7 @@ const QuestionRunner = () => {
 
         <div className="space-y-3">
           {currentQuestion.options.map((option, index) => {
-            const isSelected = currentAnswer.includes(option);
+            const isSelected = currentAnswer.includes(index);
             const inputType = currentQuestion.type === 'SINGLE' ? 'radio' : 'checkbox';
 
             return (
@@ -168,7 +168,7 @@ const QuestionRunner = () => {
                   type={inputType}
                   name={`question-${currentQuestion.id}`}
                   checked={isSelected}
-                  onChange={() => handleOptionChange(option)}
+                  onChange={() => handleOptionChange(index)}
                   className="mr-3"
                 />
                 <span className="text-gray-800">{option}</span>
