@@ -150,7 +150,7 @@ const QuestionsTab = () => {
                     }`}>
                       {question.type}
                     </span>
-                    {question.tags && question.tags.length > 0 && (
+                    {question.tags && Array.isArray(question.tags) && question.tags.length > 0 && (
                       <div className="flex gap-1">
                         {question.tags.map((tag, index) => (
                           <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
@@ -164,10 +164,10 @@ const QuestionsTab = () => {
                   <p className="text-gray-900 font-medium mb-2">{question.text}</p>
 
                   <div className="text-sm text-gray-600">
-                    <strong>Options:</strong> {question.options.join(', ')}
+                    <strong>Options:</strong> {Array.isArray(question.options) ? question.options.join(', ') : JSON.stringify(question.options)}
                   </div>
                   <div className="text-sm text-green-600 mt-1">
-                    <strong>Correct:</strong> {question.correct_answers.join(', ')}
+                    <strong>Correct:</strong> {Array.isArray(question.correct_answers) ? question.correct_answers.join(', ') : JSON.stringify(question.correct_answers)}
                   </div>
                 </div>
 

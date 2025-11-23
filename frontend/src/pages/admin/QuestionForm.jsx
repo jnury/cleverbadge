@@ -5,12 +5,25 @@ import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 
 const QuestionForm = ({ question, onSubmit, onCancel }) => {
+  // Convert correct_answers from indices to option text if editing
+  const getCorrectAnswersText = () => {
+    if (!question?.correct_answers || !question?.options) return [];
+
+    // If correct_answers contains indices (numbers), convert to option text
+    return question.correct_answers.map(answer => {
+      if (typeof answer === 'number') {
+        return question.options[answer];
+      }
+      return answer;
+    }).filter(Boolean);
+  };
+
   const [formData, setFormData] = useState({
     text: question?.text || '',
     type: question?.type || 'SINGLE',
-    options: question?.options || ['', ''],
-    correct_answers: question?.correct_answers || [],
-    tags: question?.tags?.join(', ') || ''
+    options: Array.isArray(question?.options) ? question.options : ['', ''],
+    correct_answers: getCorrectAnswersText(),
+    tags: Array.isArray(question?.tags) ? question.tags.join(', ') : ''
   });
 
   const [errors, setErrors] = useState({});
@@ -104,11 +117,18 @@ const QuestionForm = ({ question, onSubmit, onCancel }) => {
     setSubmitting(true);
 
     try {
+      const cleanedOptions = formData.options.filter(opt => opt.trim());
+
+      // Convert correct_answers from option text to indices
+      const correctAnswersIndices = formData.correct_answers.map(answer => {
+        return cleanedOptions.indexOf(answer);
+      }).filter(index => index !== -1);
+
       const submitData = {
         text: formData.text.trim(),
         type: formData.type,
-        options: formData.options.filter(opt => opt.trim()),
-        correct_answers: formData.correct_answers,
+        options: cleanedOptions,
+        correct_answers: correctAnswersIndices,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
       };
 

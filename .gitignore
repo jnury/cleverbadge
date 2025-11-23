@@ -31,6 +31,7 @@ drizzle/
 coverage/
 .nyc_output/
 *.lcov
+test-results/
 
 # IDEs and Editors
 .vscode/
