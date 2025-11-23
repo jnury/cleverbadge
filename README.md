@@ -164,6 +164,24 @@ Visit `http://localhost:5173` to access the frontend.
 
 ## Key Workflows
 
+### Accessing Admin Dashboard
+
+1. Create an admin account (if not already done):
+   ```bash
+   cd backend
+   npm run create-admin
+   ```
+
+2. Visit `/admin/login` in your browser
+3. Log in with your admin credentials (username and password)
+4. You'll be redirected to `/admin` dashboard with access to:
+   - Tests management
+   - Question import/management
+   - Assessment results
+   - Analytics
+
+The JWT token is stored in browser localStorage and included automatically in all admin API requests. The token expires after 7 days.
+
 ### Importing Questions
 
 Create a YAML file (see `examples/questions.yaml` for format):

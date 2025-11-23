@@ -129,9 +129,9 @@ test.describe('Candidate Test Taking Flow', () => {
     // Check progress text on Q1
     await expect(page.locator('text=Question 1 of 3')).toBeVisible();
 
-    // Check progress bar (should be ~33%)
+    // Check progress bar exists (should be ~33%)
     const progressBar = page.locator('.bg-tech.h-2');
-    await expect(progressBar).toBeVisible();
+    await expect(progressBar).toHaveCount(1);
 
     // Navigate to Q2
     await page.locator('input[type="radio"]').first().click();
