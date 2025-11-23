@@ -6,6 +6,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { sql } from './db/index.js';
+import authRouter from './routes/auth.js';
 import questionsRouter from './routes/questions.js';
 import testsRouter from './routes/tests.js';
 import assessmentsRouter from './routes/assessments.js';
@@ -27,12 +28,13 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '0.3.0',
+    version: '0.5.0',
     environment: NODE_ENV
   });
 });
 
 // API routes
+app.use('/api/auth', authRouter);
 app.use('/api/questions', questionsRouter);
 app.use('/api/tests', testsRouter);
 app.use('/api/assessments', assessmentsRouter);

@@ -8,6 +8,7 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "migrate": "node db/migrate.js",
+    "create-admin": "node scripts/create-admin.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
