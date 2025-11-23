@@ -12,7 +12,12 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <div className="min-h-screen flex flex-col bg-gray-50">
         <EnvironmentBanner />
 
