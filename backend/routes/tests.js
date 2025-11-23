@@ -202,6 +202,31 @@ router.delete('/:id',
   }
 );
 
+// GET questions for a specific test with weights
+router.get('/:testId/questions',
+  authenticateToken,
+  param('testId').isUUID(),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const questions = await sql`
+        SELECT
+          q.*,
+          tq.weight
+        FROM ${sql(dbSchema)}.test_questions tq
+        JOIN ${sql(dbSchema)}.questions q ON q.id = tq.question_id
+        WHERE tq.test_id = ${req.params.testId}
+        ORDER BY tq.created_at ASC
+      `;
+
+      res.json({ questions });
+    } catch (error) {
+      console.error('Error fetching test questions:', error);
+      res.status(500).json({ error: 'Failed to fetch test questions' });
+    }
+  }
+);
+
 // POST add questions to test
 router.post('/:id/questions',
   authenticateToken,
@@ -245,6 +270,28 @@ router.post('/:id/questions',
       }
       console.error('Error adding questions to test:', error);
       res.status(500).json({ error: 'Failed to add questions to test' });
+    }
+  }
+);
+
+// DELETE remove question from test
+router.delete('/:testId/questions/:questionId',
+  authenticateToken,
+  param('testId').isUUID(),
+  param('questionId').isUUID(),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      await sql`
+        DELETE FROM ${sql(dbSchema)}.test_questions
+        WHERE test_id = ${req.params.testId}
+        AND question_id = ${req.params.questionId}
+      `;
+
+      res.json({ message: 'Question removed from test' });
+    } catch (error) {
+      console.error('Error removing question from test:', error);
+      res.status(500).json({ error: 'Failed to remove question from test' });
     }
   }
 );
