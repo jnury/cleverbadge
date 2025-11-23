@@ -1,7 +1,8 @@
 import express from 'express';
-import { body, param, validationResult } from 'express-validator';
+import { body, param, query, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
 import { isAnswerCorrect } from '../utils/scoring.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -13,6 +14,57 @@ const handleValidationErrors = (req, res, next) => {
   }
   next();
 };
+
+// GET all assessments (admin only)
+router.get('/',
+  authenticateToken,
+  query('test_id').optional().isUUID().withMessage('test_id must be a valid UUID'),
+  query('status').optional().isIn(['STARTED', 'COMPLETED']).withMessage('status must be STARTED or COMPLETED'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { test_id, status } = req.query;
+
+      // Build dynamic query with filters
+      let conditions = [];
+      let params = {};
+
+      if (test_id) {
+        conditions.push(sql`a.test_id = ${test_id}`);
+      }
+
+      if (status) {
+        conditions.push(sql`a.status = ${status}`);
+      }
+
+      const whereClause = conditions.length > 0
+        ? sql`WHERE ${sql.unsafe(conditions.map((_, i) => `(${i})`).join(' AND '))}`.append(...conditions)
+        : sql``;
+
+      const assessments = await sql`
+        SELECT
+          a.id,
+          a.candidate_name,
+          a.status,
+          a.score_percentage,
+          a.started_at,
+          a.completed_at,
+          t.id as test_id,
+          t.title as test_title,
+          t.slug as test_slug
+        FROM ${sql(dbSchema)}.assessments a
+        INNER JOIN ${sql(dbSchema)}.tests t ON a.test_id = t.id
+        ${whereClause}
+        ORDER BY a.started_at DESC
+      `;
+
+      res.json({ assessments, total: assessments.length });
+    } catch (error) {
+      console.error('Error fetching assessments:', error);
+      res.status(500).json({ error: 'Failed to fetch assessments' });
+    }
+  }
+);
 
 // POST start assessment
 router.post('/start',
