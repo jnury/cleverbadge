@@ -1,8 +1,12 @@
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 
+// Load environment variables FIRST, before any other imports
 dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
+import { db } from './db/index.js';
+import { sql } from 'drizzle-orm';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,9 +30,16 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Test database connection on startup
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Environment: ${NODE_ENV}`);
   console.log(`🗄️  Database schema: ${NODE_ENV}`);
+
+  try {
+    await db.execute(sql`SELECT 1`);
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+  }
 });
