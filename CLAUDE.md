@@ -1,126 +1,197 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides essential guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-Clever Badge is an online skills assessment tool. Candidates take tests via shareable links, and admins manage tests and review results.
+Clever Badge is an online skills assessment platform. Candidates take MCQ tests via shareable links without accounts. Admins manage tests, import questions via YAML, and review detailed results with analytics.
 
 ## Tech Stack
 
+**Backend:** Node.js + Express + Drizzle ORM + PostgreSQL + argon2 + JWT
+**Frontend:** React + Vite + Tailwind CSS + React Router
+**Deployment:** Render.com (2 web services + PostgreSQL)
+**Language:** JavaScript only (no TypeScript)
+
+## Key Architecture Decisions
+
+- **Authentication:** Admin only (argon2 + JWT), candidates are anonymous
+- **Validation:** express-validator for all request validation
+- **State Management:** React Router navigation state (no global state library)
+- **Question Import:** YAML files only (no web UI in MVP)
+- **Scoring:** Weighted scoring - (correct_score / max_score) × 100
+
+## Critical Rules (Never Violate)
+- Keep evything simple so a beginer/medium experimented developer can understand and maintain the code.
+- No external library except if it greatly simplify the code and it's a very well maintened library. Always ask me if you want to add a library and expose the pros/cons of building your own code vs adding a library.
+- Each time you touch the code, update version in package.json with the following rule: if you just implemented a new important feature, increment the minor version digit; else increment the patch version digit.
+- Commit the repository only when I ask. When you create a commit. Always push after you commited.
+- If you learn something interesting and usefull for the rest of the project, update this CLAUDE.md file in section "Today I learned". But before, ask me if your new knowledge is correct.
+- If you made a mistake in your interpretation of the specs, architecture, features etc. update this CLAUDE.md file in section "Never again". But before, ask me if your new knowledge is correct.
+- Always ask questions when you need clarification or if you have the choice between multiple solutions.
+- Always ask for validation before commiting changes
+
+## Always Think Step by Step
+- Read specification → Check dependencies → Validate data flow → Implement incrementally → Test immediately
+
+## Today I learned
+- When using playwright, always add ' --reporter=line' so you don't have to wait for results
+
+## Never again
+- Never add features that weren't explicitly requested (like the Auto-save toggle I added to Settings). Always implement exactly what was asked for, but DO propose good ideas as suggestions for the user to accept or decline. Frame additional features as questions: "Would you also like me to add [feature], or should we keep it as-is for now?"
+- Never rely on dynamic feather icon updates - they break when innerHTML is replaced. Use CSS visibility or dual-button patterns instead.
+
+## Data Model
+
+**6 tables:**
+- `users` - Admin accounts
+- `questions` - MCQ questions (SINGLE/MULTIPLE types)
+- `tests` - Test collections with slug
+- `test_questions` - Many-to-many with weight
+- `assessments` - Candidate attempts
+- `assessment_answers` - Individual answers
+
+**See:** `docs/DATABASE.md` for complete schema
+
+## API Endpoints
+
+**Public (no auth):**
+- `GET /api/tests/slug/:slug` - Get test info
+- `POST /api/assessments/start` - Start assessment
+- `POST /api/assessments/:id/answer` - Submit answer
+- `POST /api/assessments/:id/submit` - Complete assessment
+
+**Admin (requires JWT):**
+- `POST /api/auth/login` - Get JWT token
+- `POST /api/questions/import` - Import YAML
+- `GET/POST/PUT/DELETE /api/tests` - Test CRUD
+- `GET /api/tests/:testId/analytics/questions` - Success rates
+
+**See:** `docs/API.md` for complete endpoint documentation
+
+## Frontend Routes
+
+**Candidate:**
+- `/t/:slug` - Test landing (enter name)
+- `/t/:slug/run` - Question runner (one question per page)
+- `/t/:slug/result` - Final score
+
+**Admin:**
+- `/admin/login` - Login form
+- `/admin` - Dashboard (tests, questions, results, analytics)
+
+## Brand Colors (from STYLE.md)
+
+- Primary (Deep Teal): `#1D4E5A`
+- Accent (Copper): `#B55C34`, `#853F21`, `#D98C63`
+- Tech Blue: `#4DA6C0` (focus states, progress)
+- Circuit Blue: `#2A6373` (borders)
+
+## MVP Scope
+
+**Included in v1:**
+✅ Shareable test links, one question per page, progress indicators
+✅ SINGLE/MULTIPLE choice, weighted scoring
+✅ Admin auth (argon2+JWT), YAML import, test enable/disable
+✅ Detailed results, per-question success rates
+
+**Post-MVP:**
+⏳ Web UI for questions, test categories, analytics dashboard, CSV export, time limits
+
+## Code Style
+
+- JavaScript only (no TypeScript)
+- Keep it simple (no unnecessary abstractions)
+- Always use express-validator for validation
+- Async/await over promise chains
+- Proper error handling with meaningful messages
+
 ## Development Commands
 
-### Backend (from `/backend`)
+**Backend:**
 ```bash
-npm install              # Install dependencies
-npm run dev              # Start development server with nodemon on port 3000
+npm run dev          # Start with nodemon
+npm run db:push      # Apply Drizzle schema
+npm run create-admin # Create admin user
 ```
 
-### Frontend (from `/frontend`)
+**Frontend:**
 ```bash
-npm install              # Install dependencies
-npm run dev              # Start Vite dev server (default port 5173)
+npm run dev          # Start Vite dev server
+npm run build        # Production build
 ```
 
-### Testing Individual Endpoints
+## Environment Variables & Multi-Environment Setup
+
+**Backend:**
+- `DATABASE_URL` - PostgreSQL connection string (use environment-specific user)
+- `NODE_ENV` - Environment (development, testing, staging, production) - **also determines DB schema**
+- `JWT_SECRET` - Secret for signing JWTs
+- `PORT` - Server port (default: 3000)
+
+**Frontend:**
+- `VITE_API_URL` - Backend API URL
+- `VITE_ENV` - Environment (development, testing, staging, production)
+
+**Database Security & User Separation (CRITICAL):**
+- Each environment has **dedicated database user** with access to ONLY its schema
+- Runtime users: `cleverbadge_dev`, `cleverbadge_test`, `cleverbadge_staging`, `cleverbadge_prod`
+- Runtime users have **READ/WRITE data permissions ONLY** (no schema modification rights)
+- Admin user: `cleverbadge_admin` with **FULL access to all schemas**
+- Admin user used ONLY for migrations and schema changes via `npm run db:push`
+- **NEVER use admin user for runtime** - applications must use environment-specific users
+- `DATABASE_URL` (runtime) = environment user connection string
+- `DATABASE_ADMIN_URL` (migrations only) = admin user connection string
+
+**Schema Isolation (Automatic from NODE_ENV):**
+- `NODE_ENV=development` → uses `development` schema + `cleverbadge_dev` user
+- `NODE_ENV=testing` → uses `testing` schema + `cleverbadge_test` user
+- `NODE_ENV=staging` → uses `staging` schema + `cleverbadge_staging` user
+- `NODE_ENV=production` → uses `production` schema + `cleverbadge_prod` user
+- **No separate DB_SCHEMA variable** - schema is always derived from NODE_ENV
+
+## Important Implementation Notes
+
+1. **Test disable behavior:** When `is_enabled=false`, blocks both new starts AND in-progress assessments
+2. **Question import:** Transactional (all or nothing), uses js-yaml package
+3. **Scoring logic:**
+   - SINGLE: Exact match of one option
+   - MULTIPLE: Arrays must match (order-independent)
+4. **Analytics:** Success rates scoped to specific test (not global)
+5. **Candidate flow:** State passed via React Router navigation state
+6. **Admin flow:** JWT stored in localStorage
+7. **Environment awareness:**
+   - Backend `/health` endpoint returns `{ status, timestamp, version, environment }`
+   - Frontend displays environment banner on non-production (top of page, light colored)
+   - Footer on all pages: "Copyright Clever Badge 2025 - Frontend: v.x.x.x - Backend: v.x.x.x"
+   - Backend version fetched from `/health` endpoint
+   - Frontend version read from package.json at build time
+8. **Version tracking:**
+   - Both frontend and backend have version in package.json
+   - Always increment version when touching code (minor for features, patch for fixes)
+   - Versions displayed in footer and accessible via health endpoint
+
+## Documentation
+
+- **README.md** - Setup and quick start
+- **docs/API.md** - Complete API documentation
+- **docs/DATABASE.md** - Database schema and relationships
+- **docs/IMPLEMENTATION.md** - Detailed implementation guide with code examples
+- **STYLE.md** - Brand colors and design system
+- **examples/questions.yaml** - Sample YAML format
+
+## Common Tasks
+
+**Import questions:**
 ```bash
-# Health check
-curl http://localhost:3000/health
-
-# Get tests
-curl http://localhost:3000/api/tests
-
-# Get test by slug
-curl http://localhost:3000/api/tests/slug/my-test-slug
-
-# Start assessment
-curl -X POST http://localhost:3000/api/assessments/start \
-  -H "Content-Type: application/json" \
-  -d '{"test_id": "uuid-here", "candidate_name": "Test User"}'
+curl -X POST http://localhost:3000/api/questions/import \
+  -H "Authorization: Bearer TOKEN" \
+  -F "file=@questions.yaml"
 ```
 
-## Database Setup
-
-The application requires PostgreSQL. For local development:
-
+**Create admin user:**
 ```bash
-# Enter PostgreSQL console
-psql postgres
-
-# Create user and database
-CREATE USER cleverbadge_user WITH PASSWORD 'secure_password';
-CREATE DATABASE cleverbadge;
-GRANT ALL PRIVILEGES ON DATABASE cleverbadge TO cleverbadge_user;
-\c cleverbadge
-GRANT ALL ON SCHEMA public TO cleverbadge_user;
+cd backend && npm run create-admin
 ```
 
-Then configure `backend/.env`:
-```env
-DATABASE_URL="postgresql://cleverbadge_user:secure_password@localhost:5432/cleverbadge?schema=public"
-PORT=3000
-JWT_SECRET="supersecretkey_change_me"
-```
-
-## Architecture
-
-### Data Model
-
-The application uses a relational model with the following key entities:
-
-- **Question**: MCQ questions with type (SINGLE/MULTIPLE), options (JSON), correct_answers (JSON), and tags
-- **Test**: A collection of questions with a slug for candidate access
-- **TestQuestion**: Many-to-many join table linking Tests to Questions with a weight field for scoring
-- **Assessment**: A candidate's attempt at a Test, tracks status (STARTED/COMPLETED) and final score percentage
-- **AssessmentAnswer**: Individual answers submitted during an assessment
-- **User**: Authentication (username/password_hash) - not fully implemented yet
-
-### API Structure
-
-All routes are in `/backend/routes/`:
-
-- **questions.js**: CRUD for questions, supports importing from YAML files (see `/backend/questions.yaml`)
-- **tests.js**: CRUD for tests, includes endpoints to fetch by slug and get test questions
-- **assessments.js**:
-  - `POST /api/assessments/start` - Creates new assessment instance
-  - `POST /api/assessments/submit` - Scores assessment by comparing answers to correct_answers, updates status to COMPLETED
-
-The scoring logic in assessments.js:
-- SINGLE type: Exact match of one selected option against correct_answers array
-- MULTIPLE type: Selected options array must exactly match correct_answers (order-independent)
-- Final score is weighted: (totalScore / maxScore) * 100
-
-### Frontend Structure
-
-Routes defined in `/frontend/src/App.jsx`:
-
-- **Candidate Flow**:
-  - `/t/:slug` - TestLanding: Shows test info, candidate enters name
-  - `/t/:slug/run` - QuestionRunner: Displays questions, collects answers
-  - `/t/:slug/result` - TestResult: Shows final score after submission
-
-- **Admin Flow**:
-  - `/admin` - AdminDashboard: Manage tests, questions, view assessments
-
-Reusable UI components are in `/frontend/src/components/ui/`.
-
-### State Management
-
-The frontend uses React Router's navigation state to pass data between routes (e.g., assessment_id from start to run to result). No global state library is currently used.
-
-## Brand & Styling
-
-Brand colors are defined in `/frontend/STYLE.md`:
-- **Primary (Deep Teal)**: #1D4E5A - Headers, primary brand color
-- **Accent (Copper tones)**: #B55C34, #853F21, #D98C63 - CTA buttons with gradients
-- **Tech Blue**: #4DA6C0 - Focus states, active indicators, progress
-- **Circuit Blue**: #2A6373 - Subtle borders and backgrounds
-
-Use these colors consistently. Primary buttons should use copper gradients, secondary buttons use teal, and active/focus states use tech blue.
-
-## Important Notes
-
-- Questions can be bulk-imported from YAML (see `/backend/questions.yaml` for format)
-- The `render.yaml` deployment config expects environment variables to be set via Render dashboard
-- JWT_SECRET exists in .env.example but authentication is not yet fully implemented
-- All API responses should be JSON; errors return `{ error: message }`
+**See `docs/IMPLEMENTATION.md` for detailed implementation steps.**

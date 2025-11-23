@@ -1,0 +1,164 @@
+# Example Questions YAML File
+# Use this template to bulk import questions into Clever Badge
+
+# YAML Format Guidelines:
+# - Root element must be 'questions'
+# - Each question is an object with required fields
+# - text: The question text (10-1000 characters)
+# - type: Either "SINGLE" or "MULTIPLE"
+# - options: Array of 2-10 answer choices
+# - correct_answers: Array containing the correct answer(s)
+# - tags: Optional array of tags for organization
+
+questions:
+  # Example 1: Single choice question
+  - text: "What is the capital of France?"
+    type: "SINGLE"
+    options:
+      - "London"
+      - "Paris"
+      - "Berlin"
+      - "Madrid"
+    correct_answers:
+      - "Paris"
+    tags:
+      - "geography"
+      - "europe"
+
+  # Example 2: Multiple choice question
+  - text: "Which of the following are programming languages? (Select all that apply)"
+    type: "MULTIPLE"
+    options:
+      - "Python"
+      - "HTML"
+      - "JavaScript"
+      - "CSS"
+      - "SQL"
+    correct_answers:
+      - "Python"
+      - "JavaScript"
+      - "SQL"
+    tags:
+      - "programming"
+      - "computer-science"
+
+  # Example 3: JavaScript question
+  - text: "What is the output of: console.log(typeof null)?"
+    type: "SINGLE"
+    options:
+      - "null"
+      - "undefined"
+      - "object"
+      - "number"
+    correct_answers:
+      - "object"
+    tags:
+      - "javascript"
+      - "fundamentals"
+
+  # Example 4: Multiple correct answers
+  - text: "Which of the following are valid HTTP methods?"
+    type: "MULTIPLE"
+    options:
+      - "GET"
+      - "RECEIVE"
+      - "POST"
+      - "SEND"
+      - "DELETE"
+      - "REMOVE"
+    correct_answers:
+      - "GET"
+      - "POST"
+      - "DELETE"
+    tags:
+      - "http"
+      - "web-development"
+
+  # Example 5: Question without tags
+  - text: "What does CSS stand for?"
+    type: "SINGLE"
+    options:
+      - "Creative Style Sheets"
+      - "Cascading Style Sheets"
+      - "Computer Style Sheets"
+      - "Colorful Style Sheets"
+    correct_answers:
+      - "Cascading Style Sheets"
+
+  # Example 6: Complex multiple choice
+  - text: "Which of the following statements about React are true?"
+    type: "MULTIPLE"
+    options:
+      - "React is a JavaScript library for building user interfaces"
+      - "React was developed by Facebook"
+      - "React uses a virtual DOM"
+      - "React can only be used for web applications"
+      - "React components can be written as functions or classes"
+    correct_answers:
+      - "React is a JavaScript library for building user interfaces"
+      - "React was developed by Facebook"
+      - "React uses a virtual DOM"
+      - "React components can be written as functions or classes"
+    tags:
+      - "react"
+      - "javascript"
+      - "frontend"
+
+  # Example 7: Database question
+  - text: "In SQL, which clause is used to filter records?"
+    type: "SINGLE"
+    options:
+      - "SELECT"
+      - "WHERE"
+      - "FROM"
+      - "FILTER"
+    correct_answers:
+      - "WHERE"
+    tags:
+      - "sql"
+      - "database"
+
+  # Example 8: Git question
+  - text: "Which Git commands are used to save changes? (Select all that apply)"
+    type: "MULTIPLE"
+    options:
+      - "git add"
+      - "git save"
+      - "git commit"
+      - "git push"
+      - "git store"
+    correct_answers:
+      - "git add"
+      - "git commit"
+    tags:
+      - "git"
+      - "version-control"
+
+  # Example 9: Security question
+  - text: "Which of the following is NOT a common web security vulnerability?"
+    type: "SINGLE"
+    options:
+      - "SQL Injection"
+      - "Cross-Site Scripting (XSS)"
+      - "Buffer Overflow"
+      - "Proper Input Validation"
+    correct_answers:
+      - "Proper Input Validation"
+    tags:
+      - "security"
+      - "web-development"
+
+  # Example 10: Algorithm question
+  - text: "What is the time complexity of binary search?"
+    type: "SINGLE"
+    options:
+      - "O(n)"
+      - "O(log n)"
+      - "O(n²)"
+      - "O(1)"
+    correct_answers:
+      - "O(log n)"
+    tags:
+      - "algorithms"
+      - "computer-science"
+      - "complexity"
