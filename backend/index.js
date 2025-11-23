@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import { sql } from './db/index.js';
 import questionsRouter from './routes/questions.js';
+import testsRouter from './routes/tests.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/questions', questionsRouter);
+app.use('/api/tests', testsRouter);
 
 // Test database connection on startup
 app.listen(PORT, async () => {
