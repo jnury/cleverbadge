@@ -20,6 +20,7 @@ const QuestionsTab = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'preview'
+  const [previewData, setPreviewData] = useState(null); // Live preview data
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
 
@@ -179,7 +180,9 @@ const QuestionsTab = () => {
                     )}
                   </div>
 
-                  <p className="text-gray-900 font-medium mb-2 font-mono text-sm">{question.text}</p>
+                  <p className="text-gray-900 font-medium mb-2 font-mono text-sm">
+                    {question.text.split('\n')[0].substring(0, 100)}{question.text.split('\n')[0].length > 100 || question.text.includes('\n') ? ' [...]' : ''}
+                  </p>
 
                   <div className="text-sm text-gray-600">
                     <strong>Options:</strong> {Array.isArray(question.options) ? question.options.join(', ') : JSON.stringify(question.options)}
@@ -195,6 +198,7 @@ const QuestionsTab = () => {
                     variant="secondary"
                     onClick={() => {
                       setEditingQuestion(question);
+                      setPreviewData(question); // Initialize preview with current question
                       setActiveTab('edit');
                     }}
                   >
@@ -265,69 +269,83 @@ const QuestionsTab = () => {
           </div>
 
           {/* Tab Content */}
-          {activeTab === 'edit' ? (
+          <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
             <QuestionForm
               question={editingQuestion}
               onSubmit={handleEdit}
               onCancel={() => {
                 setEditingQuestion(null);
+                setPreviewData(null);
                 setActiveTab('edit');
               }}
+              onFormChange={setPreviewData}
+              hideButtons={true}
             />
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                  editingQuestion.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                }`}>
-                  {editingQuestion.type}
-                </span>
-                {editingQuestion.tags && editingQuestion.tags.map((tag, index) => (
-                  <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+          </div>
 
+          {activeTab === 'preview' && (
+            <div className="space-y-4">
               <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="text-xl font-bold text-gray-800 mb-4">
-                  <MarkdownRenderer content={editingQuestion.text} />
+                  <MarkdownRenderer content={previewData?.text || editingQuestion.text || ''} />
                 </div>
 
-                <div className="space-y-2">
-                  {editingQuestion.options.map((option, index) => {
-                    const isCorrect = editingQuestion.correct_answers.includes(option);
+                <div className="space-y-3">
+                  {(previewData?.options || editingQuestion.options || []).map((option, index) => {
+                    const questionType = previewData?.type || editingQuestion.type;
                     return (
-                      <div
+                      <label
                         key={index}
-                        className={`p-3 border-2 rounded-lg ${
-                          isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-200'
-                        }`}
+                        className="flex items-center p-4 border-2 rounded-lg border-gray-200 cursor-pointer hover:border-gray-300"
                       >
-                        <MarkdownRenderer content={option} />
-                        {isCorrect && (
-                          <span className="text-xs text-green-600 font-semibold ml-2">
-                            ✓ Correct Answer
-                          </span>
-                        )}
-                      </div>
+                        <input
+                          type={questionType === 'SINGLE' ? 'radio' : 'checkbox'}
+                          name="preview-question"
+                          className="mr-3 flex-shrink-0"
+                        />
+                        <div className="flex-1">
+                          <MarkdownRenderer content={option || ''} />
+                        </div>
+                      </label>
                     );
                   })}
                 </div>
-              </div>
 
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => {
-                    setEditingQuestion(null);
-                    setActiveTab('edit');
-                  }}
-                >
-                  Close
-                </Button>
+                {(previewData?.type || editingQuestion.type) === 'MULTIPLE' && (
+                  <p className="text-sm text-gray-500 mt-4">
+                    Select all that apply
+                  </p>
+                )}
               </div>
             </div>
           )}
+
+          {/* Buttons visible in both tabs */}
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditingQuestion(null);
+                setPreviewData(null);
+                setActiveTab('edit');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                // Trigger form submission by getting the form element
+                const form = document.querySelector('form');
+                if (form) {
+                  form.requestSubmit();
+                }
+              }}
+            >
+              {editingQuestion ? 'Update Question' : 'Create Question'}
+            </Button>
+          </div>
         </Modal>
       )}
 
