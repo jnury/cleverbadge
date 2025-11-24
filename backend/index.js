@@ -20,7 +20,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? 'https://cleverbadge.com'
-    : 'http://localhost:5173'
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']
 }));
 app.use(express.json());
 

@@ -19,7 +19,7 @@ const QuestionsTab = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [previewQuestion, setPreviewQuestion] = useState(null);
+  const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'preview'
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
 
@@ -193,14 +193,10 @@ const QuestionsTab = () => {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setPreviewQuestion(question)}
-                  >
-                    Preview
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setEditingQuestion(question)}
+                    onClick={() => {
+                      setEditingQuestion(question);
+                      setActiveTab('edit');
+                    }}
                   >
                     Edit
                   </Button>
@@ -218,64 +214,6 @@ const QuestionsTab = () => {
         )}
       </div>
 
-      {/* Preview Modal */}
-      {previewQuestion && (
-        <Modal
-          isOpen={!!previewQuestion}
-          onClose={() => setPreviewQuestion(null)}
-          title="Question Preview"
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <span className={`px-2 py-1 text-xs font-medium rounded ${
-                previewQuestion.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-              }`}>
-                {previewQuestion.type}
-              </span>
-              {previewQuestion.tags && previewQuestion.tags.map((tag, index) => (
-                <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="text-xl font-bold text-gray-800 mb-4">
-                <MarkdownRenderer content={previewQuestion.text} />
-              </div>
-
-              <div className="space-y-2">
-                {previewQuestion.options.map((option, index) => {
-                  const isCorrect = previewQuestion.correct_answers.includes(option);
-                  return (
-                    <div
-                      key={index}
-                      className={`p-3 border-2 rounded-lg ${
-                        isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-200'
-                      }`}
-                    >
-                      <MarkdownRenderer content={option} />
-                      {isCorrect && (
-                        <span className="text-xs text-green-600 font-semibold ml-2">
-                          ✓ Correct Answer
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={() => setPreviewQuestion(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* Create Modal */}
       {isFormOpen && (
         <Modal
@@ -291,19 +229,105 @@ const QuestionsTab = () => {
         </Modal>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal with Tabs */}
       {editingQuestion && (
         <Modal
           isOpen={!!editingQuestion}
-          onClose={() => setEditingQuestion(null)}
+          onClose={() => {
+            setEditingQuestion(null);
+            setActiveTab('edit');
+          }}
           title="Edit Question"
           size="lg"
         >
-          <QuestionForm
-            question={editingQuestion}
-            onSubmit={handleEdit}
-            onCancel={() => setEditingQuestion(null)}
-          />
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-200 mb-4">
+            <button
+              onClick={() => setActiveTab('edit')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'edit'
+                  ? 'border-tech text-tech'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setActiveTab('preview')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'preview'
+                  ? 'border-tech text-tech'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Preview
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'edit' ? (
+            <QuestionForm
+              question={editingQuestion}
+              onSubmit={handleEdit}
+              onCancel={() => {
+                setEditingQuestion(null);
+                setActiveTab('edit');
+              }}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`px-2 py-1 text-xs font-medium rounded ${
+                  editingQuestion.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {editingQuestion.type}
+                </span>
+                {editingQuestion.tags && editingQuestion.tags.map((tag, index) => (
+                  <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="text-xl font-bold text-gray-800 mb-4">
+                  <MarkdownRenderer content={editingQuestion.text} />
+                </div>
+
+                <div className="space-y-2">
+                  {editingQuestion.options.map((option, index) => {
+                    const isCorrect = editingQuestion.correct_answers.includes(option);
+                    return (
+                      <div
+                        key={index}
+                        className={`p-3 border-2 rounded-lg ${
+                          isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                        }`}
+                      >
+                        <MarkdownRenderer content={option} />
+                        {isCorrect && (
+                          <span className="text-xs text-green-600 font-semibold ml-2">
+                            ✓ Correct Answer
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    setEditingQuestion(null);
+                    setActiveTab('edit');
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
 

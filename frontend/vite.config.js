@@ -9,5 +9,8 @@ export default defineConfig({
   plugins: [react()],
   define: {
     'import.meta.env.VITE_VERSION': JSON.stringify(packageJson.version)
+  },
+  server: {
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5173
   }
 });
