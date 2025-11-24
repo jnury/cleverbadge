@@ -8,7 +8,8 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 export default defineConfig({
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_VERSION': JSON.stringify(packageJson.version)
+    'import.meta.env.VITE_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_API_URL': JSON.stringify('http://localhost:3000')
   },
   test: {
     globals: true,
