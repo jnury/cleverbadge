@@ -162,3 +162,103 @@ questions:
       - "algorithms"
       - "computer-science"
       - "complexity"
+
+  # Example 11: History question
+  - text: "In what year did the Titanic sink?"
+    type: "SINGLE"
+    options:
+      - "1910"
+      - "1912"
+      - "1915"
+      - "1920"
+    correct_answers:
+      - "1912"
+    tags:
+      - "history"
+      - "maritime"
+
+  # Example 12: Science - Biology
+  - text: "Which of the following are organelles found in animal cells?"
+    type: "MULTIPLE"
+    options:
+      - "Mitochondria"
+      - "Cell wall"
+      - "Ribosome"
+      - "Chloroplast"
+      - "Nucleus"
+      - "Vacuole (large)"
+    correct_answers:
+      - "Mitochondria"
+      - "Ribosome"
+      - "Nucleus"
+    tags:
+      - "biology"
+      - "science"
+      - "cells"
+
+  # Example 13: Mathematics - Geometry
+  - text: "What is the sum of angles in a triangle?"
+    type: "SINGLE"
+    options:
+      - "90 degrees"
+      - "180 degrees"
+      - "270 degrees"
+      - "360 degrees"
+    correct_answers:
+      - "180 degrees"
+    tags:
+      - "mathematics"
+      - "geometry"
+
+  # Example 14: Geography - World Capitals
+  - text: "Which of these are capital cities of their respective countries?"
+    type: "MULTIPLE"
+    options:
+      - "Tokyo - Japan"
+      - "Sydney - Australia"
+      - "Mumbai - India"
+      - "Cairo - Egypt"
+      - "Bangkok - Thailand"
+    correct_answers:
+      - "Tokyo - Japan"
+      - "Cairo - Egypt"
+      - "Bangkok - Thailand"
+    tags:
+      - "geography"
+      - "world"
+      - "capitals"
+
+  # Example 15: Programming - Python
+  - text: "In Python, which statement is used to exit a loop prematurely?"
+    type: "SINGLE"
+    options:
+      - "exit"
+      - "stop"
+      - "break"
+      - "return"
+    correct_answers:
+      - "break"
+    tags:
+      - "python"
+      - "programming"
+      - "control-flow"
+
+  # Example 16: Web Development - CSS
+  - text: "Which of the following CSS properties affect the box model? (Select all that apply)"
+    type: "MULTIPLE"
+    options:
+      - "margin"
+      - "color"
+      - "padding"
+      - "border"
+      - "background-image"
+      - "width"
+    correct_answers:
+      - "margin"
+      - "padding"
+      - "border"
+      - "width"
+    tags:
+      - "css"
+      - "web-development"
+      - "box-model"
