@@ -195,6 +195,20 @@ const YamlUpload = ({ onUploadSuccess }) => {
         >
           Upload File
         </button>
+        <button
+          onClick={() => {
+            setInputMode('reference');
+            setError(null);
+            setResult(null);
+          }}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+            inputMode === 'reference'
+              ? 'border-tech text-tech'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          YAML Format Reference
+        </button>
       </div>
 
       <div className="space-y-4">
@@ -282,27 +296,32 @@ const YamlUpload = ({ onUploadSuccess }) => {
           </>
         )}
 
-        {/* Result messages */}
-        {result && result.success && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <p className="text-green-800 font-medium">
-              Successfully imported {result.count} question{result.count !== 1 ? 's' : ''}
-            </p>
-          </div>
-        )}
+        {/* Reference tab */}
+        {inputMode === 'reference' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-6">
+            <h4 className="text-base font-semibold text-blue-900 mb-3">
+              YAML Format Reference
+            </h4>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800 font-medium">Error: {error}</p>
-          </div>
-        )}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-blue-900 mb-2">
+                  Each question is defined as a list item with the following fields:
+                </p>
+                <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">text</code> - The question text (required)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">type</code> - Either "SINGLE" or "MULTIPLE" (required)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">options</code> - Array of answer choices (required, min 2)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">correct_answers</code> - Array of correct options (required)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">tags</code> - Array of category tags (required)</li>
+                </ul>
+              </div>
 
-        {/* Help text */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <p className="text-sm text-blue-900 font-medium mb-2">
-            YAML Format Reference:
-          </p>
-          <pre className="text-xs text-blue-800 overflow-x-auto bg-white p-2 rounded border border-blue-100">
+              <div>
+                <p className="text-sm text-blue-900 font-medium mb-2">
+                  Example:
+                </p>
+                <pre className="text-xs text-blue-800 overflow-x-auto bg-white p-3 rounded border border-blue-100">
 {`- text: "What is 2+2?"
   type: "SINGLE"
   options: ["3", "4", "5", "6"]
@@ -314,11 +333,32 @@ const YamlUpload = ({ onUploadSuccess }) => {
   options: ["2", "3", "4", "5"]
   correct_answers: ["2", "3", "5"]
   tags: ["math"]`}
-          </pre>
-          <p className="text-sm text-blue-900 mt-2">
-            See <code className="bg-blue-100 px-1 rounded font-mono">examples/questions.yaml</code> for more examples
-          </p>
-        </div>
+                </pre>
+              </div>
+
+              <div className="bg-blue-100 border border-blue-300 rounded p-3">
+                <p className="text-sm text-blue-900">
+                  <strong>Tip:</strong> See <code className="bg-white px-1 rounded font-mono">examples/questions.yaml</code> for more examples with 16 diverse sample questions.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result messages (shown in text and file tabs only) */}
+        {inputMode !== 'reference' && result && result.success && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-4">
+            <p className="text-green-800 font-medium">
+              Successfully imported {result.count} question{result.count !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
+
+        {inputMode !== 'reference' && error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-red-800 font-medium">Error: {error}</p>
+          </div>
+        )}
       </div>
     </Card>
   );
