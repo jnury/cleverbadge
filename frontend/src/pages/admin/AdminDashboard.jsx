@@ -46,6 +46,14 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:bg-white focus:p-4 focus:text-primary"
+      >
+        Skip to main content
+      </a>
+
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -98,13 +106,17 @@ const AdminDashboard = () => {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-white border-b border-gray-200" aria-label="Admin navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+          <div className="flex space-x-8" role="tablist">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`${tab.id}-panel`}
+                id={`${tab.id}-tab`}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? 'border-tech text-tech'
@@ -119,12 +131,18 @@ const AdminDashboard = () => {
       </nav>
 
       {/* Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          {activeTab === 'tests' && <TestsTab />}
-          {activeTab === 'questions' && <QuestionsTab />}
-          {activeTab === 'assessments' && <AssessmentsTab />}
-          {activeTab === 'analytics' && <AnalyticsTab />}
+          <div
+            role="tabpanel"
+            id={`${activeTab}-panel`}
+            aria-labelledby={`${activeTab}-tab`}
+          >
+            {activeTab === 'tests' && <TestsTab />}
+            {activeTab === 'questions' && <QuestionsTab />}
+            {activeTab === 'assessments' && <AssessmentsTab />}
+            {activeTab === 'analytics' && <AnalyticsTab />}
+          </div>
         </div>
       </main>
 
