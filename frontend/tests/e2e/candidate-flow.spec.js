@@ -19,7 +19,7 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.waitForURL('**/t/math-geo/run');
 
     // Question 1 (SINGLE: What is 2 + 2?)
-    await expect(page.locator('h2')).toContainText('What is 2 + 2?');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('What is 2 + 2?');
     await expect(page.locator('text=Question 1 of 3')).toBeVisible();
 
     // Verify it's a radio button (SINGLE choice)
@@ -31,7 +31,7 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Next")');
 
     // Question 2 (SINGLE: Capital of France?)
-    await expect(page.locator('h2')).toContainText('capital of France');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('capital of France');
     await expect(page.locator('text=Question 2 of 3')).toBeVisible();
 
     // Verify it's a radio button (SINGLE choice)
@@ -43,7 +43,7 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Next")');
 
     // Question 3 (MULTIPLE: Even numbers)
-    await expect(page.locator('h2')).toContainText('even numbers');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('even numbers');
     await expect(page.locator('text=Question 3 of 3')).toBeVisible();
     await expect(page.locator('text=Select all that apply')).toBeVisible();
 
@@ -103,14 +103,14 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Previous")');
 
     // Verify we're on Q2 and answer persisted (index 2 should be checked)
-    await expect(page.locator('h2')).toContainText('capital of France');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('capital of France');
     await expect(page.locator('input[type="radio"]').nth(2)).toBeChecked();
 
     // Go back to Q1
     await page.click('button:has-text("Previous")');
 
     // Verify Q1 answer persisted (index 1 should be checked)
-    await expect(page.locator('h2')).toContainText('What is 2 + 2?');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('What is 2 + 2?');
     await expect(page.locator('input[type="radio"]').nth(1)).toBeChecked();
 
     // Previous button should be disabled on first question
@@ -118,7 +118,7 @@ test.describe('Candidate Test Taking Flow', () => {
 
     // Navigate forward to Q2
     await page.click('button:has-text("Next")');
-    await expect(page.locator('h2')).toContainText('capital of France');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('capital of France');
   });
 
   test('should show correct progress indicators', async ({ page }) => {
@@ -188,7 +188,7 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.waitForURL('**/t/math-geo/run');
 
     // Q1 is SINGLE choice
-    await expect(page.locator('h2')).toContainText('What is 2 + 2?');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('What is 2 + 2?');
 
     // Should have radio buttons
     const radioButtons = page.locator('input[type="radio"]');
@@ -216,7 +216,7 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Next")');
 
     // Q3 is MULTIPLE choice
-    await expect(page.locator('h2')).toContainText('even numbers');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('even numbers');
     await expect(page.locator('text=Select all that apply')).toBeVisible();
 
     // Should have checkboxes
@@ -297,7 +297,7 @@ test.describe('Candidate Test Taking Flow', () => {
 
     // Should still be on question runner (not submitted)
     await expect(page).toHaveURL(/\/t\/math-geo\/run$/);
-    await expect(page.locator('h2')).toContainText('even numbers');
+    await expect(page.locator('.text-2xl.font-bold').first()).toContainText('even numbers');
   });
 
   test('should calculate weighted scoring correctly', async ({ page }) => {

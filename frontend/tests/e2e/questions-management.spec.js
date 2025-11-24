@@ -55,7 +55,7 @@ test.describe('Questions Management', () => {
   test('should edit a question', async ({ page }) => {
     await page.locator('button:has-text("Edit")').first().click();
     await page.fill('textarea[placeholder*="question"]', 'Updated question text');
-    await page.locator('form button[type="submit"]').click();
+    await page.locator('button:has-text("Update Question")').click();
     await expect(page.locator('text=Question updated successfully')).toBeVisible();
   });
 

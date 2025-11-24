@@ -38,13 +38,13 @@ test.describe('Admin Dashboard', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/admin');
 
-    // Click Questions tab
+    // Click Questions tab and wait for content to load
     await page.locator('button:has-text("Questions")').click();
-    await expect(page.locator('h2:has-text("Questions")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Questions")')).toBeVisible({ timeout: 10000 });
 
-    // Click Assessments tab
+    // Click Assessments tab and wait for content to load
     await page.locator('button:has-text("Assessments")').click();
-    await expect(page.locator('h2:has-text("Assessments")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Assessments")')).toBeVisible({ timeout: 10000 });
   });
 
   test('should logout and redirect to login', async ({ page }) => {

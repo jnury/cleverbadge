@@ -83,17 +83,19 @@ async function seedTestData(sql, schema) {
   // Additional questions for other tests
   const q4Id = '550e8400-e29b-41d4-a716-446655440013';  // Primary colors
   const q5Id = '550e8400-e29b-41d4-a716-446655440014';  // Sky blue
+  const q6Id = '550e8400-e29b-41d4-a716-446655440015';  // Markdown question for markdown-test
 
   // Insert questions - q5 and q4 are NOT in any test, so they can be safely deleted
   // Insert them last so they appear first when ordered by created_at DESC
   await sql.unsafe(`
     INSERT INTO ${schema}.questions (id, text, type, options, correct_answers, tags, created_at)
     VALUES
-      ('${q1Id}', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', NOW() - INTERVAL '5 minutes'),
-      ('${q2Id}', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', NOW() - INTERVAL '4 minutes'),
-      ('${q3Id}', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', NOW() - INTERVAL '3 minutes'),
-      ('${q4Id}', 'Select all primary colors:', 'MULTIPLE', '["Red", "Green", "Blue", "Yellow"]', '[0, 2, 3]', '["art"]', NOW() - INTERVAL '2 minutes'),
-      ('${q5Id}', 'Is the sky blue?', 'SINGLE', '["Yes", "No"]', '[0]', NULL, NOW() - INTERVAL '1 minute')
+      ('${q1Id}', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', NOW() - INTERVAL '6 minutes'),
+      ('${q2Id}', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', NOW() - INTERVAL '5 minutes'),
+      ('${q3Id}', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', NOW() - INTERVAL '4 minutes'),
+      ('${q4Id}', 'Select all primary colors:', 'MULTIPLE', '["Red", "Green", "Blue", "Yellow"]', '[0, 2, 3]', '["art"]', NOW() - INTERVAL '3 minutes'),
+      ('${q5Id}', 'Is the sky blue?', 'SINGLE', '["Yes", "No"]', '[0]', NULL, NOW() - INTERVAL '2 minutes'),
+      ('${q6Id}', '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]', NOW() - INTERVAL '1 minute')
   `);
 
   // Create tests
@@ -101,13 +103,15 @@ async function seedTestData(sql, schema) {
   const test1Id = '550e8400-e29b-41d4-a716-446655440020';  // Enabled test
   const test2Id = '550e8400-e29b-41d4-a716-446655440021';  // Disabled test
   const test3Id = '550e8400-e29b-41d4-a716-446655440022';  // Empty test
+  const test4Id = '550e8400-e29b-41d4-a716-446655440023';  // Markdown test
 
   await sql.unsafe(`
     INSERT INTO ${schema}.tests (id, title, slug, description, is_enabled, pass_threshold)
     VALUES
       ('${test1Id}', 'Math & Geography Test', 'math-geo', 'Test your math and geography knowledge', true, 70),
       ('${test2Id}', 'Disabled Test', 'disabled-test', 'This test is disabled', false, 0),
-      ('${test3Id}', 'Empty Test', 'empty-test', 'This test has no questions', true, 0)
+      ('${test3Id}', 'Empty Test', 'empty-test', 'This test has no questions', true, 0),
+      ('${test4Id}', 'Markdown Rendering Test', 'markdown-test', 'This test demonstrates **markdown rendering** with \`code syntax\` highlighting', true, 70)
   `);
 
   // Add questions to main test (math-geo)
@@ -117,15 +121,18 @@ async function seedTestData(sql, schema) {
   const tq1Id = '550e8400-e29b-41d4-a716-446655440050';  // First test_question (math)
   const tq2Id = '550e8400-e29b-41d4-a716-446655440051';  // Second test_question (France)
   const tq3Id = '550e8400-e29b-41d4-a716-446655440052';  // Third test_question (even)
+  const tq4Id = '550e8400-e29b-41d4-a716-446655440053';  // Markdown test question
 
   await sql.unsafe(`
     INSERT INTO ${schema}.test_questions (id, test_id, question_id, weight)
     VALUES
       ('${tq1Id}', '${test1Id}', '${q1Id}', 1),  -- Math question (weight 1)
       ('${tq2Id}', '${test1Id}', '${q2Id}', 2),  -- France question (weight 2)
-      ('${tq3Id}', '${test1Id}', '${q3Id}', 2)   -- Even numbers (weight 2)
+      ('${tq3Id}', '${test1Id}', '${q3Id}', 2),  -- Even numbers (weight 2)
+      ('${tq4Id}', '${test4Id}', '${q6Id}', 1)   -- Markdown question (weight 1)
   `);
-  // Total weight: 5
+  // Total weight for math-geo: 5
+  // Total weight for markdown-test: 1
 
   // Create sample assessments
   console.log('  Creating sample assessments...');
