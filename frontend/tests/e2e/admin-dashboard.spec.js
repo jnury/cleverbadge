@@ -55,7 +55,10 @@ test.describe('Admin Dashboard', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/admin');
 
-    // Click logout
+    // Open user dropdown menu
+    await page.click('button:has-text("admin")');
+
+    // Click logout in dropdown
     await page.click('button:has-text("Logout")');
 
     // Should redirect to login
