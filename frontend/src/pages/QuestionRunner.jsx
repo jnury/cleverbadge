@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 const QuestionRunner = () => {
   const { slug } = useParams();
@@ -147,9 +148,9 @@ const QuestionRunner = () => {
 
       {/* Question card */}
       <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          {currentQuestion.text}
-        </h2>
+        <div className="text-2xl font-bold text-gray-800 mb-6">
+          <MarkdownRenderer content={currentQuestion.text} />
+        </div>
 
         <div className="space-y-3">
           {currentQuestion.options.map((option, index) => {
@@ -170,9 +171,11 @@ const QuestionRunner = () => {
                   name={`question-${currentQuestion.id}`}
                   checked={isSelected}
                   onChange={() => handleOptionChange(index)}
-                  className="mr-3"
+                  className="mr-3 flex-shrink-0"
                 />
-                <span className="text-gray-800">{option}</span>
+                <div className="flex-1">
+                  <MarkdownRenderer content={option} />
+                </div>
               </label>
             );
           })}
