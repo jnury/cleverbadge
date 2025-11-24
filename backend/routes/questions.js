@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateMarkdown } from '../utils/markdown-validator.js';
 
 const router = express.Router();
 
@@ -68,6 +69,24 @@ router.post('/',
     try {
       const { text, type, options, correct_answers, tags } = req.body;
 
+      // Validate markdown in question text
+      const textValidation = validateMarkdown(text);
+      if (!textValidation.isValid) {
+        return res.status(400).json({
+          error: `Invalid markdown in question text: ${textValidation.errors.join(', ')}`
+        });
+      }
+
+      // Validate markdown in each option
+      for (let i = 0; i < options.length; i++) {
+        const optionValidation = validateMarkdown(options[i]);
+        if (!optionValidation.isValid) {
+          return res.status(400).json({
+            error: `Invalid markdown in option ${i + 1}: ${optionValidation.errors.join(', ')}`
+          });
+        }
+      }
+
       const newQuestions = await sql`
         INSERT INTO ${sql(dbSchema)}.questions (text, type, options, correct_answers, tags)
         VALUES (${text}, ${type}, ${options}, ${correct_answers}, ${tags || []})
@@ -98,6 +117,24 @@ router.put('/:id',
   async (req, res) => {
     try {
       const { text, type, options, correct_answers, tags } = req.body;
+
+      // Validate markdown in question text
+      const textValidation = validateMarkdown(text);
+      if (!textValidation.isValid) {
+        return res.status(400).json({
+          error: `Invalid markdown in question text: ${textValidation.errors.join(', ')}`
+        });
+      }
+
+      // Validate markdown in each option
+      for (let i = 0; i < options.length; i++) {
+        const optionValidation = validateMarkdown(options[i]);
+        if (!optionValidation.isValid) {
+          return res.status(400).json({
+            error: `Invalid markdown in option ${i + 1}: ${optionValidation.errors.join(', ')}`
+          });
+        }
+      }
 
       const updatedQuestions = await sql`
         UPDATE ${sql(dbSchema)}.questions

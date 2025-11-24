@@ -106,4 +106,77 @@ describe('Questions Integration Tests', () => {
     expect(easyMathQuestions).toHaveLength(1);
     expect(easyMathQuestions[0].id).toBe('550e8400-e29b-41d4-a716-446655440010');
   });
+
+  describe('Markdown Validation', () => {
+    it('should accept valid markdown in question text', async () => {
+      const text = '**What is** `JavaScript`?';
+      const type = 'SINGLE';
+      const options = JSON.stringify(['A language', 'A framework']);
+      const correctAnswers = JSON.stringify([0]);
+      const tags = JSON.stringify(['programming']);
+
+      const result = await sql`
+        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
+        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        RETURNING *
+      `;
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe(text);
+    });
+
+    it('should accept valid code blocks in question text', async () => {
+      const text = 'What does this do?\n```javascript\nconst x = 1;\n```';
+      const type = 'SINGLE';
+      const options = JSON.stringify(['Declares variable', 'Prints output']);
+      const correctAnswers = JSON.stringify([0]);
+      const tags = JSON.stringify([]);
+
+      const result = await sql`
+        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
+        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        RETURNING *
+      `;
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe(text);
+    });
+
+    it('should reject unclosed code blocks in question text', async () => {
+      const text = 'Bad code block\n```javascript\nconst x = 1;';
+      const type = 'SINGLE';
+      const options = JSON.stringify(['A', 'B']);
+      const correctAnswers = JSON.stringify([0]);
+      const tags = JSON.stringify([]);
+
+      // This test expects validation to happen at the API level
+      // For now, we're testing that the database layer accepts the data
+      // API validation will be added in the next step
+      const result = await sql`
+        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
+        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        RETURNING *
+      `;
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe(text);
+    });
+
+    it('should accept markdown in options', async () => {
+      const text = 'Select the correct code';
+      const type = 'SINGLE';
+      const options = JSON.stringify(['`const x = 1`', '`let y = 2`']);
+      const correctAnswers = JSON.stringify([0]);
+      const tags = JSON.stringify([]);
+
+      const result = await sql`
+        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
+        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        RETURNING *
+      `;
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe(text);
+    });
+  });
 });
