@@ -93,3 +93,16 @@ export function getCurrentUser() {
 export function isLoggedIn() {
   return !!localStorage.getItem('auth_token');
 }
+
+/**
+ * Change password for authenticated user
+ * @param {string} currentPassword
+ * @param {string} newPassword
+ * @returns {Promise<object>} Success message
+ */
+export async function changePassword(currentPassword, newPassword) {
+  return await apiRequest('/api/auth/password', {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+}

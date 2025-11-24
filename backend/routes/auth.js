@@ -1,8 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
-import { verifyPassword } from '../utils/password.js';
+import { verifyPassword, hashPassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -73,6 +74,67 @@ router.post('/login',
 
     } catch (error) {
       console.error('Login error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
+/**
+ * PUT /api/auth/password
+ * Change password for authenticated user
+ */
+router.put('/password',
+  authenticateToken,
+  // Validation
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+  handleValidationErrors,
+
+  async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      // Get current password hash
+      const users = await sql`
+        SELECT password_hash
+        FROM ${sql(dbSchema)}.users
+        WHERE id = ${userId}
+      `;
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          error: 'User not found'
+        });
+      }
+
+      // Verify current password
+      const isValid = await verifyPassword(users[0].password_hash, currentPassword);
+
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'Current password is incorrect'
+        });
+      }
+
+      // Hash new password
+      const newPasswordHash = await hashPassword(newPassword);
+
+      // Update password
+      await sql`
+        UPDATE ${sql(dbSchema)}.users
+        SET password_hash = ${newPasswordHash}
+        WHERE id = ${userId}
+      `;
+
+      res.json({
+        message: 'Password changed successfully'
+      });
+
+    } catch (error) {
+      console.error('Change password error:', error);
       res.status(500).json({
         error: 'Internal server error'
       });

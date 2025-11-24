@@ -1,18 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../../utils/api';
 import TestsTab from './TestsTab';
 import QuestionsTab from './QuestionsTab';
 import AssessmentsTab from './AssessmentsTab';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const [activeTab, setActiveTab] = useState('tests');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
+  };
+
+  const handleChangePassword = () => {
+    setIsDropdownOpen(false);
+    setIsChangePasswordOpen(true);
   };
 
   const tabs = [
@@ -37,12 +58,40 @@ const AdminDashboard = () => {
               </p>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors"
-            >
-              Logout
-            </button>
+            {/* User dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors"
+              >
+                <span>{user?.username}</span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-md"
+                  >
+                    Change Password
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-b-md border-t border-gray-100"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -82,6 +131,12 @@ const AdminDashboard = () => {
           )}
         </div>
       </main>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </div>
   );
 };
