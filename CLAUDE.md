@@ -67,6 +67,7 @@ npm run test:coverage    # Coverage report
 
 ## Today I learned
 - When using playwright, always add ' --reporter=line' so you don't have to wait for results
+- E2E tests (NODE_ENV=testing) must use the 'testing' schema with cleverbadge_test user, NOT cleverbadge_dev. The reset-test-schema.js script grants permissions to the E2E user, and this must match the DATABASE_URL in playwright.config.js and CI workflow
 
 ## Never again
 - Never add features that weren't explicitly requested (like the Auto-save toggle I added to Settings). Always implement exactly what was asked for, but DO propose good ideas as suggestions for the user to accept or decline. Frame additional features as questions: "Would you also like me to add [feature], or should we keep it as-is for now?"
