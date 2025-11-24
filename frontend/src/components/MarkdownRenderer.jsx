@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { cleverBadgeTheme } from '../styles/syntax-theme';
 import remarkGfm from 'remark-gfm';
 
 /**
@@ -22,15 +22,9 @@ const MarkdownRenderer = ({ content, className = '' }) => {
 
             return !inline && language ? (
               <SyntaxHighlighter
-                style={vscDarkPlus}
+                style={cleverBadgeTheme}
                 language={language}
                 PreTag="div"
-                customStyle={{
-                  backgroundColor: '#1D4E5A',
-                  padding: '1rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
                 {...props}
               >
                 {String(children).replace(/\n$/, '')}
@@ -42,6 +36,65 @@ const MarkdownRenderer = ({ content, className = '' }) => {
               >
                 {children}
               </code>
+            );
+          },
+          // Style tables
+          table({ children }) {
+            return (
+              <div className="overflow-x-auto my-4">
+                <table className="min-w-full border border-gray-300">
+                  {children}
+                </table>
+              </div>
+            );
+          },
+          thead({ children }) {
+            return <thead className="bg-gray-100">{children}</thead>;
+          },
+          th({ children }) {
+            return (
+              <th className="px-4 py-2 text-left border-b border-gray-300 font-semibold">
+                {children}
+              </th>
+            );
+          },
+          td({ children }) {
+            return (
+              <td className="px-4 py-2 border-b border-gray-200">{children}</td>
+            );
+          },
+          // Style headings
+          h1({ children }) {
+            return <h1 className="text-2xl font-bold mt-6 mb-4">{children}</h1>;
+          },
+          h2({ children }) {
+            return <h2 className="text-xl font-bold mt-5 mb-3">{children}</h2>;
+          },
+          h3({ children }) {
+            return <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>;
+          },
+          // Style lists
+          ul({ children }) {
+            return <ul className="list-disc list-inside my-3 space-y-1">{children}</ul>;
+          },
+          ol({ children }) {
+            return <ol className="list-decimal list-inside my-3 space-y-1">{children}</ol>;
+          },
+          // Style paragraphs
+          p({ children }) {
+            return <p className="my-2 leading-relaxed">{children}</p>;
+          },
+          // Style links
+          a({ children, href }) {
+            return (
+              <a
+                href={href}
+                className="text-tech hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {children}
+              </a>
             );
           },
         }}
