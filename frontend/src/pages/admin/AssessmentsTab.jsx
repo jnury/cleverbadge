@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../utils/api';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Select from '../../components/ui/Select';
+import Button from '../../components/ui/Button';
 
 const AssessmentsTab = () => {
+  const navigate = useNavigate();
   const [assessments, setAssessments] = useState([]);
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +199,9 @@ const AssessmentsTab = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Completed
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -241,6 +247,14 @@ const AssessmentsTab = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(assessment.completed_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/admin/assessment/${assessment.id}`)}
+                      >
+                        View Details
+                      </Button>
                     </td>
                   </tr>
                 ))}

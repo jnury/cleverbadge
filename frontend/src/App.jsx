@@ -9,6 +9,7 @@ import TestResults from './pages/TestResults';
 import AdminLogin from './pages/admin/AdminLogin';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AssessmentDetail from './pages/admin/AssessmentDetail';
 
 function App() {
   return (
@@ -33,6 +34,11 @@ function App() {
             <Route path="/admin" element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/assessment/:assessmentId" element={
+              <ProtectedRoute>
+                <AssessmentDetail />
               </ProtectedRoute>
             } />
           </Routes>
