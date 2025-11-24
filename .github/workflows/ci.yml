@@ -63,7 +63,7 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://cleverbadge_admin:testpass@localhost:5432/cleverbadge
           NODE_ENV: test
-        run: npm run test:coverage
+        run: npm run test:coverage 2>&1 | tee ../backend-coverage-output.txt
 
       - name: Backend Coverage Summary
         if: always()
@@ -71,7 +71,12 @@ jobs:
           echo "## 🧪 Backend Test Coverage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat backend/coverage/coverage-summary.txt 2>/dev/null || echo "Coverage summary not available" >> $GITHUB_STEP_SUMMARY
+          # Extract the coverage table from vitest output
+          if [ -f backend-coverage-output.txt ]; then
+            grep -A 20 "% Coverage report from" backend-coverage-output.txt | tail -n +2 >> $GITHUB_STEP_SUMMARY || echo "Coverage data not found in output" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage output file not found" >> $GITHUB_STEP_SUMMARY
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 Full coverage report available in artifacts" >> $GITHUB_STEP_SUMMARY
@@ -106,7 +111,7 @@ jobs:
 
       - name: Run frontend unit tests
         working-directory: frontend
-        run: npm run test:coverage
+        run: npm run test:coverage 2>&1 | tee ../frontend-coverage-output.txt
 
       - name: Frontend Coverage Summary
         if: always()
@@ -114,7 +119,12 @@ jobs:
           echo "## 🎨 Frontend Test Coverage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat frontend/coverage/coverage-summary.txt 2>/dev/null || echo "Coverage summary not available" >> $GITHUB_STEP_SUMMARY
+          # Extract the coverage table from vitest output
+          if [ -f frontend-coverage-output.txt ]; then
+            grep -A 20 "% Coverage report from" frontend-coverage-output.txt | tail -n +2 >> $GITHUB_STEP_SUMMARY || echo "Coverage data not found in output" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage output file not found" >> $GITHUB_STEP_SUMMARY
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 Full coverage report available in artifacts" >> $GITHUB_STEP_SUMMARY
