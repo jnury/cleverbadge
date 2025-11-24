@@ -15,6 +15,7 @@ const QuestionsTab = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [searchTag, setSearchTag] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
@@ -79,6 +80,7 @@ const QuestionsTab = () => {
 
   const handleUploadSuccess = (data) => {
     showSuccess(`Successfully imported ${data.imported_count} questions`);
+    setIsImportOpen(false);
     fetchQuestions();
   };
 
@@ -99,13 +101,18 @@ const QuestionsTab = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Questions</h2>
-        <Button onClick={() => setIsFormOpen(true)}>
-          Create Question
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setIsImportOpen(true)}
+          >
+            Import Questions
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            Create Question
+          </Button>
+        </div>
       </div>
-
-      {/* YAML Upload Section */}
-      <YamlUpload onUploadSuccess={handleUploadSuccess} />
 
       {/* Filters */}
       <Card>
@@ -267,6 +274,18 @@ const QuestionsTab = () => {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Import Questions Modal */}
+      {isImportOpen && (
+        <Modal
+          isOpen={isImportOpen}
+          onClose={() => setIsImportOpen(false)}
+          title="Import Questions from YAML"
+          size="lg"
+        >
+          <YamlUpload onUploadSuccess={handleUploadSuccess} />
         </Modal>
       )}
     </div>

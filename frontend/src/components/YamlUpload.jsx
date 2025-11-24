@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import Button from './ui/Button';
 import Card from './ui/Card';
 
-const EXAMPLE_YAML = `- text: "What is 2+2?"
+const EXAMPLE_YAML = `# Example YAML format - root array of questions
+- text: "What is 2+2?"
   type: "SINGLE"
   options: ["3", "4", "5", "6"]
   correct_answers: ["4"]
@@ -16,11 +17,12 @@ const EXAMPLE_YAML = `- text: "What is 2+2?"
 
 const YamlUpload = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
-  const [yamlText, setYamlText] = useState(EXAMPLE_YAML);
+  const [yamlText, setYamlText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [inputMode, setInputMode] = useState('text'); // 'text' or 'file'
+  const [isDragging, setIsDragging] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const handleFileChange = (e) => {
@@ -33,6 +35,37 @@ const YamlUpload = ({ onUploadSuccess }) => {
         return;
       }
       setFile(selectedFile);
+      setError(null);
+      setResult(null);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      // Validate file extension
+      if (!droppedFile.name.endsWith('.yaml') && !droppedFile.name.endsWith('.yml')) {
+        setError('Please select a YAML file (.yaml or .yml)');
+        setFile(null);
+        return;
+      }
+      setFile(droppedFile);
       setError(null);
       setResult(null);
     }
@@ -230,8 +263,8 @@ const YamlUpload = ({ onUploadSuccess }) => {
                 rows={12}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
                   focus:ring-tech focus:border-tech font-mono text-sm
-                  disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Paste your YAML content here..."
+                  placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder={EXAMPLE_YAML}
               />
               <p className="mt-1 text-xs text-gray-500">
                 Edit or paste YAML directly from an LLM output
@@ -254,45 +287,103 @@ const YamlUpload = ({ onUploadSuccess }) => {
         {/* File upload mode */}
         {inputMode === 'file' && (
           <>
-            <div>
-              <label
-                htmlFor="yaml-file-input"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Select YAML file
-              </label>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                isDragging
+                  ? 'border-tech bg-blue-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
               <input
                 id="yaml-file-input"
                 type="file"
                 accept=".yaml,.yml"
                 onChange={handleFileChange}
                 disabled={uploading}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-tech file:text-white
-                  hover:file:bg-tech/90
-                  cursor-pointer
-                  disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hidden"
               />
-              {file && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Selected: {file.name}
-                </p>
+
+              {!file ? (
+                <div className="space-y-4">
+                  <div className="text-gray-600">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <Button
+                      variant="primary"
+                      onClick={() => document.getElementById('yaml-file-input').click()}
+                      disabled={uploading}
+                    >
+                      Select File
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Or drag and drop file here
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    YAML files only (.yaml, .yml)
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-green-600">
+                    <svg
+                      className="mx-auto h-12 w-12"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {file.name}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setFile(null)}
+                    disabled={uploading}
+                  >
+                    Remove
+                  </Button>
+                </div>
               )}
             </div>
 
-            <div>
-              <Button
-                onClick={handleFileUpload}
-                disabled={!file || uploading}
-                loading={uploading}
-                variant="primary"
-              >
-                {uploading ? 'Uploading...' : 'Upload Questions'}
-              </Button>
-            </div>
+            {file && (
+              <div>
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={!file || uploading}
+                  loading={uploading}
+                  variant="primary"
+                >
+                  {uploading ? 'Uploading...' : 'Upload Questions'}
+                </Button>
+              </div>
+            )}
           </>
         )}
 
@@ -306,14 +397,14 @@ const YamlUpload = ({ onUploadSuccess }) => {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-blue-900 mb-2">
-                  Each question is defined as a list item with the following fields:
+                  The file must contain a root-level array of questions, where each question has:
                 </p>
                 <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
                   <li><code className="bg-blue-100 px-1 rounded font-mono">text</code> - The question text (required)</li>
                   <li><code className="bg-blue-100 px-1 rounded font-mono">type</code> - Either "SINGLE" or "MULTIPLE" (required)</li>
                   <li><code className="bg-blue-100 px-1 rounded font-mono">options</code> - Array of answer choices (required, min 2)</li>
                   <li><code className="bg-blue-100 px-1 rounded font-mono">correct_answers</code> - Array of correct options (required)</li>
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">tags</code> - Array of category tags (required)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">tags</code> - Array of category tags (optional)</li>
                 </ul>
               </div>
 
@@ -322,7 +413,8 @@ const YamlUpload = ({ onUploadSuccess }) => {
                   Example:
                 </p>
                 <pre className="text-xs text-blue-800 overflow-x-auto bg-white p-3 rounded border border-blue-100">
-{`- text: "What is 2+2?"
+{`# Root-level array of questions
+- text: "What is 2+2?"
   type: "SINGLE"
   options: ["3", "4", "5", "6"]
   correct_answers: ["4"]
@@ -338,7 +430,7 @@ const YamlUpload = ({ onUploadSuccess }) => {
 
               <div className="bg-blue-100 border border-blue-300 rounded p-3">
                 <p className="text-sm text-blue-900">
-                  <strong>Tip:</strong> See <code className="bg-white px-1 rounded font-mono">examples/questions.yaml</code> for more examples with 16 diverse sample questions.
+                  <strong>Tip:</strong> Download our <a href="/questions-example.yaml" download className="text-blue-700 underline hover:text-blue-900 font-medium">example YAML file</a> with 16 diverse sample questions to get started.
                 </p>
               </div>
             </div>
