@@ -106,3 +106,24 @@ export async function changePassword(currentPassword, newPassword) {
     body: JSON.stringify({ currentPassword, newPassword })
   });
 }
+
+// ============ Tests API ============
+
+/**
+ * Get all tests
+ * @returns {Promise<object>} Tests list
+ */
+export async function getTests() {
+  return apiRequest('/api/tests');
+}
+
+// ============ Analytics API ============
+
+/**
+ * Get per-question analytics for a test
+ * @param {string} testId - Test UUID
+ * @returns {Promise<object>} Analytics data with question stats
+ */
+export async function getQuestionAnalytics(testId) {
+  return apiRequest(`/api/tests/${testId}/analytics/questions`);
+}
