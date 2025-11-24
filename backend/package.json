@@ -1,6 +1,6 @@
 {
   "name": "cleverbadge-backend",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "description": "Clever Badge API Server",
   "main": "index.js",
   "type": "module",
