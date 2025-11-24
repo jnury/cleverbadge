@@ -167,6 +167,9 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: http://localhost:3000
+          DATABASE_URL: postgresql://cleverbadge_dev:testpass@localhost:5432/cleverbadge
+          NODE_ENV: testing
+          JWT_SECRET: test-secret-key-for-ci-e2e
         run: npm run test:e2e
 
       - name: Upload Playwright test results

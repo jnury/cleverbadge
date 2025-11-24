@@ -26,7 +26,12 @@ export default defineConfig({
       command: 'cd ../backend && npm run reset-test-schema && npm run dev:e2e',
       url: 'http://localhost:3000/health',
       reuseExistingServer: false,
-      timeout: 120000
+      timeout: 120000,
+      env: {
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://cleverbadge_dev:cleverbadge_dev@localhost:5432/cleverbadge',
+        NODE_ENV: 'testing',
+        JWT_SECRET: process.env.JWT_SECRET || 'test-secret-key-for-e2e-tests'
+      }
     },
     {
       command: 'npm run dev',
