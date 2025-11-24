@@ -179,7 +179,7 @@ test.describe('Candidate Test Taking Flow', () => {
     // Score = (1 / 5) * 100 = 20%
     await expect(page.locator('text=Test Completed!')).toBeVisible();
     await expect(page.locator('text=20.0%')).toBeVisible();
-    await expect(page.locator('text=/NEEDS IMPROVEMENT/i')).toBeVisible();
+    await expect(page.locator('text=/NOT PASSED/i')).toBeVisible();
   });
 
   test('should test SINGLE choice questions work correctly', async ({ page }) => {
@@ -326,7 +326,7 @@ test.describe('Candidate Test Taking Flow', () => {
 
     // Score = (1 + 2) / 5 * 100 = 60%
     await expect(page.locator('text=60.0%')).toBeVisible();
-    await expect(page.locator('text=/GOOD/i')).toBeVisible();
+    await expect(page.locator('text=/NOT PASSED/i')).toBeVisible();
   });
 
   test('should handle zero score correctly', async ({ page }) => {
@@ -351,6 +351,6 @@ test.describe('Candidate Test Taking Flow', () => {
 
     // Score = 0%
     await expect(page.locator('text=0.0%')).toBeVisible();
-    await expect(page.locator('text=/NEEDS IMPROVEMENT/i')).toBeVisible();
+    await expect(page.locator('text=/NOT PASSED/i')).toBeVisible();
   });
 });

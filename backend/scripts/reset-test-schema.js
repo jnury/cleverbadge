@@ -28,13 +28,13 @@ async function resetTestSchema() {
     console.log('Creating fresh testing schema...');
     await sql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
-    // Grant permissions to cleverbadge_dev user (used during E2E tests)
-    console.log('Granting permissions to cleverbadge_dev user...');
-    await sql.unsafe(`GRANT USAGE ON SCHEMA ${TEST_SCHEMA} TO cleverbadge_dev`);
-    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_dev`);
-    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_dev`);
-    await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON TABLES TO cleverbadge_dev`);
-    await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON SEQUENCES TO cleverbadge_dev`);
+    // Grant permissions to cleverbadge_test user (used during E2E tests)
+    console.log('Granting permissions to cleverbadge_test user...');
+    await sql.unsafe(`GRANT USAGE ON SCHEMA ${TEST_SCHEMA} TO cleverbadge_test`);
+    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_test`);
+    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_test`);
+    await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON TABLES TO cleverbadge_test`);
+    await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON SEQUENCES TO cleverbadge_test`);
 
     // Run migrations
     console.log('Running migrations...');

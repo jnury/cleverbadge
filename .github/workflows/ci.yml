@@ -159,15 +159,15 @@ jobs:
           psql -h localhost -U postgres -d cleverbadge -c "GRANT ALL PRIVILEGES ON DATABASE cleverbadge TO cleverbadge_admin;"
           psql -h localhost -U postgres -d cleverbadge -c "GRANT ALL ON SCHEMA public TO cleverbadge_admin;"
 
-          # Create dev user for runtime operations (E2E tests use dev user)
-          psql -h localhost -U postgres -d cleverbadge -c "CREATE USER cleverbadge_dev WITH PASSWORD 'testpass';"
-          psql -h localhost -U postgres -d cleverbadge -c "GRANT CONNECT ON DATABASE cleverbadge TO cleverbadge_dev;"
+          # Create test user for runtime operations (E2E tests use test user with testing schema)
+          psql -h localhost -U postgres -d cleverbadge -c "CREATE USER cleverbadge_test WITH PASSWORD 'testpass';"
+          psql -h localhost -U postgres -d cleverbadge -c "GRANT CONNECT ON DATABASE cleverbadge TO cleverbadge_test;"
 
       - name: Run E2E tests
         working-directory: frontend
         env:
           VITE_API_URL: http://localhost:3000
-          DATABASE_URL: postgresql://cleverbadge_dev:testpass@localhost:5432/cleverbadge
+          DATABASE_URL: postgresql://cleverbadge_test:testpass@localhost:5432/cleverbadge
           NODE_ENV: testing
           JWT_SECRET: test-secret-key-for-ci-e2e
         run: npm run test:e2e
