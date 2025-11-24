@@ -321,4 +321,94 @@ router.post('/:assessmentId/submit',
   }
 );
 
+// GET assessment details (no authentication required - public access for candidates)
+router.get('/:id/details',
+  param('id').isUUID().withMessage('id must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Get assessment with test info
+      const assessments = await sql`
+        SELECT
+          a.id,
+          a.test_id,
+          a.candidate_name,
+          a.status,
+          a.score_percentage,
+          a.started_at,
+          a.completed_at,
+          t.title as test_title
+        FROM ${sql(dbSchema)}.assessments a
+        INNER JOIN ${sql(dbSchema)}.tests t ON a.test_id = t.id
+        WHERE a.id = ${id}
+      `;
+
+      if (assessments.length === 0) {
+        return res.status(404).json({ error: 'Assessment not found' });
+      }
+
+      const assessment = assessments[0];
+
+      // Get all answers with question details
+      const answers = await sql`
+        SELECT
+          aa.id as answer_id,
+          aa.question_id,
+          aa.selected_options,
+          aa.is_correct,
+          aa.answered_at,
+          q.text as question_text,
+          q.type as question_type,
+          q.options as question_options,
+          q.correct_answers,
+          tq.weight
+        FROM ${sql(dbSchema)}.assessment_answers aa
+        INNER JOIN ${sql(dbSchema)}.questions q ON aa.question_id = q.id
+        INNER JOIN ${sql(dbSchema)}.test_questions tq
+          ON tq.question_id = q.id AND tq.test_id = ${assessment.test_id}
+        WHERE aa.assessment_id = ${id}
+        ORDER BY aa.answered_at
+      `;
+
+      // Calculate summary statistics
+      const totalQuestions = answers.length;
+      const correctAnswers = answers.filter(a => a.is_correct).length;
+      const totalWeight = answers.reduce((sum, a) => sum + a.weight, 0);
+      const earnedWeight = answers.filter(a => a.is_correct).reduce((sum, a) => sum + a.weight, 0);
+
+      res.json({
+        assessment: {
+          id: assessment.id,
+          test_title: assessment.test_title,
+          candidate_name: assessment.candidate_name,
+          status: assessment.status,
+          score_percentage: parseFloat(assessment.score_percentage),
+          started_at: assessment.started_at,
+          completed_at: assessment.completed_at,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          total_weight: totalWeight,
+          earned_weight: earnedWeight
+        },
+        answers: answers.map(a => ({
+          question_id: a.question_id,
+          question_text: a.question_text,
+          question_type: a.question_type,
+          options: a.question_options,
+          correct_answers: a.correct_answers,
+          selected_options: a.selected_options,
+          is_correct: a.is_correct,
+          weight: a.weight,
+          answered_at: a.answered_at
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching assessment details:', error);
+      res.status(500).json({ error: 'Failed to fetch assessment details' });
+    }
+  }
+);
+
 export default router;
