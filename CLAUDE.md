@@ -34,6 +34,7 @@ Clever Badge is an online skills assessment platform. Candidates take MCQ tests 
 - If you made a mistake in your interpretation of the specs, architecture, features etc. update this CLAUDE.md file in section "Never again". But before, ask me if your new knowledge is correct.
 - Always ask questions when you need clarification or if you have the choice between multiple solutions.
 - Always ask for validation before commiting changes
+- **YAML Example File:** The YAML example file is maintained only in `frontend/public/questions-example.yaml` (downloadable from the UI). When the YAML format is updated, update this file only.
 
 ## Always Think Step by Step
 - Read specification → Check dependencies → Validate data flow → Implement incrementally → Test immediately
