@@ -5,6 +5,7 @@ import TestsTab from './TestsTab';
 import QuestionsTab from './QuestionsTab';
 import AssessmentsTab from './AssessmentsTab';
 import ChangePasswordModal from '../../components/ChangePasswordModal';
+import AnalyticsTab from './AnalyticsTab';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -123,12 +124,7 @@ const AdminDashboard = () => {
           {activeTab === 'tests' && <TestsTab />}
           {activeTab === 'questions' && <QuestionsTab />}
           {activeTab === 'assessments' && <AssessmentsTab />}
-          {activeTab === 'analytics' && (
-            <div className="text-center py-12">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Analytics</h2>
-              <p className="text-gray-600">Content coming in Phase 4</p>
-            </div>
-          )}
+          {activeTab === 'analytics' && <AnalyticsTab />}
         </div>
       </main>
 
