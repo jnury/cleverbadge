@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 
-const QuestionForm = ({ question, onSubmit, onCancel }) => {
+const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons = false }) => {
   // Convert correct_answers from indices to option text if editing
   const getCorrectAnswersText = () => {
     if (!question?.correct_answers || !question?.options) return [];
@@ -28,6 +28,21 @@ const QuestionForm = ({ question, onSubmit, onCancel }) => {
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Notify parent component of form changes for live preview
+  useEffect(() => {
+    if (onFormChange) {
+      // Convert tags from string to array for preview
+      const tagsArray = formData.tags
+        ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+        : [];
+
+      onFormChange({
+        ...formData,
+        tags: tagsArray
+      });
+    }
+  }, [formData, onFormChange]);
 
   const handleAddOption = () => {
     if (formData.options.length < 10) {
@@ -224,22 +239,24 @@ const QuestionForm = ({ question, onSubmit, onCancel }) => {
         placeholder="Enter tags (e.g., math, easy, algebra)"
       />
 
-      <div className="flex gap-3 justify-end pt-4">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onCancel}
-          disabled={submitting}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          loading={submitting}
-        >
-          {question ? 'Update Question' : 'Create Question'}
-        </Button>
-      </div>
+      {!hideButtons && (
+        <div className="flex gap-3 justify-end pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            loading={submitting}
+          >
+            {question ? 'Update Question' : 'Create Question'}
+          </Button>
+        </div>
+      )}
     </form>
   );
 };
