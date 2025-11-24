@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Markdown Rendering in Questions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/t/markdown-test');
-    await page.fill('input[placeholder*="name"]', 'Test Candidate');
-    await page.click('button:has-text("Start")');
+    await page.fill('input#name', 'Test Candidate');
+    await page.click('button:has-text("Start Test")');
   });
 
   test('renders bold text in question', async ({ page }) => {
@@ -37,8 +37,8 @@ test.describe('Markdown Rendering in Questions', () => {
 
   test('test landing shows markdown description', async ({ page }) => {
     await page.goto('/t/markdown-test');
-    const description = page.locator('.markdown-content');
-    await expect(description.locator('strong')).toHaveText('markdown rendering');
-    await expect(description.locator('code')).toHaveText('code syntax');
+    const description = page.locator('.markdown-content').first();
+    await expect(description.locator('strong').first()).toHaveText('markdown rendering');
+    await expect(description.locator('code').first()).toHaveText('code syntax');
   });
 });

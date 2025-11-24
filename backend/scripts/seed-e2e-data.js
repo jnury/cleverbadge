@@ -49,41 +49,74 @@ async function seedE2EData() {
       SELECT COUNT(*) as count FROM ${sql(dbSchema)}.questions
     `;
 
+    const q1Id = '550e8400-e29b-41d4-a716-446655440010';
+    const q2Id = '550e8400-e29b-41d4-a716-446655440011';
+    const q3Id = '550e8400-e29b-41d4-a716-446655440012';
+    const q4Id = '550e8400-e29b-41d4-a716-446655440013';
+
     if (parseInt(questionsCheck[0].count) === 0) {
       console.log('Creating sample questions...');
-
-      const q1Id = '550e8400-e29b-41d4-a716-446655440010';
-      const q2Id = '550e8400-e29b-41d4-a716-446655440011';
-      const q3Id = '550e8400-e29b-41d4-a716-446655440012';
 
       await sql`
         INSERT INTO ${sql(dbSchema)}.questions (id, text, type, options, correct_answers, tags)
         VALUES
           (${q1Id}, 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]'),
           (${q2Id}, 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]'),
-          (${q3Id}, 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]')
+          (${q3Id}, 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]'),
+          (${q4Id}, '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]')
       `;
       console.log('✓ Sample questions created');
+    } else {
+      console.log(`✓ Found ${questionsCheck[0].count} questions already`);
+    }
 
-      // Create a test
-      console.log('Creating sample test...');
-      const testId = '550e8400-e29b-41d4-a716-446655440020';
+    // Create math-geo test if it doesn't exist
+    const mathGeoTestId = '550e8400-e29b-41d4-a716-446655440020';
+    const mathGeoTestCheck = await sql`
+      SELECT COUNT(*) as count FROM ${sql(dbSchema)}.tests WHERE id = ${mathGeoTestId}
+    `;
+
+    if (parseInt(mathGeoTestCheck[0].count) === 0) {
+      console.log('Creating math-geo test...');
       await sql`
         INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold)
-        VALUES (${testId}, 'Math & Geography Test', 'math-geo', 'Test your math and geography knowledge', true, 70)
+        VALUES (${mathGeoTestId}, 'Math & Geography Test', 'math-geo', 'Test your math and geography knowledge', true, 70)
       `;
 
       // Add questions to test
       await sql`
         INSERT INTO ${sql(dbSchema)}.test_questions (test_id, question_id, weight)
         VALUES
-          (${testId}, ${q1Id}, 1),
-          (${testId}, ${q2Id}, 2),
-          (${testId}, ${q3Id}, 2)
+          (${mathGeoTestId}, ${q1Id}, 1),
+          (${mathGeoTestId}, ${q2Id}, 2),
+          (${mathGeoTestId}, ${q3Id}, 2)
       `;
-      console.log('✓ Sample test created');
+      console.log('✓ Math-geo test created');
     } else {
-      console.log(`✓ Found ${questionsCheck[0].count} questions already`);
+      console.log('✓ Math-geo test already exists');
+    }
+
+    // Create markdown test if it doesn't exist
+    const markdownTestId = '550e8400-e29b-41d4-a716-446655440021';
+    const markdownTestCheck = await sql`
+      SELECT COUNT(*) as count FROM ${sql(dbSchema)}.tests WHERE id = ${markdownTestId}
+    `;
+
+    if (parseInt(markdownTestCheck[0].count) === 0) {
+      console.log('Creating markdown test...');
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold)
+        VALUES (${markdownTestId}, 'Markdown Rendering Test', 'markdown-test', 'This test demonstrates **markdown rendering** with \`code syntax\` highlighting', true, 70)
+      `;
+
+      // Add markdown question to test
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.test_questions (test_id, question_id, weight)
+        VALUES (${markdownTestId}, ${q4Id}, 1)
+      `;
+      console.log('✓ Markdown test created');
+    } else {
+      console.log('✓ Markdown test already exists');
     }
 
     console.log('\n✅ E2E test data seeded successfully!\n');
