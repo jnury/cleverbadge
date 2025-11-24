@@ -4,26 +4,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   test: {
+    globals: true,
     environment: 'jsdom',
-    setupFiles: './tests/setup.js',
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/tests/e2e/**'
-    ],
     coverage: {
-      provider: 'c8',
-      include: ['src/**/*.{js,jsx}'],
-      exclude: [
-        'src/main.jsx',
-        'src/**/*.test.{js,jsx}',
-        'node_modules/**'
-      ]
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.jsx', 'src/**/*.js'],
+      exclude: ['**/*.test.jsx', '**/*.test.js', '**/node_modules/**']
     }
-  },
-  define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify('http://localhost:3000'),
-    'import.meta.env.VITE_ENV': JSON.stringify('testing'),
-    'import.meta.env.VITE_VERSION': JSON.stringify('0.4.0')
   }
 });

@@ -10,7 +10,7 @@ export default defineConfig({
     environment: 'node',
     setupFiles: [],
     coverage: {
-      provider: 'c8',
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['routes/**', 'middleware/**', 'utils/**', 'db/**'],
       exclude: ['**/*.test.js', '**/node_modules/**']
