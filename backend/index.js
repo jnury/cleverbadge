@@ -11,6 +11,7 @@ import questionsRouter from './routes/questions.js';
 import testsRouter from './routes/tests.js';
 import assessmentsRouter from './routes/assessments.js';
 import importRouter from './routes/import.js';
+import analyticsRouter from './routes/analytics.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '0.7.3',
+    version: '0.5.0',
     environment: NODE_ENV
   });
 });
@@ -39,6 +40,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/questions', questionsRouter);
 app.use('/api/questions', importRouter); // Mount import under /api/questions
 app.use('/api/tests', testsRouter);
+app.use('/api/tests', analyticsRouter); // Mount analytics under /api/tests
 app.use('/api/assessments', assessmentsRouter);
 
 // Test database connection on startup
