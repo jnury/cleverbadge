@@ -106,7 +106,7 @@ docker exec "$CONTAINER_NAME" psql -U postgres -d cleverbadge -c "GRANT CONNECT 
 echo "  ✓ Database users created"
 echo ""
 
-# Run E2E tests (matching CI workflow lines 166-173)
+# Run E2E tests (matching CI workflow lines 188-196)
 echo "🚀 Running E2E tests..."
 export VITE_API_URL=http://localhost:3000
 export DATABASE_URL=postgresql://cleverbadge_test:testpass@localhost:5433/cleverbadge

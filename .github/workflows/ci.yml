@@ -190,6 +190,7 @@ jobs:
         env:
           VITE_API_URL: http://localhost:3000
           DATABASE_URL: postgresql://cleverbadge_test:testpass@localhost:5432/cleverbadge
+          DATABASE_ADMIN_URL: postgresql://cleverbadge_admin:testpass@localhost:5432/cleverbadge
           NODE_ENV: testing
           JWT_SECRET: test-secret-key-for-ci-e2e
         run: npm run test:e2e
