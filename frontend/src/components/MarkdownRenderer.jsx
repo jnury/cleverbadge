@@ -24,7 +24,7 @@ const MarkdownRenderer = ({ content, className = '' }) => {
               <SyntaxHighlighter
                 style={cleverBadgeTheme}
                 language={language}
-                PreTag="div"
+                PreTag="pre"
                 {...props}
               >
                 {String(children).replace(/\n$/, '')}
