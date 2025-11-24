@@ -1071,6 +1071,37 @@ Create in `frontend/src/components/ui/`:
 
 ---
 
+## Using Markdown in Questions
+
+Clever Badge supports full markdown rendering including code syntax highlighting.
+
+**Supported features:**
+- Code blocks with language specification: ` ```javascript ... ``` `
+- Inline code: `` `const x = 1` ``
+- Bold, italic, headings, lists
+- Tables
+- Links
+
+**Example:**
+
+```yaml
+- text: |
+    What does this code do?
+    ```python
+    result = [x * 2 for x in range(5)]
+    ```
+  type: "SINGLE"
+  options:
+    - "`[0, 2, 4, 6, 8]`"
+    - "`[0, 1, 2, 3, 4]`"
+  correct_answers:
+    - "`[0, 2, 4, 6, 8]`"
+```
+
+See [docs/MARKDOWN.md](MARKDOWN.md) for complete documentation.
+
+---
+
 ## Code Style Guidelines
 
 - **JavaScript only** (no TypeScript)
