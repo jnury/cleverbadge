@@ -63,7 +63,7 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://cleverbadge_admin:testpass@localhost:5432/cleverbadge
           NODE_ENV: test
-        run: npm test
+        run: npm run test:coverage
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
@@ -71,6 +71,7 @@ jobs:
         with:
           name: backend-coverage
           path: backend/coverage/
+          if-no-files-found: warn
 
   frontend-tests:
     name: Frontend Tests
@@ -94,7 +95,7 @@ jobs:
 
       - name: Run frontend unit tests
         working-directory: frontend
-        run: npm test
+        run: npm run test:coverage
 
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v4
@@ -102,6 +103,7 @@ jobs:
         with:
           name: frontend-coverage
           path: frontend/coverage/
+          if-no-files-found: warn
 
   e2e-tests:
     name: E2E Tests
@@ -148,32 +150,18 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Setup test database
+      - name: Setup test database users
         env:
           PGPASSWORD: postgres
         run: |
+          # Create admin user for schema operations
           psql -h localhost -U postgres -d cleverbadge -c "CREATE USER cleverbadge_admin WITH PASSWORD 'testpass';"
           psql -h localhost -U postgres -d cleverbadge -c "GRANT ALL PRIVILEGES ON DATABASE cleverbadge TO cleverbadge_admin;"
           psql -h localhost -U postgres -d cleverbadge -c "GRANT ALL ON SCHEMA public TO cleverbadge_admin;"
 
-      - name: Run migrations
-        working-directory: backend
-        env:
-          DATABASE_ADMIN_URL: postgresql://cleverbadge_admin:testpass@localhost:5432/cleverbadge
-          NODE_ENV: test
-        run: npm run migrate
-
-      - name: Start backend server
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql://cleverbadge_admin:testpass@localhost:5432/cleverbadge
-          NODE_ENV: test
-          PORT: 3000
-          JWT_SECRET: test-secret
-        run: |
-          node index.js &
-          echo $! > backend.pid
-          sleep 3
+          # Create dev user for runtime operations (E2E tests use dev user)
+          psql -h localhost -U postgres -d cleverbadge -c "CREATE USER cleverbadge_dev WITH PASSWORD 'testpass';"
+          psql -h localhost -U postgres -d cleverbadge -c "GRANT CONNECT ON DATABASE cleverbadge TO cleverbadge_dev;"
 
       - name: Run E2E tests
         working-directory: frontend
@@ -181,19 +169,13 @@ jobs:
           VITE_API_URL: http://localhost:3000
         run: npm run test:e2e
 
-      - name: Stop backend server
-        if: always()
-        run: |
-          if [ -f backend/backend.pid ]; then
-            kill $(cat backend/backend.pid) || true
-          fi
-
-      - name: Upload Playwright report
+      - name: Upload Playwright test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
-          path: frontend/playwright-report/
+          name: playwright-test-results
+          path: frontend/test-results/
+          if-no-files-found: warn
 
   deploy-staging:
     name: Deploy to Staging

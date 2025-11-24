@@ -2,15 +2,18 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? 'line' : 'html',
+  workers: 1,
+  reporter: 'line',
+  timeout: 60000,
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure'
+    screenshot: 'only-on-failure',
+    actionTimeout: 10000,
+    navigationTimeout: 10000
   },
   projects: [
     {
@@ -18,13 +21,21 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     }
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-    env: {
-      VITE_API_URL: process.env.VITE_API_URL || 'http://localhost:3000'
+  webServer: [
+    {
+      command: 'cd ../backend && npm run reset-test-schema && npm run dev:e2e',
+      url: 'http://localhost:3000/health',
+      reuseExistingServer: false,
+      timeout: 120000
+    },
+    {
+      command: 'npm run dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: false,
+      timeout: 120000,
+      env: {
+        VITE_API_URL: process.env.VITE_API_URL || 'http://localhost:3000'
+      }
     }
-  }
+  ]
 });

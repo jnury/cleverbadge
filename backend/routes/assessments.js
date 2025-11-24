@@ -105,7 +105,7 @@ router.post('/start',
       const assessment = assessments[0];
 
       // Get all questions for this test (WITHOUT correct_answers)
-      // Order by question_id to maintain consistent insertion order
+      // Order by test_questions.id to maintain insertion order
       const testQuestionsData = await sql`
         SELECT
           q.id,
@@ -116,7 +116,7 @@ router.post('/start',
         FROM ${sql(dbSchema)}.test_questions tq
         INNER JOIN ${sql(dbSchema)}.questions q ON tq.question_id = q.id
         WHERE tq.test_id = ${test_id}
-        ORDER BY q.id
+        ORDER BY tq.id
       `;
 
       // Add question numbers
