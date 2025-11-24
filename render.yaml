@@ -108,6 +108,32 @@ services:
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
 
+# Migration Jobs (trigger manually before deployments)
+  # These jobs have DATABASE_ADMIN_URL with schema modification rights
+  - type: job
+    name: cleverbadge-migrate-staging
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run migrate
+    envVars:
+      - key: DATABASE_ADMIN_URL
+        sync: false  # Set manually with cleverbadge_admin user
+      - key: NODE_ENV
+        value: staging
+
+  - type: job
+    name: cleverbadge-migrate-production
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run migrate
+    envVars:
+      - key: DATABASE_ADMIN_URL
+        sync: false  # Set manually with cleverbadge_admin user
+      - key: NODE_ENV
+        value: production
+
 # Shared Database (with schema isolation)
 databases:
   - name: cleverbadge-db
