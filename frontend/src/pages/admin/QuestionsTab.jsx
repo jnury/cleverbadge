@@ -8,6 +8,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import QuestionForm from './QuestionForm';
 import Modal from '../../components/ui/Modal';
 import YamlUpload from '../../components/YamlUpload';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 
 const QuestionsTab = () => {
   const [questions, setQuestions] = useState([]);
@@ -18,6 +19,7 @@ const QuestionsTab = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [previewQuestion, setPreviewQuestion] = useState(null);
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
 
@@ -177,7 +179,7 @@ const QuestionsTab = () => {
                     )}
                   </div>
 
-                  <p className="text-gray-900 font-medium mb-2">{question.text}</p>
+                  <p className="text-gray-900 font-medium mb-2 font-mono text-sm">{question.text}</p>
 
                   <div className="text-sm text-gray-600">
                     <strong>Options:</strong> {Array.isArray(question.options) ? question.options.join(', ') : JSON.stringify(question.options)}
@@ -188,6 +190,13 @@ const QuestionsTab = () => {
                 </div>
 
                 <div className="flex gap-2 ml-4">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setPreviewQuestion(question)}
+                  >
+                    Preview
+                  </Button>
                   <Button
                     size="sm"
                     variant="secondary"
@@ -208,6 +217,64 @@ const QuestionsTab = () => {
           ))
         )}
       </div>
+
+      {/* Preview Modal */}
+      {previewQuestion && (
+        <Modal
+          isOpen={!!previewQuestion}
+          onClose={() => setPreviewQuestion(null)}
+          title="Question Preview"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                previewQuestion.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+              }`}>
+                {previewQuestion.type}
+              </span>
+              {previewQuestion.tags && previewQuestion.tags.map((tag, index) => (
+                <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="text-xl font-bold text-gray-800 mb-4">
+                <MarkdownRenderer content={previewQuestion.text} />
+              </div>
+
+              <div className="space-y-2">
+                {previewQuestion.options.map((option, index) => {
+                  const isCorrect = previewQuestion.correct_answers.includes(option);
+                  return (
+                    <div
+                      key={index}
+                      className={`p-3 border-2 rounded-lg ${
+                        isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <MarkdownRenderer content={option} />
+                      {isCorrect && (
+                        <span className="text-xs text-green-600 font-semibold ml-2">
+                          ✓ Correct Answer
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setPreviewQuestion(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Create Modal */}
       {isFormOpen && (
