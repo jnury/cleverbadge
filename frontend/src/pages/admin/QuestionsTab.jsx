@@ -7,6 +7,7 @@ import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import QuestionForm from './QuestionForm';
 import Modal from '../../components/ui/Modal';
+import YamlUpload from '../../components/YamlUpload';
 
 const QuestionsTab = () => {
   const [questions, setQuestions] = useState([]);
@@ -76,6 +77,11 @@ const QuestionsTab = () => {
     }
   };
 
+  const handleUploadSuccess = (data) => {
+    showSuccess(`Successfully imported ${data.imported_count} questions`);
+    fetchQuestions();
+  };
+
   const filteredQuestions = questions.filter(q => {
     if (filterType !== 'ALL' && q.type !== filterType) return false;
     if (searchTag && !q.tags?.some(tag => tag.toLowerCase().includes(searchTag.toLowerCase()))) return false;
@@ -97,6 +103,9 @@ const QuestionsTab = () => {
           Create Question
         </Button>
       </div>
+
+      {/* YAML Upload Section */}
+      <YamlUpload onUploadSuccess={handleUploadSuccess} />
 
       {/* Filters */}
       <Card>
