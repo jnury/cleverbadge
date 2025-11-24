@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 const TestLanding = () => {
   const { slug } = useParams();
@@ -95,9 +96,9 @@ const TestLanding = () => {
         </h1>
 
         {test.description && (
-          <p className="text-gray-600 mb-6">
-            {test.description}
-          </p>
+          <div className="text-gray-600 mb-6">
+            <MarkdownRenderer content={test.description} />
+          </div>
         )}
 
         <div className="bg-blue-50 border-l-4 border-tech p-4 mb-6">
