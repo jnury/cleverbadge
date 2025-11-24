@@ -27,7 +27,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    expect(screen.getByText(/Frontend: v0\.4\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Frontend: v0\.7\.0/i)).toBeInTheDocument();
   });
 
   it('fetches and displays backend version', async () => {
