@@ -65,6 +65,17 @@ jobs:
           NODE_ENV: test
         run: npm run test:coverage
 
+      - name: Backend Coverage Summary
+        if: always()
+        run: |
+          echo "## 🧪 Backend Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat backend/coverage/coverage-summary.txt 2>/dev/null || echo "Coverage summary not available" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Full coverage report available in artifacts" >> $GITHUB_STEP_SUMMARY
+
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
         if: always()
@@ -96,6 +107,17 @@ jobs:
       - name: Run frontend unit tests
         working-directory: frontend
         run: npm run test:coverage
+
+      - name: Frontend Coverage Summary
+        if: always()
+        run: |
+          echo "## 🎨 Frontend Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat frontend/coverage/coverage-summary.txt 2>/dev/null || echo "Coverage summary not available" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Full coverage report available in artifacts" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v4
@@ -171,6 +193,20 @@ jobs:
           NODE_ENV: testing
           JWT_SECRET: test-secret-key-for-ci-e2e
         run: npm run test:e2e
+
+      - name: E2E Test Summary
+        if: always()
+        run: |
+          echo "## 🌐 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -d "frontend/test-results" ]; then
+            TEST_COUNT=$(find frontend/test-results -name "*.xml" 2>/dev/null | wc -l || echo "0")
+            echo "✅ E2E tests completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📊 Full test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload Playwright test results
         uses: actions/upload-artifact@v4
