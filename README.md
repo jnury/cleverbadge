@@ -11,6 +11,7 @@ Clever Badge allows administrators to create and manage skills assessment tests,
 - **Candidate Experience**: Take tests via `/t/:slug` links, one question at a time with navigation
 - **Admin Dashboard**: Full UI for managing tests and questions, import questions via YAML, view detailed results and analytics
 - **Question Types**: Single-choice and multiple-choice questions with weighted scoring
+- **Markdown Support**: Code syntax highlighting in questions, options, and descriptions
 - **Analytics**: Per-question success rates to identify difficult questions
 
 ## Tech Stack
