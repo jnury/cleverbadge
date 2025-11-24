@@ -84,14 +84,16 @@ async function seedTestData(sql, schema) {
   const q4Id = '550e8400-e29b-41d4-a716-446655440013';  // Primary colors
   const q5Id = '550e8400-e29b-41d4-a716-446655440014';  // Sky blue
 
+  // Insert questions - q5 and q4 are NOT in any test, so they can be safely deleted
+  // Insert them last so they appear first when ordered by created_at DESC
   await sql.unsafe(`
-    INSERT INTO ${schema}.questions (id, text, type, options, correct_answers, tags)
+    INSERT INTO ${schema}.questions (id, text, type, options, correct_answers, tags, created_at)
     VALUES
-      ('${q1Id}', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]'),
-      ('${q2Id}', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]'),
-      ('${q3Id}', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]'),
-      ('${q4Id}', 'Select all primary colors:', 'MULTIPLE', '["Red", "Green", "Blue", "Yellow"]', '[0, 2, 3]', '["art"]'),
-      ('${q5Id}', 'Is the sky blue?', 'SINGLE', '["Yes", "No"]', '[0]', NULL)
+      ('${q1Id}', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', NOW() - INTERVAL '5 minutes'),
+      ('${q2Id}', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', NOW() - INTERVAL '4 minutes'),
+      ('${q3Id}', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', NOW() - INTERVAL '3 minutes'),
+      ('${q4Id}', 'Select all primary colors:', 'MULTIPLE', '["Red", "Green", "Blue", "Yellow"]', '[0, 2, 3]', '["art"]', NOW() - INTERVAL '2 minutes'),
+      ('${q5Id}', 'Is the sky blue?', 'SINGLE', '["Yes", "No"]', '[0]', NULL, NOW() - INTERVAL '1 minute')
   `);
 
   // Create tests

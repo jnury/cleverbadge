@@ -221,7 +221,7 @@ const QuestionForm = ({ question, onSubmit, onCancel }) => {
         label="Tags (comma-separated)"
         value={formData.tags}
         onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-        placeholder="e.g., math, easy, algebra"
+        placeholder="Enter tags (e.g., math, easy, algebra)"
       />
 
       <div className="flex gap-3 justify-end pt-4">

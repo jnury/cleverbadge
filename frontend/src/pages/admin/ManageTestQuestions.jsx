@@ -87,7 +87,7 @@ const ManageTestQuestions = ({ test, isOpen, onClose, onUpdate }) => {
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Questions: ${test?.title}`} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Manage Questions" size="lg">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}

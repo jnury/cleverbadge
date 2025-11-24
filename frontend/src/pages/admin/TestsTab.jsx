@@ -207,6 +207,7 @@ const TestsTab = () => {
                       size="sm"
                       variant="secondary"
                       onClick={() => setManagingTest(test)}
+                      data-testid="manage-questions-btn"
                     >
                       Questions
                     </Button>

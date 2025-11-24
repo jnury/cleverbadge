@@ -91,9 +91,9 @@ test.describe('Tests Management', () => {
 
   test('should open manage questions modal', async ({ page }) => {
     // Wait for tests to load
-    await page.waitForSelector('button:has-text("Questions")');
+    await page.waitForSelector('[data-testid="manage-questions-btn"]');
 
-    await page.locator('button:has-text("Questions")').first().click();
+    await page.locator('[data-testid="manage-questions-btn"]').first().click();
 
     // Modal should open
     await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
@@ -103,9 +103,9 @@ test.describe('Tests Management', () => {
 
   test('should add and remove question from test', async ({ page }) => {
     // Wait for tests to load
-    await page.waitForSelector('button:has-text("Questions")');
+    await page.waitForSelector('[data-testid="manage-questions-btn"]');
 
-    await page.locator('button:has-text("Questions")').first().click();
+    await page.locator('[data-testid="manage-questions-btn"]').first().click();
 
     // Wait for modal and questions to load
     await page.waitForSelector('select');

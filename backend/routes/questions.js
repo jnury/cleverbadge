@@ -131,6 +131,19 @@ router.delete('/:id',
   handleValidationErrors,
   async (req, res) => {
     try {
+      // Check if question is used in any test
+      const usageCheck = await sql`
+        SELECT test_id FROM ${sql(dbSchema)}.test_questions
+        WHERE question_id = ${req.params.id}
+        LIMIT 1
+      `;
+
+      if (usageCheck.length > 0) {
+        return res.status(409).json({
+          error: 'Cannot delete question that is used in one or more tests. Remove it from all tests first.'
+        });
+      }
+
       const deletedQuestions = await sql`
         DELETE FROM ${sql(dbSchema)}.questions
         WHERE id = ${req.params.id}
