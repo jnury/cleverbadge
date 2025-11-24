@@ -2,27 +2,43 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Markdown Rendering in Questions', () => {
   test.beforeEach(async ({ page }) => {
-    // Assumes test data with markdown questions exists
-    // This will be seeded in a later task
     await page.goto('/t/markdown-test');
     await page.fill('input[placeholder*="name"]', 'Test Candidate');
-    await page.click('button:has-text("Start Test")');
+    await page.click('button:has-text("Start")');
   });
 
   test('renders bold text in question', async ({ page }) => {
-    await expect(page.locator('strong').first()).toBeVisible();
+    const bold = page.locator('.markdown-content strong').first();
+    await expect(bold).toBeVisible();
+    await expect(bold).toHaveText('What does this code do?');
   });
 
-  test('renders inline code in question', async ({ page }) => {
-    await expect(page.locator('code').first()).toBeVisible();
+  test('renders code block with JavaScript syntax highlighting', async ({ page }) => {
+    const codeBlock = page.locator('.markdown-content pre').first();
+    await expect(codeBlock).toBeVisible();
+    await expect(codeBlock).toContainText('const sum');
   });
 
-  test('renders code block with syntax highlighting', async ({ page }) => {
-    await expect(page.locator('.markdown-content pre')).toBeVisible();
+  test('code block has brand color background', async ({ page }) => {
+    const codeBlock = page.locator('.markdown-content pre').first();
+    const bgColor = await codeBlock.evaluate(el =>
+      window.getComputedStyle(el).backgroundColor
+    );
+    // Deep Teal #1D4E5A = rgb(29, 78, 90)
+    expect(bgColor).toBe('rgb(29, 78, 90)');
   });
 
-  test('renders markdown in answer options', async ({ page }) => {
-    const option = page.locator('label').filter({ hasText: '`code`' }).first();
-    await expect(option.locator('code')).toBeVisible();
+  test('renders inline code in options', async ({ page }) => {
+    const option = page.locator('label').filter({ hasText: 'map()' }).first();
+    const code = option.locator('code').first();
+    await expect(code).toBeVisible();
+    await expect(code).toHaveText('map()');
+  });
+
+  test('test landing shows markdown description', async ({ page }) => {
+    await page.goto('/t/markdown-test');
+    const description = page.locator('.markdown-content');
+    await expect(description.locator('strong')).toHaveText('markdown rendering');
+    await expect(description.locator('code')).toHaveText('code syntax');
   });
 });
