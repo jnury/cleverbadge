@@ -110,7 +110,8 @@ services:
 
 # Migration Jobs (trigger manually before deployments)
   # These jobs have DATABASE_ADMIN_URL with schema modification rights
-  - type: job
+  - type: cron
+    schedule: "0 0 31 2 *" # Run once a year on Feb 31st (never) to avoid automatic runs
     name: cleverbadge-migrate-staging
     runtime: node
     rootDir: backend
@@ -122,7 +123,8 @@ services:
       - key: NODE_ENV
         value: staging
 
-  - type: job
+  - type: cron
+    schedule: "0 0 31 2 *" # Run once a year on Feb 31st (never) to avoid automatic runs
     name: cleverbadge-migrate-production
     runtime: node
     rootDir: backend
