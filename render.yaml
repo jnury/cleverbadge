@@ -5,7 +5,6 @@ projects:
       # STAGING ENVIRONMENT
       # =======================================================================
       - name: staging
-        region: frankfurt
         services:
           # Staging Backend Service
           - type: web
@@ -79,7 +78,6 @@ projects:
       # PRODUCTION ENVIRONMENT
       # =======================================================================
       - name: production
-        region: frankfurt
         services:
           # Production Backend Service
           - type: web
@@ -154,13 +152,12 @@ projects:
       # SHARED ENVIRONMENT (Database + Cross-environment jobs)
       # =======================================================================
       - name: shared
-        region: frankfurt
         services:
           # Staging Database Refresh Job (trigger manually)
           # Copies production data to staging EXCEPT users (preserves staging admin accounts)
           - type: cron
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
-            name: cleverbadge-refresh-staging
+            name: cleverbadge-refresh-db
             region: frankfurt
             runtime: node
             rootDir: backend
