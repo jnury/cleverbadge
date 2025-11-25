@@ -20,21 +20,23 @@ if (!connectionString) {
   process.exit(1);
 }
 
+// SSL required for staging/production (Render)
+const requireSSL = nodeEnv === 'staging' || nodeEnv === 'production';
+
 console.log(`🗄️  Running migrations for schema: ${dbSchema}`);
 
 // Create admin connection (no search_path set yet)
 const sql = postgres(connectionString, {
   max: 1,
+  ssl: requireSSL ? { rejectUnauthorized: false } : false,
 });
 
 async function runMigrations() {
   try {
-    // 1. Create schema if it doesn't exist
-    console.log(`📦 Creating schema "${dbSchema}" if it doesn't exist...`);
-    await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS ${dbSchema}`);
-    console.log(`✅ Schema "${dbSchema}" ready`);
+    // Schema must be created by DB init script (scripts/render-db-init.sql)
+    // This script only runs table migrations within the existing schema
 
-    // 2. Get all migration files
+    // 1. Get all migration files
     const migrationsDir = join(__dirname, 'migrations');
     const migrationFiles = readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
@@ -42,7 +44,7 @@ async function runMigrations() {
 
     console.log(`📄 Found ${migrationFiles.length} migration file(s)`);
 
-    // 3. Run each migration
+    // 2. Run each migration
     for (const filename of migrationFiles) {
       console.log(`\n🚀 Running migration: ${filename}`);
       const migrationPath = join(migrationsDir, filename);
@@ -65,7 +67,7 @@ async function runMigrations() {
       }
     }
 
-    // 4. Verify tables were created
+    // 3. Verify tables were created
     console.log(`\n🔍 Verifying tables...`);
     const tables = await sql`
       SELECT table_name

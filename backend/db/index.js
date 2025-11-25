@@ -17,6 +17,9 @@ if (!connectionString) {
 const nodeEnv = process.env.NODE_ENV || 'development';
 const dbSchema = nodeEnv; // development, testing, staging, or production
 
+// SSL required for staging/production (Render)
+const requireSSL = nodeEnv === 'staging' || nodeEnv === 'production';
+
 console.log(`🗄️  Database: Connecting to schema "${dbSchema}" (NODE_ENV=${nodeEnv})`);
 
 // Create PostgreSQL client
@@ -25,6 +28,8 @@ const sql = postgres(connectionString, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
+  // SSL for Render deployments
+  ssl: requireSSL ? { rejectUnauthorized: false } : false,
 });
 
 // Test the connection

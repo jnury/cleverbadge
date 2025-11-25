@@ -52,7 +52,8 @@ async function refreshStaging() {
 
   const sql = postgres(connectionString, {
     max: 1,
-    onnotice: () => {} // Suppress notices
+    onnotice: () => {}, // Suppress notices
+    ssl: { rejectUnauthorized: false }, // Required for Render
   });
 
   try {
