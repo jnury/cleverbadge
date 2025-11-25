@@ -143,9 +143,9 @@ npm run test:coverage    # Coverage report
 
 **Backend:**
 ```bash
-npm run dev          # Start with nodemon
+npm run dev          # Start with nodemon (auto-creates default admin if none exists)
 npm run migrate      # Run SQL migrations to create/update schema
-npm run create-admin # Create admin user
+npm run refresh_db   # Sync staging from production (requires DATABASE_REFRESH_URL)
 ```
 
 **Frontend:**
@@ -153,6 +153,11 @@ npm run create-admin # Create admin user
 npm run dev          # Start Vite dev server
 npm run build        # Production build
 ```
+
+**Default Admin:** On startup, if no admin user exists, the backend automatically creates one:
+- Username: `admin`
+- Password: `CleverPassword`
+- **Change this password after first login!**
 
 ## Environment Variables & Multi-Environment Setup
 
@@ -220,11 +225,6 @@ npm run build        # Production build
 curl -X POST http://localhost:3000/api/questions/import \
   -H "Authorization: Bearer TOKEN" \
   -F "file=@questions.yaml"
-```
-
-**Create admin user:**
-```bash
-cd backend && npm run create-admin
 ```
 
 **See `docs/IMPLEMENTATION.md` for detailed implementation steps.**

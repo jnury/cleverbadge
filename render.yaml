@@ -1,144 +1,180 @@
-services:
-  # Staging Backend Service
-  - type: web
-    name: cleverbadge-backend-staging
-    branch: staging
-    runtime: node
-    plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node index.js
-    domains:
-      - api-staging.cleverbadge.com
-    envVars:
-      - key: DATABASE_URL
-        sync: false  # Set manually with cleverbadge_staging user
-      - key: NODE_ENV
-        value: staging
-      - key: JWT_SECRET
-        sync: false  # Set manually in Render dashboard
-      - key: PORT
-        value: 3000
+projects:
+  - name: Clever Badge
+    environments:
+      # =======================================================================
+      # STAGING ENVIRONMENT
+      # =======================================================================
+      - name: staging
+        region: frankfurt
+        services:
+          # Staging Backend Service
+          - type: web
+            name: cleverbadge-backend-staging
+            region: frankfurt
+            branch: staging
+            runtime: node
+            plan: free
+            rootDir: backend
+            buildCommand: npm install
+            startCommand: node index.js
+            domains:
+              - api-staging.cleverbadge.com
+            envVars:
+              - key: DATABASE_URL
+                sync: false  # Set manually with cleverbadge_staging user
+              - key: NODE_ENV
+                value: staging
+              - key: JWT_SECRET
+                sync: false  # Set manually in Render dashboard
 
-  # Production Backend Service
-  - type: web
-    name: cleverbadge-backend-production
-    branch: main
-    runtime: node
-    plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node index.js
-    domains:
-      - api.cleverbadge.com
-    envVars:
-      - key: DATABASE_URL
-        sync: false  # Set manually with cleverbadge_prod user
-      - key: NODE_ENV
-        value: production
-      - key: JWT_SECRET
-        sync: false  # Set manually in Render dashboard
-      - key: PORT
-        value: 3000
+          # Staging Frontend Service
+          - type: web
+            name: cleverbadge-frontend-staging
+            branch: staging
+            runtime: static
+            rootDir: frontend
+            buildCommand: npm ci && npm run build
+            staticPublishPath: ./dist
+            domains:
+              - staging.cleverbadge.com
+            envVars:
+              - key: VITE_API_URL
+                value: https://api-staging.cleverbadge.com
+              - key: VITE_ENV
+                value: staging
+            routes:
+              - type: rewrite
+                source: /*
+                destination: /index.html
+            headers:
+              - path: /*
+                name: X-Frame-Options
+                value: DENY
+              - path: /*
+                name: X-Content-Type-Options
+                value: nosniff
+              - path: /*
+                name: X-XSS-Protection
+                value: "1; mode=block"
+              - path: /*
+                name: Referrer-Policy
+                value: strict-origin-when-cross-origin
 
-  # Staging Frontend Service
-  - type: web
-    name: cleverbadge-frontend-staging
-    branch: staging
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    domains:
-      - staging.cleverbadge.com
-    envVars:
-      - key: VITE_API_URL
-        value: https://api-staging.cleverbadge.com
-      - key: VITE_ENV
-        value: staging
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-XSS-Protection
-        value: "1; mode=block"
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+          # Staging Migration Job (trigger manually before deployments)
+          - type: cron
+            schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
+            name: cleverbadge-migrate-staging
+            region: frankfurt
+            runtime: node
+            rootDir: backend
+            buildCommand: npm install
+            startCommand: npm run migrate
+            envVars:
+              - key: DATABASE_ADMIN_URL
+                sync: false  # Set manually with cleverbadge_staging_admin user
+              - key: NODE_ENV
+                value: staging
 
-  # Production Frontend Service
-  - type: web
-    name: cleverbadge-frontend-production
-    branch: main
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    domains:
-      - cleverbadge.com
-      - www.cleverbadge.com
-    envVars:
-      - key: VITE_API_URL
-        value: https://api.cleverbadge.com
-      - key: VITE_ENV
-        value: production
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-XSS-Protection
-        value: "1; mode=block"
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+      # =======================================================================
+      # PRODUCTION ENVIRONMENT
+      # =======================================================================
+      - name: production
+        region: frankfurt
+        services:
+          # Production Backend Service
+          - type: web
+            name: cleverbadge-backend-production
+            region: frankfurt
+            branch: main
+            runtime: node
+            plan: free
+            rootDir: backend
+            buildCommand: npm install
+            startCommand: node index.js
+            domains:
+              - api.cleverbadge.com
+            envVars:
+              - key: DATABASE_URL
+                sync: false  # Set manually with cleverbadge_prod user
+              - key: NODE_ENV
+                value: production
+              - key: JWT_SECRET
+                sync: false  # Set manually in Render dashboard
 
-# Migration Jobs (trigger manually before deployments)
-  # These jobs have DATABASE_ADMIN_URL with schema modification rights
-  - type: cron
-    schedule: "0 0 31 2 *" # Run once a year on Feb 31st (never) to avoid automatic runs
-    name: cleverbadge-migrate-staging
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm run migrate
-    envVars:
-      - key: DATABASE_ADMIN_URL
-        sync: false  # Set manually with cleverbadge_admin user
-      - key: NODE_ENV
-        value: staging
+          # Production Frontend Service
+          - type: web
+            name: cleverbadge-frontend-production
+            branch: main
+            runtime: static
+            rootDir: frontend
+            buildCommand: npm ci && npm run build
+            staticPublishPath: ./dist
+            domains:
+              - cleverbadge.com
+              - www.cleverbadge.com
+            envVars:
+              - key: VITE_API_URL
+                value: https://api.cleverbadge.com
+              - key: VITE_ENV
+                value: production
+            routes:
+              - type: rewrite
+                source: /*
+                destination: /index.html
+            headers:
+              - path: /*
+                name: X-Frame-Options
+                value: DENY
+              - path: /*
+                name: X-Content-Type-Options
+                value: nosniff
+              - path: /*
+                name: X-XSS-Protection
+                value: "1; mode=block"
+              - path: /*
+                name: Referrer-Policy
+                value: strict-origin-when-cross-origin
 
-  - type: cron
-    schedule: "0 0 31 2 *" # Run once a year on Feb 31st (never) to avoid automatic runs
-    name: cleverbadge-migrate-production
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm run migrate
-    envVars:
-      - key: DATABASE_ADMIN_URL
-        sync: false  # Set manually with cleverbadge_admin user
-      - key: NODE_ENV
-        value: production
+          # Production Migration Job (trigger manually before deployments)
+          - type: cron
+            schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
+            name: cleverbadge-migrate-production
+            region: frankfurt
+            runtime: node
+            rootDir: backend
+            buildCommand: npm install
+            startCommand: npm run migrate
+            envVars:
+              - key: DATABASE_ADMIN_URL
+                sync: false  # Set manually with cleverbadge_prod_admin user
+              - key: NODE_ENV
+                value: production
 
-# Shared Database (with schema isolation)
-databases:
-  - name: cleverbadge-db
-    databaseName: cleverbadge
-    user: cleverbadge_superuser
-    plan: free
+      # =======================================================================
+      # SHARED ENVIRONMENT (Database + Cross-environment jobs)
+      # =======================================================================
+      - name: shared
+        region: frankfurt
+        services:
+          # Staging Database Refresh Job (trigger manually)
+          # Copies production data to staging EXCEPT users (preserves staging admin accounts)
+          - type: cron
+            schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
+            name: cleverbadge-refresh-staging
+            region: frankfurt
+            runtime: node
+            rootDir: backend
+            buildCommand: npm install
+            startCommand: npm run refresh_db
+            envVars:
+              - key: DATABASE_REFRESH_URL
+                sync: false  # Set manually with cleverbadge_refresh user
+
+        databases:
+          # Shared PostgreSQL Database (with schema isolation)
+          # Uses staging/production schemas within the same database
+          - name: cleverbadge-db
+            region: frankfurt
+            databaseName: cleverbadge
+            user: cleverbadge_superuser
+            plan: free

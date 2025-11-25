@@ -6,6 +6,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { sql } from './db/index.js';
+import { ensureDefaultAdmin } from './db/init.js';
 import authRouter from './routes/auth.js';
 import questionsRouter from './routes/questions.js';
 import testsRouter from './routes/tests.js';
@@ -43,7 +44,7 @@ app.use('/api/tests', testsRouter);
 app.use('/api/tests', analyticsRouter); // Mount analytics under /api/tests
 app.use('/api/assessments', assessmentsRouter);
 
-// Test database connection on startup
+// Test database connection on startup and ensure default admin exists
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Environment: ${NODE_ENV}`);
@@ -52,6 +53,9 @@ app.listen(PORT, async () => {
   try {
     await sql`SELECT 1 as test`;
     console.log('✅ Database connected successfully');
+
+    // Ensure default admin user exists
+    await ensureDefaultAdmin();
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
   }

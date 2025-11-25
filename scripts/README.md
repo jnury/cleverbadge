@@ -1,3 +1,117 @@
+# Scripts
+
+This folder contains two types of scripts:
+1. **Local Testing Scripts** - Replicate CI environment for local testing
+2. **Render Database Scripts** - Initialize and manage the Render PostgreSQL database
+
+---
+
+# Render Database Scripts
+
+Scripts for managing the PostgreSQL database on Render.com deployment.
+
+## render-db-init.sql
+
+**One-time initialization script** that creates the complete database infrastructure:
+
+### What it creates:
+
+**Schemas:**
+- `staging` - Staging environment (mirrors production for testing)
+- `production` - Production environment (live data)
+
+**Users:**
+
+| User | Purpose | Privileges |
+|------|---------|------------|
+| `cleverbadge_staging` | Runtime (staging app) | SELECT, INSERT, UPDATE, DELETE on staging tables |
+| `cleverbadge_staging_admin` | Migrations (staging) | Full DDL: CREATE, ALTER, DROP tables in staging |
+| `cleverbadge_prod` | Runtime (production app) | SELECT, INSERT, UPDATE, DELETE on production tables |
+| `cleverbadge_prod_admin` | Migrations (production) | Full DDL: CREATE, ALTER, DROP tables in production |
+| `cleverbadge_refresh` | Sync staging from prod | SELECT on production + TRUNCATE/INSERT on staging |
+
+### Usage:
+
+1. **Edit passwords** at the top of the script (change all `CHANGE_ME_*` values)
+2. Connect to Render PostgreSQL as the database owner
+3. Run the script:
+
+```bash
+psql -h <render-host> -U <render-owner> -d <dbname> -f scripts/render-db-init.sql
+```
+
+### Connection Strings (after setup):
+
+```
+# Staging Runtime (NODE_ENV=staging)
+DATABASE_URL=postgresql://cleverbadge_staging:<pwd>@<host>:5432/<db>
+
+# Staging Admin (migrations)
+DATABASE_ADMIN_URL=postgresql://cleverbadge_staging_admin:<pwd>@<host>:5432/<db>
+
+# Production Runtime (NODE_ENV=production)
+DATABASE_URL=postgresql://cleverbadge_prod:<pwd>@<host>:5432/<db>
+
+# Production Admin (migrations)
+DATABASE_ADMIN_URL=postgresql://cleverbadge_prod_admin:<pwd>@<host>:5432/<db>
+```
+
+---
+
+## refresh-staging.sql
+
+**Sync staging from production (SQL version)** - Performs a full replace of ALL staging data with production data, including users.
+
+### What it does:
+
+1. Disables triggers on staging tables (for FK constraints)
+2. TRUNCATES all staging tables
+3. Copies all data from production to staging
+4. Re-enables triggers
+5. Verifies row counts match
+
+### Usage:
+
+```bash
+PGPASSWORD=<refresh_pwd> psql -h <render-host> -U cleverbadge_refresh -d <dbname> -f scripts/refresh-staging.sql
+```
+
+---
+
+## npm run refresh_db (Recommended)
+
+**Sync staging from production (Node.js version)** - Same as above but **preserves staging users**.
+
+This is the recommended method as it keeps your staging admin accounts intact.
+
+### What it does:
+
+1. Disables triggers on staging tables
+2. TRUNCATES staging tables **EXCEPT users**
+3. Copies data from production **EXCEPT users**
+4. Re-enables triggers
+5. Verifies row counts match
+
+### Usage:
+
+```bash
+cd backend
+DATABASE_REFRESH_URL=postgresql://cleverbadge_refresh:<pwd>@<host>:5432/<db> npm run refresh_db
+```
+
+### Environment Variable:
+
+- `DATABASE_REFRESH_URL` - Connection string for the `cleverbadge_refresh` user
+
+### When to use:
+
+- Before testing new features on staging
+- After major production data changes
+- To reset staging to a known state
+- When you want to keep staging admin accounts separate from production
+
+---
+
 # Local Testing Scripts
 
 These scripts replicate the **exact environment** used by GitHub Actions CI. Each script is **fully self-contained** - it starts a PostgreSQL container, runs tests, and cleans up automatically.
