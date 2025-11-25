@@ -18,11 +18,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Middleware
+// Middleware - CORS configuration based on environment
+const corsOrigins = {
+  production: ['https://cleverbadge.com', 'https://www.cleverbadge.com'],
+  staging: ['https://staging.cleverbadge.com'],
+  development: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  testing: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+};
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://cleverbadge.com'
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']
+  origin: corsOrigins[NODE_ENV] || corsOrigins.development
 }));
 app.use(express.json());
 
