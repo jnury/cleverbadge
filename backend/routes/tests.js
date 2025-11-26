@@ -2,6 +2,8 @@ import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { generateRandomSlug } from '../utils/slug.js';
+import { canChangeTestVisibility, getIncompatibleQuestions, canQuestionBeInTest } from '../utils/visibility.js';
 
 const router = express.Router();
 
@@ -13,6 +15,26 @@ const handleValidationErrors = (req, res, next) => {
   }
   next();
 };
+
+// Valid visibility values
+const VALID_VISIBILITIES = ['public', 'private', 'protected'];
+
+/**
+ * Generate a unique slug, retrying if collision occurs
+ */
+async function generateUniqueSlug() {
+  const maxAttempts = 10;
+  for (let i = 0; i < maxAttempts; i++) {
+    const slug = generateRandomSlug();
+    const existing = await sql`
+      SELECT id FROM ${sql(dbSchema)}.tests WHERE slug = ${slug}
+    `;
+    if (existing.length === 0) {
+      return slug;
+    }
+  }
+  throw new Error('Failed to generate unique slug after maximum attempts');
+}
 
 // GET all tests
 router.get('/', authenticateToken, async (req, res) => {
@@ -44,15 +66,17 @@ router.get('/:id',
         return res.status(404).json({ error: 'Test not found' });
       }
 
-      // Get questions for this test
+      // Get questions for this test (with visibility)
       const testQuestionsData = await sql`
         SELECT
           tq.question_id,
           tq.weight,
+          q.title,
           q.text,
           q.type,
           q.options,
-          q.tags
+          q.tags,
+          q.visibility
         FROM ${sql(dbSchema)}.test_questions tq
         INNER JOIN ${sql(dbSchema)}.questions q ON tq.question_id = q.id
         WHERE tq.test_id = ${req.params.id}
@@ -90,6 +114,14 @@ router.get('/slug/:slug',
         });
       }
 
+      // Check visibility - protected tests require login (v2)
+      if (test.visibility === 'protected') {
+        return res.status(403).json({
+          error: 'Access restricted. This test requires authentication.',
+          code: 'PROTECTED_TEST'
+        });
+      }
+
       // Count questions
       const questionCountResult = await sql`
         SELECT COUNT(*) as count
@@ -102,6 +134,7 @@ router.get('/slug/:slug',
         title: test.title,
         description: test.description,
         slug: test.slug,
+        visibility: test.visibility,
         question_count: parseInt(questionCountResult[0].count)
       });
     } catch (error) {
@@ -111,32 +144,30 @@ router.get('/slug/:slug',
   }
 );
 
-// POST create test
+// POST create test (slug is auto-generated)
 router.post('/',
   authenticateToken,
   body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
   body('description').optional().isString().withMessage('Description must be a string'),
-  body('slug').notEmpty().withMessage('Slug is required').isString().withMessage('Slug must be a string')
-    .matches(/^[a-z0-9-]+$/).withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
   body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, slug, is_enabled, pass_threshold } = req.body;
+      const { title, description, visibility = 'private', is_enabled, pass_threshold } = req.body;
+
+      // Generate unique random slug
+      const slug = await generateUniqueSlug();
 
       const newTests = await sql`
-        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, is_enabled, pass_threshold)
-        VALUES (${title}, ${description || null}, ${slug}, ${is_enabled ?? false}, ${pass_threshold ?? 0})
+        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, visibility, is_enabled, pass_threshold)
+        VALUES (${title}, ${description || null}, ${slug}, ${visibility}, ${is_enabled ?? false}, ${pass_threshold ?? 0})
         RETURNING *
       `;
 
       res.status(201).json(newTests[0]);
     } catch (error) {
-      // Check for unique constraint violation on slug
-      if (error.code === '23505') {
-        return res.status(409).json({ error: 'Test with this slug already exists' });
-      }
       console.error('Error creating test:', error);
       res.status(500).json({ error: 'Failed to create test' });
     }
@@ -149,33 +180,104 @@ router.put('/:id',
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
   body('description').optional().isString().withMessage('Description must be a string'),
+  body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
   body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, is_enabled, pass_threshold } = req.body;
+      const { title, description, visibility, is_enabled, pass_threshold } = req.body;
+
+      // Get current test
+      const currentTests = await sql`
+        SELECT * FROM ${sql(dbSchema)}.tests WHERE id = ${req.params.id}
+      `;
+
+      if (currentTests.length === 0) {
+        return res.status(404).json({ error: 'Test not found' });
+      }
+
+      const currentTest = currentTests[0];
+
+      // If visibility is changing, check compatibility with existing questions
+      if (visibility && visibility !== currentTest.visibility) {
+        const questionsInTest = await sql`
+          SELECT q.id, q.title, q.visibility
+          FROM ${sql(dbSchema)}.test_questions tq
+          INNER JOIN ${sql(dbSchema)}.questions q ON tq.question_id = q.id
+          WHERE tq.test_id = ${req.params.id}
+        `;
+
+        const canChange = canChangeTestVisibility(currentTest.visibility, visibility, questionsInTest);
+
+        if (!canChange.allowed) {
+          const questionTitles = canChange.blockedBy.map(q => q.title).join(', ');
+          return res.status(400).json({
+            error: `Cannot change test to ${visibility}: it contains incompatible questions: ${questionTitles}`,
+            blockedBy: canChange.blockedBy
+          });
+        }
+      }
 
       const updatedTests = await sql`
         UPDATE ${sql(dbSchema)}.tests
         SET
           title = ${title},
           description = ${description},
-          is_enabled = ${is_enabled},
-          pass_threshold = ${pass_threshold !== undefined ? pass_threshold : sql`pass_threshold`},
+          visibility = ${visibility || currentTest.visibility},
+          is_enabled = ${is_enabled !== undefined ? is_enabled : currentTest.is_enabled},
+          pass_threshold = ${pass_threshold !== undefined ? pass_threshold : currentTest.pass_threshold},
           updated_at = NOW()
         WHERE id = ${req.params.id}
         RETURNING *
       `;
 
-      if (updatedTests.length === 0) {
-        return res.status(404).json({ error: 'Test not found' });
-      }
-
       res.json(updatedTests[0]);
     } catch (error) {
       console.error('Error updating test:', error);
       res.status(500).json({ error: 'Failed to update test' });
+    }
+  }
+);
+
+// POST regenerate test slug
+router.post('/:id/regenerate-slug',
+  authenticateToken,
+  param('id').isUUID().withMessage('ID must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      // Verify test exists
+      const tests = await sql`
+        SELECT * FROM ${sql(dbSchema)}.tests WHERE id = ${req.params.id}
+      `;
+
+      if (tests.length === 0) {
+        return res.status(404).json({ error: 'Test not found' });
+      }
+
+      const oldSlug = tests[0].slug;
+
+      // Generate new unique slug
+      const newSlug = await generateUniqueSlug();
+
+      // Update test
+      const updatedTests = await sql`
+        UPDATE ${sql(dbSchema)}.tests
+        SET slug = ${newSlug}, updated_at = NOW()
+        WHERE id = ${req.params.id}
+        RETURNING *
+      `;
+
+      res.json({
+        message: 'Slug regenerated successfully',
+        old_slug: oldSlug,
+        new_slug: newSlug,
+        test: updatedTests[0]
+      });
+    } catch (error) {
+      console.error('Error regenerating slug:', error);
+      res.status(500).json({ error: 'Failed to regenerate slug' });
     }
   }
 );
@@ -230,7 +332,7 @@ router.get('/:testId/questions',
   }
 );
 
-// POST add questions to test
+// POST add questions to test (with visibility check)
 router.post('/:id/questions',
   authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
@@ -242,7 +344,7 @@ router.post('/:id/questions',
     try {
       const { questions } = req.body;
 
-      // Verify test exists
+      // Get test with visibility
       const tests = await sql`
         SELECT * FROM ${sql(dbSchema)}.tests
         WHERE id = ${req.params.id}
@@ -250,6 +352,29 @@ router.post('/:id/questions',
 
       if (tests.length === 0) {
         return res.status(404).json({ error: 'Test not found' });
+      }
+
+      const test = tests[0];
+
+      // Get questions to check visibility
+      const questionIds = questions.map(q => q.question_id);
+      const questionDetails = await sql`
+        SELECT id, title, visibility
+        FROM ${sql(dbSchema)}.questions
+        WHERE id = ANY(${questionIds})
+      `;
+
+      // Check visibility compatibility
+      const incompatible = questionDetails.filter(q =>
+        !canQuestionBeInTest(q.visibility, test.visibility)
+      );
+
+      if (incompatible.length > 0) {
+        const questionTitles = incompatible.map(q => q.title).join(', ');
+        return res.status(400).json({
+          error: `Cannot add questions to ${test.visibility} test: incompatible visibility for: ${questionTitles}`,
+          incompatible: incompatible.map(q => ({ id: q.id, title: q.title, visibility: q.visibility }))
+        });
       }
 
       // Build values array for bulk insert
