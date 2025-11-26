@@ -3,14 +3,18 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const EXAMPLE_YAML = `# Example YAML format - root array of questions
-- text: "What is 2+2?"
+- title: "Basic Addition"
+  text: "What is 2+2?"
   type: "SINGLE"
+  visibility: "public"
   options: ["3", "4", "5", "6"]
   correct_answers: ["4"]
   tags: ["math", "easy"]
 
-- text: "Select all prime numbers"
+- title: "Prime Numbers Selection"
+  text: "Select all prime numbers"
   type: "MULTIPLE"
+  visibility: "private"
   options: ["2", "3", "4", "5"]
   correct_answers: ["2", "3", "5"]
   tags: ["math"]`;
@@ -397,14 +401,31 @@ const YamlUpload = ({ onUploadSuccess }) => {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-blue-900 mb-2">
-                  The file must contain a root-level array of questions, where each question has:
+                  The file must contain a root-level array of questions. Each question has:
+                </p>
+                <p className="text-sm text-blue-900 font-medium mt-3 mb-1">Required fields:</p>
+                <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">title</code> - Short descriptive title (1-200 chars, unique per author)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">text</code> - The question text (10-1000 chars, supports Markdown)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">type</code> - Either "SINGLE" or "MULTIPLE"</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">options</code> - Array of answer choices (2-10 options)</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">correct_answers</code> - Array of correct options</li>
+                </ul>
+                <p className="text-sm text-blue-900 font-medium mt-3 mb-1">Optional fields:</p>
+                <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">visibility</code> - "public", "private" (default), or "protected"</li>
+                  <li><code className="bg-blue-100 px-1 rounded font-mono">tags</code> - Array of category tags</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="text-sm text-blue-900 font-medium mb-2">
+                  Visibility levels:
                 </p>
                 <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">text</code> - The question text (required)</li>
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">type</code> - Either "SINGLE" or "MULTIPLE" (required)</li>
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">options</code> - Array of answer choices (required, min 2)</li>
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">correct_answers</code> - Array of correct options (required)</li>
-                  <li><code className="bg-blue-100 px-1 rounded font-mono">tags</code> - Array of category tags (optional)</li>
+                  <li><strong>public</strong> - Can be used in any test</li>
+                  <li><strong>private</strong> - Only usable in private/protected tests (default)</li>
+                  <li><strong>protected</strong> - Only usable in protected tests</li>
                 </ul>
               </div>
 
@@ -414,14 +435,18 @@ const YamlUpload = ({ onUploadSuccess }) => {
                 </p>
                 <pre className="text-xs text-blue-800 overflow-x-auto bg-white p-3 rounded border border-blue-100">
 {`# Root-level array of questions
-- text: "What is 2+2?"
+- title: "Basic Addition"
+  text: "What is 2+2?"
   type: "SINGLE"
+  visibility: "public"
   options: ["3", "4", "5", "6"]
   correct_answers: ["4"]
   tags: ["math", "easy"]
 
-- text: "Select all prime numbers"
+- title: "Prime Numbers Selection"
+  text: "Select all prime numbers"
   type: "MULTIPLE"
+  visibility: "private"
   options: ["2", "3", "4", "5"]
   correct_answers: ["2", "3", "5"]
   tags: ["math"]`}
@@ -430,7 +455,7 @@ const YamlUpload = ({ onUploadSuccess }) => {
 
               <div className="bg-blue-100 border border-blue-300 rounded p-3">
                 <p className="text-sm text-blue-900">
-                  <strong>Tip:</strong> Download our <a href="/questions-example.yaml" download className="text-blue-700 underline hover:text-blue-900 font-medium">example YAML file</a> with 16 diverse sample questions to get started.
+                  <strong>Tip:</strong> Download our <a href="/questions-example.yaml" download className="text-blue-700 underline hover:text-blue-900 font-medium">example YAML file</a> with 16 sample questions covering all visibility levels.
                 </p>
               </div>
             </div>
