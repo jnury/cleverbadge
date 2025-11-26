@@ -6,6 +6,9 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Valid visibility values
+const VALID_VISIBILITIES = ['public', 'private', 'protected'];
+
 // Configure multer for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -45,6 +48,9 @@ router.post('/import', authenticateToken, (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    // Get author_id from authenticated user
+    const author_id = req.user.id;
+
     // Parse YAML
     let parsedData;
     try {
@@ -67,18 +73,39 @@ router.post('/import', authenticateToken, (req, res, next) => {
     // Validate each question
     const errors = [];
     const validQuestions = [];
+    const titlesInBatch = new Set();
 
     parsedData.forEach((q, index) => {
       const questionNum = index + 1;
       const errs = [];
 
-      // Required fields
+      // Required: title
+      if (!q.title || typeof q.title !== 'string') {
+        errs.push(`Question ${questionNum}: 'title' is required and must be a string`);
+      } else if (q.title.length > 200) {
+        errs.push(`Question ${questionNum}: 'title' must be 200 characters or less`);
+      } else if (titlesInBatch.has(q.title.toLowerCase())) {
+        errs.push(`Question ${questionNum}: duplicate 'title' in this import batch: "${q.title}"`);
+      } else {
+        titlesInBatch.add(q.title.toLowerCase());
+      }
+
+      // Required: text
       if (!q.text || typeof q.text !== 'string') {
         errs.push(`Question ${questionNum}: 'text' is required and must be a string`);
       }
+
+      // Required: type
       if (!q.type || !['SINGLE', 'MULTIPLE'].includes(q.type)) {
         errs.push(`Question ${questionNum}: 'type' must be either 'SINGLE' or 'MULTIPLE'`);
       }
+
+      // Optional: visibility
+      if (q.visibility && !VALID_VISIBILITIES.includes(q.visibility)) {
+        errs.push(`Question ${questionNum}: 'visibility' must be 'public', 'private', or 'protected'`);
+      }
+
+      // Required: options
       if (!Array.isArray(q.options) || q.options.length < 2) {
         errs.push(`Question ${questionNum}: 'options' must be an array with at least 2 items`);
       } else {
@@ -88,6 +115,8 @@ router.post('/import', authenticateToken, (req, res, next) => {
           errs.push(`Question ${questionNum}: all 'options' must be strings`);
         }
       }
+
+      // Required: correct_answers
       if (!Array.isArray(q.correct_answers) || q.correct_answers.length === 0) {
         errs.push(`Question ${questionNum}: 'correct_answers' must be a non-empty array`);
       } else {
@@ -119,11 +148,14 @@ router.post('/import', authenticateToken, (req, res, next) => {
         errors.push(...errs);
       } else {
         validQuestions.push({
+          title: q.title.trim(),
           text: q.text.trim(),
           type: q.type,
+          visibility: q.visibility || 'private',
           options: q.options,
           correct_answers: q.correct_answers,
-          tags: q.tags || []
+          tags: q.tags || [],
+          author_id
         });
       }
     });
@@ -142,8 +174,8 @@ router.post('/import', authenticateToken, (req, res, next) => {
       const results = [];
       for (const question of validQuestions) {
         const [insertedQuestion] = await sql`
-          INSERT INTO ${sql(dbSchema)}.questions (text, type, options, correct_answers, tags)
-          VALUES (${question.text}, ${question.type}, ${question.options}, ${question.correct_answers}, ${question.tags})
+          INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, correct_answers, tags, author_id)
+          VALUES (${question.title}, ${question.text}, ${question.type}, ${question.visibility}, ${question.options}, ${question.correct_answers}, ${question.tags}, ${question.author_id})
           RETURNING *
         `;
         results.push(insertedQuestion);
@@ -158,6 +190,12 @@ router.post('/import', authenticateToken, (req, res, next) => {
     });
 
   } catch (error) {
+    // Check for unique constraint violation (author_id, title)
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'Import failed: one or more question titles already exist for this author'
+      });
+    }
     console.error('Error importing questions:', error);
     res.status(500).json({ error: 'Failed to import questions' });
   }
