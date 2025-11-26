@@ -95,10 +95,10 @@ router.post('/start',
         });
       }
 
-      // Create assessment
+      // Create assessment with access_slug
       const assessments = await sql`
-        INSERT INTO ${sql(dbSchema)}.assessments (test_id, candidate_name, status)
-        VALUES (${test_id}, ${candidate_name}, 'STARTED')
+        INSERT INTO ${sql(dbSchema)}.assessments (test_id, candidate_name, status, access_slug)
+        VALUES (${test_id}, ${candidate_name}, 'STARTED', ${test.slug})
         RETURNING *
       `;
 
