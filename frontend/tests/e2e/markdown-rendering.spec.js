@@ -1,19 +1,38 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Markdown Rendering in Questions', () => {
-  test.beforeEach(async ({ page }) => {
+  // Helper function to navigate to a specific question by going through the test
+  const navigateToMarkdownQuestion = async (page) => {
     await page.goto('/t/markdown-test');
     await page.fill('input#name', 'Test Candidate');
     await page.click('button:has-text("Start Test")');
-  });
+
+    // Navigate through questions until we find the markdown question with code block
+    for (let i = 0; i < 5; i++) {
+      const codeBlock = page.locator('.markdown-content code').filter({ hasText: 'const sum' });
+      if (await codeBlock.count() > 0) {
+        return; // Found the markdown question
+      }
+      // Try to go to next question if available
+      const nextButton = page.locator('button:has-text("Next")');
+      if (await nextButton.count() > 0 && await nextButton.isEnabled()) {
+        await nextButton.click();
+        await page.waitForTimeout(300);
+      } else {
+        break;
+      }
+    }
+  };
 
   test('renders bold text in question', async ({ page }) => {
+    await navigateToMarkdownQuestion(page);
     const bold = page.locator('.markdown-content strong').first();
     await expect(bold).toBeVisible();
     await expect(bold).toHaveText('What does this code do?');
   });
 
   test('renders code block with JavaScript syntax highlighting', async ({ page }) => {
+    await navigateToMarkdownQuestion(page);
     // SyntaxHighlighter renders code blocks - look for code element containing the snippet
     const codeBlock = page.locator('.markdown-content code').filter({ hasText: 'const sum' }).first();
     await expect(codeBlock).toBeVisible();
@@ -21,6 +40,7 @@ test.describe('Markdown Rendering in Questions', () => {
   });
 
   test('code block has brand color background', async ({ page }) => {
+    await navigateToMarkdownQuestion(page);
     // SyntaxHighlighter renders code blocks with the const sum content - find that specific code element
     const codeBlock = page.locator('.markdown-content code').filter({ hasText: 'const sum' }).first();
     const bgColor = await codeBlock.evaluate(el => {
@@ -38,10 +58,12 @@ test.describe('Markdown Rendering in Questions', () => {
   });
 
   test('renders inline code in options', async ({ page }) => {
-    const option = page.locator('label').filter({ hasText: 'map()' }).first();
+    await navigateToMarkdownQuestion(page);
+    // The markdown question has options with inline code like `reduce()`
+    const option = page.locator('label').filter({ hasText: 'reduce()' }).first();
     const code = option.locator('code').first();
     await expect(code).toBeVisible();
-    await expect(code).toHaveText('map()');
+    await expect(code).toHaveText('reduce()');
   });
 
   test('test landing shows markdown description', async ({ page }) => {

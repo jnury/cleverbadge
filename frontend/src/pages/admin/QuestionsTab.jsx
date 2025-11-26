@@ -14,6 +14,9 @@ const QuestionsTab = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('ALL');
+  const [filterVisibility, setFilterVisibility] = useState('ALL');
+  const [filterAuthor, setFilterAuthor] = useState('ALL');
+  const [authors, setAuthors] = useState([]);
   const [searchTag, setSearchTag] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -26,6 +29,7 @@ const QuestionsTab = () => {
 
   useEffect(() => {
     fetchQuestions();
+    fetchAuthors();
   }, []);
 
   const fetchQuestions = async () => {
@@ -37,6 +41,16 @@ const QuestionsTab = () => {
       showError('Failed to load questions');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAuthors = async () => {
+    try {
+      const data = await apiRequest('/api/questions/authors');
+      setAuthors(data.authors || []);
+    } catch (error) {
+      // Silent fail - authors filter just won't work
+      console.error('Failed to load authors:', error);
     }
   };
 
@@ -87,8 +101,24 @@ const QuestionsTab = () => {
     fetchQuestions();
   };
 
+  const getVisibilityBadge = (visibility) => {
+    const badges = {
+      public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
+      private: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Private' },
+      protected: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Protected' }
+    };
+    const badge = badges[visibility] || badges.private;
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded ${badge.bg} ${badge.text}`}>
+        {badge.label}
+      </span>
+    );
+  };
+
   const filteredQuestions = questions.filter(q => {
     if (filterType !== 'ALL' && q.type !== filterType) return false;
+    if (filterVisibility !== 'ALL' && q.visibility !== filterVisibility) return false;
+    if (filterAuthor !== 'ALL' && q.author_id !== filterAuthor) return false;
     if (searchTag && !q.tags?.some(tag => tag.toLowerCase().includes(searchTag.toLowerCase()))) return false;
     return true;
   });
@@ -119,7 +149,7 @@ const QuestionsTab = () => {
 
       {/* Filters */}
       <Card>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
             <select
@@ -130,6 +160,34 @@ const QuestionsTab = () => {
               <option value="ALL">All Types</option>
               <option value="SINGLE">Single Choice</option>
               <option value="MULTIPLE">Multiple Choice</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+            <select
+              value={filterVisibility}
+              onChange={(e) => setFilterVisibility(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="ALL">All Visibility</option>
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+              <option value="protected">Protected</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+            <select
+              value={filterAuthor}
+              onChange={(e) => setFilterAuthor(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="ALL">All Authors</option>
+              {authors.map(author => (
+                <option key={author.id} value={author.id}>{author.username}</option>
+              ))}
             </select>
           </div>
 
@@ -163,12 +221,19 @@ const QuestionsTab = () => {
             <Card key={question.id} className="hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
+                  {/* Title as primary display */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {question.title}
+                  </h3>
+
+                  {/* Badges row */}
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded ${
                       question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                     }`}>
                       {question.type}
                     </span>
+                    {getVisibilityBadge(question.visibility)}
                     {question.tags && Array.isArray(question.tags) && question.tags.length > 0 && (
                       <div className="flex gap-1">
                         {question.tags.map((tag, index) => (
@@ -180,10 +245,12 @@ const QuestionsTab = () => {
                     )}
                   </div>
 
-                  <p className="text-gray-900 font-medium mb-2 font-mono text-sm">
-                    {question.text.split('\n')[0].substring(0, 100)}{question.text.split('\n')[0].length > 100 || question.text.includes('\n') ? ' [...]' : ''}
+                  {/* Question text preview */}
+                  <p className="text-gray-600 text-sm mb-2 font-mono">
+                    {question.text.split('\n')[0].substring(0, 100)}{question.text.length > 100 ? '...' : ''}
                   </p>
 
+                  {/* Options and correct answers */}
                   <div className="text-sm text-gray-600">
                     <strong>Options:</strong> {Array.isArray(question.options) ? question.options.join(', ') : JSON.stringify(question.options)}
                   </div>
@@ -192,6 +259,7 @@ const QuestionsTab = () => {
                   </div>
                 </div>
 
+                {/* Action buttons */}
                 <div className="flex gap-2 ml-4">
                   <Button
                     size="sm"

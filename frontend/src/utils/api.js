@@ -40,7 +40,11 @@ export async function apiRequest(endpoint, options = {}) {
         }
       }
 
-      throw new Error(data.error || `HTTP ${response.status}`);
+      // Create error object that preserves status and code
+      const error = new Error(data.error || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.code = data.code;
+      throw error;
     }
 
     return data;

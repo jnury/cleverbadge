@@ -32,6 +32,38 @@ Clever Badge uses PostgreSQL with Drizzle ORM. This document describes the compl
 └─────────────────────┘
 ```
 
+## Enums
+
+### `visibility_type`
+
+Controls access to questions and tests.
+
+**Values:**
+- `PUBLIC`: Accessible to all users
+- `PRIVATE`: Requires additional access credentials
+
+**Usage:**
+- `questions.visibility`: Controls who can add question to tests
+- `tests.visibility`: Controls who can access the test
+
+### `question_type`
+
+Type of multiple choice question.
+
+**Values:**
+- `SINGLE`: Exactly one correct answer
+- `MULTIPLE`: One or more correct answers
+
+### `assessment_status`
+
+Status of a candidate's assessment attempt.
+
+**Values:**
+- `STARTED`: Assessment in progress
+- `COMPLETED`: Assessment submitted and scored
+
+---
+
 ## Tables
 
 ### `users`
@@ -60,37 +92,54 @@ Admin users who can manage tests and view results.
 
 Individual MCQ questions that can be added to tests.
 
-| Column          | Type      | Constraints           | Description                              |
-|-----------------|-----------|-----------------------|------------------------------------------|
-| id              | UUID      | PRIMARY KEY           | Unique identifier                        |
-| text            | TEXT      | NOT NULL              | Question text (10-1000 characters)       |
-| type            | ENUM      | NOT NULL              | 'SINGLE' or 'MULTIPLE'                   |
-| options         | JSON      | NOT NULL              | Array of answer options                  |
-| correct_answers | JSON      | NOT NULL              | Array of correct answer(s)               |
-| tags            | JSON      | NULL                  | Array of tags for categorization         |
-| created_at      | TIMESTAMP | NOT NULL, DEFAULT NOW | Creation timestamp                       |
-| updated_at      | TIMESTAMP | NOT NULL, DEFAULT NOW | Last update timestamp                    |
+| Column          | Type      | Constraints                      | Description                              |
+|-----------------|-----------|----------------------------------|------------------------------------------|
+| id              | UUID      | PRIMARY KEY                      | Unique identifier                        |
+| title           | VARCHAR   | NOT NULL                         | Question title (3-200 characters)        |
+| text            | TEXT      | NOT NULL                         | Question text (10-1000 characters)       |
+| type            | ENUM      | NOT NULL                         | 'SINGLE' or 'MULTIPLE'                   |
+| visibility      | ENUM      | NOT NULL, DEFAULT 'PUBLIC'       | 'PUBLIC' or 'PRIVATE'                    |
+| options         | JSON      | NOT NULL                         | Array of answer options                  |
+| correct_answers | JSON      | NOT NULL                         | Array of correct answer(s)               |
+| tags            | JSON      | NULL                             | Array of tags for categorization         |
+| author_id       | UUID      | FOREIGN KEY → users(id), NOT NULL| Author who created the question          |
+| created_at      | TIMESTAMP | NOT NULL, DEFAULT NOW            | Creation timestamp                       |
+| updated_at      | TIMESTAMP | NOT NULL, DEFAULT NOW            | Last update timestamp                    |
 
 **Indexes:**
 - Primary key on `id`
+- Index on `author_id` for filtering by author
+- Index on `visibility` for filtering
 - GIN index on `tags` for efficient tag filtering
 
+**Foreign Keys:**
+- `author_id` → `users(id)` ON DELETE SET NULL (preserve questions if author deleted)
+
 **Validation:**
+- `title`: 3-200 characters, auto-generated from text if not provided
 - `type`: Must be 'SINGLE' or 'MULTIPLE'
+- `visibility`: Must be 'PUBLIC' or 'PRIVATE'
 - `options`: Array of 2-10 strings
 - `correct_answers`: Must be subset of `options`
   - For SINGLE: exactly 1 element
   - For MULTIPLE: 1+ elements
 - `tags`: Optional array of strings
 
+**Visibility Rules:**
+- PUBLIC questions: Can be added to any test by any admin
+- PRIVATE questions: Can only be added to tests by the author
+
 **Example Data:**
 ```json
 {
+  "title": "Geography - France Capital",
   "text": "What is the capital of France?",
   "type": "SINGLE",
+  "visibility": "PUBLIC",
   "options": ["London", "Paris", "Berlin", "Madrid"],
   "correct_answers": ["Paris"],
-  "tags": ["geography", "europe"]
+  "tags": ["geography", "europe"],
+  "author_id": "uuid-admin"
 }
 ```
 
@@ -100,32 +149,43 @@ Individual MCQ questions that can be added to tests.
 
 Collections of questions that candidates can take.
 
-| Column      | Type      | Constraints           | Description                           |
-|-------------|-----------|-----------------------|---------------------------------------|
-| id          | UUID      | PRIMARY KEY           | Unique identifier                     |
-| title       | VARCHAR   | NOT NULL              | Test title (3-200 characters)         |
-| description | TEXT      | NULL                  | Test description (max 2000 chars)     |
-| slug        | VARCHAR   | UNIQUE, NOT NULL      | URL-friendly identifier               |
+| Column      | Type      | Constraints           | Description                              |
+|-------------|-----------|-----------------------|------------------------------------------|
+| id          | UUID      | PRIMARY KEY           | Unique identifier                        |
+| title       | VARCHAR   | NOT NULL              | Test title (3-200 characters)            |
+| description | TEXT      | NULL                  | Test description (max 2000 chars)        |
+| slug        | VARCHAR   | UNIQUE, NOT NULL      | URL-friendly identifier with random suffix |
+| access_slug | VARCHAR   | NULL                  | Access token for PRIVATE tests (12 chars) |
+| visibility  | ENUM      | NOT NULL, DEFAULT 'PUBLIC' | 'PUBLIC' or 'PRIVATE'               |
 | is_enabled  | BOOLEAN   | NOT NULL, DEFAULT false | Whether test is available to candidates |
-| created_at  | TIMESTAMP | NOT NULL, DEFAULT NOW | Creation timestamp                    |
-| updated_at  | TIMESTAMP | NOT NULL, DEFAULT NOW | Last update timestamp                 |
+| created_at  | TIMESTAMP | NOT NULL, DEFAULT NOW | Creation timestamp                       |
+| updated_at  | TIMESTAMP | NOT NULL, DEFAULT NOW | Last update timestamp                    |
 
 **Indexes:**
 - Primary key on `id`
 - Unique index on `slug`
+- Index on `visibility` for filtering
 - Index on `is_enabled` for filtering
 
 **Notes:**
-- `slug` is immutable after creation
+- `slug` is auto-generated from title with random 6-character suffix (e.g., "javascript-fundamentals-a1b2c3")
+- `access_slug` is auto-generated for PRIVATE tests (12 alphanumeric characters)
 - When `is_enabled = false`, test is not accessible via `/t/:slug`
 - Disabling a test blocks both new starts and in-progress assessments
+
+**Visibility Rules:**
+- PUBLIC tests: Accessible with just the slug
+- PRIVATE tests: Require both slug and access_slug to access
+- access_slug can be regenerated via API (invalidates previous links)
 
 **Example Data:**
 ```json
 {
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
-  "slug": "javascript-fundamentals",
+  "slug": "javascript-fundamentals-a1b2c3",
+  "access_slug": "xyz789abc012",
+  "visibility": "PRIVATE",
   "is_enabled": true
 }
 ```
@@ -178,6 +238,7 @@ Individual candidate attempts at taking a test.
 | id              | UUID      | PRIMARY KEY                        | Unique identifier                        |
 | test_id         | UUID      | FOREIGN KEY → tests(id), NOT NULL   | Reference to test taken                  |
 | candidate_name  | VARCHAR   | NOT NULL                           | Candidate's name (2-100 characters)      |
+| access_slug     | VARCHAR   | NULL                               | Access token for PRIVATE tests (copied from test) |
 | status          | ENUM      | NOT NULL, DEFAULT 'STARTED'        | 'STARTED' or 'COMPLETED'                 |
 | score_percentage| DECIMAL   | NULL                               | Final score (0-100), null until completed |
 | started_at      | TIMESTAMP | NOT NULL, DEFAULT NOW              | When assessment started                  |
@@ -194,6 +255,8 @@ Individual candidate attempts at taking a test.
 
 **Notes:**
 - Created when candidate clicks "Start Test"
+- `access_slug` is copied from test during creation (for PRIVATE tests)
+- Storing access_slug allows candidate to continue test even if test's access_slug is regenerated
 - `status` changes from 'STARTED' to 'COMPLETED' on submission
 - `score_percentage` is calculated on submission
 - No authentication - candidates don't need accounts
@@ -245,77 +308,99 @@ is_correct = (arraysAreEqual(selected_options.sort(), correct_answers.sort()))
 
 ---
 
-## Drizzle Schema Example
+## Raw SQL Schema Example
 
-```javascript
-// Example Drizzle schema definition (db/schema.js)
+```sql
+-- Enums
+CREATE TYPE visibility_type AS ENUM ('PUBLIC', 'PRIVATE');
+CREATE TYPE question_type AS ENUM ('SINGLE', 'MULTIPLE');
+CREATE TYPE assessment_status AS ENUM ('STARTED', 'COMPLETED');
 
-import { pgTable, uuid, varchar, text, timestamp, boolean, integer, decimal, json, pgEnum } from 'drizzle-orm/pg-core';
+-- Users table
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
-// Enums
-export const questionTypeEnum = pgEnum('question_type', ['SINGLE', 'MULTIPLE']);
-export const assessmentStatusEnum = pgEnum('assessment_status', ['STARTED', 'COMPLETED']);
+-- Questions table
+CREATE TABLE questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(200) NOT NULL,
+  text TEXT NOT NULL,
+  type question_type NOT NULL,
+  visibility visibility_type NOT NULL DEFAULT 'PUBLIC',
+  options JSON NOT NULL,
+  correct_answers JSON NOT NULL,
+  tags JSON,
+  author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
-// Users table
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  username: varchar('username', { length: 50 }).notNull().unique(),
-  password_hash: varchar('password_hash', { length: 255 }).notNull(),
-  created_at: timestamp('created_at').defaultNow().notNull(),
-  updated_at: timestamp('updated_at').defaultNow().notNull()
-});
+CREATE INDEX idx_questions_author ON questions(author_id);
+CREATE INDEX idx_questions_visibility ON questions(visibility);
+CREATE INDEX idx_questions_tags ON questions USING GIN(tags);
 
-// Questions table
-export const questions = pgTable('questions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  text: text('text').notNull(),
-  type: questionTypeEnum('type').notNull(),
-  options: json('options').$type<string[]>().notNull(),
-  correct_answers: json('correct_answers').$type<string[]>().notNull(),
-  tags: json('tags').$type<string[]>(),
-  created_at: timestamp('created_at').defaultNow().notNull(),
-  updated_at: timestamp('updated_at').defaultNow().notNull()
-});
+-- Tests table
+CREATE TABLE tests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  access_slug VARCHAR(12),
+  visibility visibility_type NOT NULL DEFAULT 'PUBLIC',
+  is_enabled BOOLEAN NOT NULL DEFAULT false,
+  pass_threshold INTEGER DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
-// Tests table
-export const tests = pgTable('tests', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: varchar('title', { length: 200 }).notNull(),
-  description: text('description'),
-  slug: varchar('slug', { length: 100 }).notNull().unique(),
-  is_enabled: boolean('is_enabled').default(false).notNull(),
-  created_at: timestamp('created_at').defaultNow().notNull(),
-  updated_at: timestamp('updated_at').defaultNow().notNull()
-});
+CREATE INDEX idx_tests_visibility ON tests(visibility);
+CREATE INDEX idx_tests_enabled ON tests(is_enabled);
 
-// Test Questions junction table
-export const testQuestions = pgTable('test_questions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  test_id: uuid('test_id').references(() => tests.id, { onDelete: 'cascade' }).notNull(),
-  question_id: uuid('question_id').references(() => questions.id, { onDelete: 'restrict' }).notNull(),
-  weight: integer('weight').default(1).notNull()
-});
+-- Test Questions junction table
+CREATE TABLE test_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_id UUID NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
+  weight INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(test_id, question_id)
+);
 
-// Assessments table
-export const assessments = pgTable('assessments', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  test_id: uuid('test_id').references(() => tests.id, { onDelete: 'cascade' }).notNull(),
-  candidate_name: varchar('candidate_name', { length: 100 }).notNull(),
-  status: assessmentStatusEnum('status').default('STARTED').notNull(),
-  score_percentage: decimal('score_percentage', { precision: 5, scale: 2 }),
-  started_at: timestamp('started_at').defaultNow().notNull(),
-  completed_at: timestamp('completed_at')
-});
+CREATE INDEX idx_test_questions_test ON test_questions(test_id);
+CREATE INDEX idx_test_questions_question ON test_questions(question_id);
 
-// Assessment Answers table
-export const assessmentAnswers = pgTable('assessment_answers', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  assessment_id: uuid('assessment_id').references(() => assessments.id, { onDelete: 'cascade' }).notNull(),
-  question_id: uuid('question_id').references(() => questions.id, { onDelete: 'restrict' }).notNull(),
-  selected_options: json('selected_options').$type<string[]>().notNull(),
-  is_correct: boolean('is_correct'),
-  answered_at: timestamp('answered_at').defaultNow().notNull()
-});
+-- Assessments table
+CREATE TABLE assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_id UUID NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+  candidate_name VARCHAR(100) NOT NULL,
+  access_slug VARCHAR(12),
+  status assessment_status NOT NULL DEFAULT 'STARTED',
+  score_percentage DECIMAL(5,2),
+  started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_assessments_test ON assessments(test_id);
+CREATE INDEX idx_assessments_status ON assessments(status);
+CREATE INDEX idx_assessments_completed ON assessments(completed_at);
+
+-- Assessment Answers table
+CREATE TABLE assessment_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
+  selected_options JSON NOT NULL,
+  is_correct BOOLEAN,
+  answered_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(assessment_id, question_id)
+);
+
+CREATE INDEX idx_assessment_answers_assessment ON assessment_answers(assessment_id);
 ```
 
 ---

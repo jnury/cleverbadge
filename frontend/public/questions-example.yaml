@@ -3,16 +3,27 @@
 #
 # YAML Format Guidelines:
 # - Root element must be an array (list) of questions
-# - Each question is an object with required fields
+# - Each question is an object with required and optional fields
+#
+# Required fields:
+# - title: Short descriptive title (1-200 characters, must be unique per author)
 # - text: The question text (10-1000 characters)
 # - type: Either "SINGLE" or "MULTIPLE"
 # - options: Array of 2-10 answer choices
 # - correct_answers: Array containing the correct answer(s)
-# - tags: Optional array of tags for organization
+#
+# Optional fields:
+# - visibility: Question visibility level - 'public', 'private' (default), or 'protected'
+#   * public: visible to all users
+#   * private: visible only to the author
+#   * protected: visible to organization members
+# - tags: Array of tags for organization
 
-# Example 1: Single choice question
-- text: "What is the capital of France?"
+# Example 1: Single choice question (public visibility)
+- title: "Capital of France"
+  text: "What is the capital of France?"
   type: "SINGLE"
+  visibility: "public"
   options:
     - "London"
     - "Paris"
@@ -24,9 +35,11 @@
     - "geography"
     - "europe"
 
-# Example 2: Multiple choice question
-- text: "Which of the following are programming languages? (Select all that apply)"
+# Example 2: Multiple choice question (private visibility - default)
+- title: "Programming Languages Identification"
+  text: "Which of the following are programming languages? (Select all that apply)"
   type: "MULTIPLE"
+  visibility: "private"
   options:
     - "Python"
     - "HTML"
@@ -41,9 +54,11 @@
     - "programming"
     - "computer-science"
 
-# Example 3: JavaScript question
-- text: "What is the output of: console.log(typeof null)?"
+# Example 3: JavaScript question (protected visibility)
+- title: "JavaScript typeof null"
+  text: "What is the output of: console.log(typeof null)?"
   type: "SINGLE"
+  visibility: "protected"
   options:
     - "null"
     - "undefined"
@@ -55,9 +70,11 @@
     - "javascript"
     - "fundamentals"
 
-# Example 4: Multiple correct answers
-- text: "Which of the following are valid HTTP methods?"
+# Example 4: Multiple correct answers (public visibility)
+- title: "Valid HTTP Methods"
+  text: "Which of the following are valid HTTP methods?"
   type: "MULTIPLE"
+  visibility: "public"
   options:
     - "GET"
     - "RECEIVE"
@@ -73,8 +90,9 @@
     - "http"
     - "web-development"
 
-# Example 5: Question without tags
-- text: "What does CSS stand for?"
+# Example 5: Question without tags (no visibility specified - defaults to private)
+- title: "CSS Acronym Meaning"
+  text: "What does CSS stand for?"
   type: "SINGLE"
   options:
     - "Creative Style Sheets"
@@ -84,9 +102,11 @@
   correct_answers:
     - "Cascading Style Sheets"
 
-# Example 6: Complex multiple choice
-- text: "Which of the following statements about React are true?"
+# Example 6: Complex multiple choice (protected visibility)
+- title: "React Fundamentals Knowledge"
+  text: "Which of the following statements about React are true?"
   type: "MULTIPLE"
+  visibility: "protected"
   options:
     - "React is a JavaScript library for building user interfaces"
     - "React was developed by Facebook"
@@ -103,9 +123,11 @@
     - "javascript"
     - "frontend"
 
-# Example 7: Database question
-- text: "In SQL, which clause is used to filter records?"
+# Example 7: Database question (public visibility)
+- title: "SQL WHERE Clause"
+  text: "In SQL, which clause is used to filter records?"
   type: "SINGLE"
+  visibility: "public"
   options:
     - "SELECT"
     - "WHERE"
@@ -117,9 +139,11 @@
     - "sql"
     - "database"
 
-# Example 8: Git question
-- text: "Which Git commands are used to save changes? (Select all that apply)"
+# Example 8: Git question (private visibility)
+- title: "Git Commands for Saving Changes"
+  text: "Which Git commands are used to save changes? (Select all that apply)"
   type: "MULTIPLE"
+  visibility: "private"
   options:
     - "git add"
     - "git save"
@@ -133,9 +157,11 @@
     - "git"
     - "version-control"
 
-# Example 9: Security question
-- text: "Which of the following is NOT a common web security vulnerability?"
+# Example 9: Security question (protected visibility)
+- title: "Web Security Vulnerabilities"
+  text: "Which of the following is NOT a common web security vulnerability?"
   type: "SINGLE"
+  visibility: "protected"
   options:
     - "SQL Injection"
     - "Cross-Site Scripting (XSS)"
@@ -147,8 +173,9 @@
     - "security"
     - "web-development"
 
-# Example 10: Algorithm question
-- text: "What is the time complexity of binary search?"
+# Example 10: Algorithm question (no visibility specified - defaults to private)
+- title: "Binary Search Time Complexity"
+  text: "What is the time complexity of binary search?"
   type: "SINGLE"
   options:
     - "O(n)"
@@ -162,9 +189,11 @@
     - "computer-science"
     - "complexity"
 
-# Example 11: History question
-- text: "In what year did the Titanic sink?"
+# Example 11: History question (public visibility)
+- title: "Titanic Sinking Year"
+  text: "In what year did the Titanic sink?"
   type: "SINGLE"
+  visibility: "public"
   options:
     - "1910"
     - "1912"
@@ -176,9 +205,11 @@
     - "history"
     - "maritime"
 
-# Example 12: Science - Biology
-- text: "Which of the following are organelles found in animal cells?"
+# Example 12: Science - Biology (protected visibility)
+- title: "Animal Cell Organelles"
+  text: "Which of the following are organelles found in animal cells?"
   type: "MULTIPLE"
+  visibility: "protected"
   options:
     - "Mitochondria"
     - "Cell wall"
@@ -195,9 +226,11 @@
     - "science"
     - "cells"
 
-# Example 13: Mathematics - Geometry
-- text: "What is the sum of angles in a triangle?"
+# Example 13: Mathematics - Geometry (private visibility)
+- title: "Triangle Angle Sum"
+  text: "What is the sum of angles in a triangle?"
   type: "SINGLE"
+  visibility: "private"
   options:
     - "90 degrees"
     - "180 degrees"
@@ -209,9 +242,11 @@
     - "mathematics"
     - "geometry"
 
-# Example 14: Geography - World Capitals
-- text: "Which of these are capital cities of their respective countries?"
+# Example 14: Geography - World Capitals (public visibility)
+- title: "World Capital Cities"
+  text: "Which of these are capital cities of their respective countries?"
   type: "MULTIPLE"
+  visibility: "public"
   options:
     - "Tokyo - Japan"
     - "Sydney - Australia"
@@ -227,8 +262,9 @@
     - "world"
     - "capitals"
 
-# Example 15: Programming - Python
-- text: "In Python, which statement is used to exit a loop prematurely?"
+# Example 15: Programming - Python (no visibility specified - defaults to private)
+- title: "Python Loop Exit Statement"
+  text: "In Python, which statement is used to exit a loop prematurely?"
   type: "SINGLE"
   options:
     - "exit"
@@ -242,9 +278,11 @@
     - "programming"
     - "control-flow"
 
-# Example 16: Web Development - CSS
-- text: "Which of the following CSS properties affect the box model? (Select all that apply)"
+# Example 16: Web Development - CSS (protected visibility)
+- title: "CSS Box Model Properties"
+  text: "Which of the following CSS properties affect the box model? (Select all that apply)"
   type: "MULTIPLE"
+  visibility: "protected"
   options:
     - "margin"
     - "color"

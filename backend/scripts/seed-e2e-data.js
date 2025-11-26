@@ -54,23 +54,28 @@ async function seedE2EData() {
     const q3Id = '550e8400-e29b-41d4-a716-446655440012';
     const q4Id = '550e8400-e29b-41d4-a716-446655440013';
 
+    const q5Id = '550e8400-e29b-41d4-a716-446655440014';
+    const q6Id = '550e8400-e29b-41d4-a716-446655440015';
+
     if (parseInt(questionsCheck[0].count) === 0) {
       console.log('Creating sample questions...');
 
       await sql`
-        INSERT INTO ${sql(dbSchema)}.questions (id, text, type, options, correct_answers, tags)
+        INSERT INTO ${sql(dbSchema)}.questions (id, title, text, type, options, correct_answers, tags, author_id, visibility)
         VALUES
-          (${q1Id}, 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]'),
-          (${q2Id}, 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]'),
-          (${q3Id}, 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]'),
-          (${q4Id}, '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]')
+          (${q1Id}, 'Basic Math Question', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', ${adminId}, 'private'),
+          (${q2Id}, 'Geography Capital', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', ${adminId}, 'public'),
+          (${q3Id}, 'Even Numbers', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', ${adminId}, 'public'),
+          (${q4Id}, 'JavaScript Code Analysis', '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]', ${adminId}, 'protected'),
+          (${q5Id}, 'Protected Question Example', 'This is a protected question. What is 10 / 2?', 'SINGLE', '["3", "4", "5", "6"]', '[2]', '["math"]', ${adminId}, 'protected'),
+          (${q6Id}, 'Public Question Example', 'What color is the sky?', 'SINGLE', '["Red", "Blue", "Green", "Yellow"]', '[1]', '["general"]', ${adminId}, 'public')
       `;
       console.log('✓ Sample questions created');
     } else {
       console.log(`✓ Found ${questionsCheck[0].count} questions already`);
     }
 
-    // Create math-geo test if it doesn't exist
+    // Create math-geo test if it doesn't exist (private test)
     const mathGeoTestId = '550e8400-e29b-41d4-a716-446655440020';
     const mathGeoTestCheck = await sql`
       SELECT COUNT(*) as count FROM ${sql(dbSchema)}.tests WHERE id = ${mathGeoTestId}
@@ -79,11 +84,11 @@ async function seedE2EData() {
     if (parseInt(mathGeoTestCheck[0].count) === 0) {
       console.log('Creating math-geo test...');
       await sql`
-        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold)
-        VALUES (${mathGeoTestId}, 'Math & Geography Test', 'math-geo', 'Test your math and geography knowledge', true, 70)
+        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold, visibility)
+        VALUES (${mathGeoTestId}, 'Math & Geography Test', 'math-geo', 'Test your math and geography knowledge', true, 70, 'private')
       `;
 
-      // Add questions to test
+      // Add questions to test (private test can include any visibility)
       await sql`
         INSERT INTO ${sql(dbSchema)}.test_questions (test_id, question_id, weight)
         VALUES
@@ -96,27 +101,56 @@ async function seedE2EData() {
       console.log('✓ Math-geo test already exists');
     }
 
-    // Create markdown test if it doesn't exist
+    // Create markdown test if it doesn't exist (public test)
     const markdownTestId = '550e8400-e29b-41d4-a716-446655440021';
     const markdownTestCheck = await sql`
       SELECT COUNT(*) as count FROM ${sql(dbSchema)}.tests WHERE id = ${markdownTestId}
     `;
 
     if (parseInt(markdownTestCheck[0].count) === 0) {
-      console.log('Creating markdown test...');
+      console.log('Creating markdown test (public)...');
       await sql`
-        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold)
-        VALUES (${markdownTestId}, 'Markdown Rendering Test', 'markdown-test', 'This test demonstrates **markdown rendering** with \`code syntax\` highlighting', true, 70)
+        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold, visibility)
+        VALUES (${markdownTestId}, 'Markdown Rendering Test', 'markdown-test', 'This test demonstrates **markdown rendering** with \`code syntax\` highlighting', true, 70, 'public')
       `;
 
-      // Add markdown question to test
+      // Add markdown question to test (public test can only include public questions)
       await sql`
         INSERT INTO ${sql(dbSchema)}.test_questions (test_id, question_id, weight)
-        VALUES (${markdownTestId}, ${q4Id}, 1)
+        VALUES
+          (${markdownTestId}, ${q2Id}, 1),
+          (${markdownTestId}, ${q3Id}, 1),
+          (${markdownTestId}, ${q6Id}, 1)
       `;
       console.log('✓ Markdown test created');
     } else {
       console.log('✓ Markdown test already exists');
+    }
+
+    // Create protected test if it doesn't exist
+    const protectedTestId = '550e8400-e29b-41d4-a716-446655440022';
+    const protectedTestCheck = await sql`
+      SELECT COUNT(*) as count FROM ${sql(dbSchema)}.tests WHERE id = ${protectedTestId}
+    `;
+
+    if (parseInt(protectedTestCheck[0].count) === 0) {
+      console.log('Creating protected test...');
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.tests (id, title, slug, description, is_enabled, pass_threshold, visibility)
+        VALUES (${protectedTestId}, 'Protected Test', 'protected-test', 'This test is protected and requires special access', true, 70, 'protected')
+      `;
+
+      // Add questions to protected test (can include public and protected questions)
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.test_questions (test_id, question_id, weight)
+        VALUES
+          (${protectedTestId}, ${q4Id}, 2),
+          (${protectedTestId}, ${q5Id}, 2),
+          (${protectedTestId}, ${q2Id}, 1)
+      `;
+      console.log('✓ Protected test created');
+    } else {
+      console.log('✓ Protected test already exists');
     }
 
     console.log('\n✅ E2E test data seeded successfully!\n');

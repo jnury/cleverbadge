@@ -46,8 +46,8 @@ const createAssessmentsRouter = (sql, schema) => {
         }
 
         const assessments = await sql`
-          INSERT INTO ${sql(schema)}.assessments (test_id, candidate_name, status)
-          VALUES (${test_id}, ${candidate_name}, 'STARTED')
+          INSERT INTO ${sql(schema)}.assessments (test_id, candidate_name, status, access_slug)
+          VALUES (${test_id}, ${candidate_name}, 'STARTED', ${test.slug})
           RETURNING *
         `;
 

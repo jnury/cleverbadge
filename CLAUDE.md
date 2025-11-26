@@ -78,11 +78,16 @@ npm run test:coverage    # Coverage report
 
 **6 tables:**
 - `users` - Admin accounts
-- `questions` - MCQ questions (SINGLE/MULTIPLE types)
-- `tests` - Test collections with slug
+- `questions` - MCQ questions (SINGLE/MULTIPLE types, PUBLIC/PRIVATE visibility, with author tracking)
+- `tests` - Test collections with auto-generated slug and optional access_slug for PRIVATE tests
 - `test_questions` - Many-to-many with weight
-- `assessments` - Candidate attempts
+- `assessments` - Candidate attempts (stores access_slug for PRIVATE tests)
 - `assessment_answers` - Individual answers
+
+**Visibility System:**
+- Questions: PUBLIC (any admin can use) or PRIVATE (only author can add to tests)
+- Tests: PUBLIC (accessible with slug only) or PRIVATE (requires slug + access_slug)
+- access_slug: 12-character token for PRIVATE tests, can be regenerated
 
 **See:** `docs/DATABASE.md` for complete schema
 
@@ -96,8 +101,10 @@ npm run test:coverage    # Coverage report
 
 **Admin (requires JWT):**
 - `POST /api/auth/login` - Get JWT token
-- `POST /api/questions/import` - Import YAML
-- `GET/POST/PUT/DELETE /api/tests` - Test CRUD
+- `POST /api/questions/import` - Import YAML (with title, visibility, author tracking)
+- `GET /api/questions/authors` - Get list of question authors
+- `GET/POST/PUT/DELETE /api/tests` - Test CRUD (slug auto-generated, visibility support)
+- `POST /api/tests/:id/regenerate-slug` - Regenerate slug (invalidates previous links)
 - `GET /api/tests/:testId/analytics/questions` - Success rates
 
 **See:** `docs/API.md` for complete endpoint documentation
@@ -105,7 +112,7 @@ npm run test:coverage    # Coverage report
 ## Frontend Routes
 
 **Candidate:**
-- `/t/:slug` - Test landing (enter name)
+- `/t/:slug` - Test landing (enter name, supports ?access={access_slug} for PRIVATE tests)
 - `/t/:slug/run` - Question runner (one question per page)
 - `/t/:slug/result` - Final score
 
@@ -191,23 +198,32 @@ npm run build        # Production build
 ## Important Implementation Notes
 
 1. **Test disable behavior:** When `is_enabled=false`, blocks both new starts AND in-progress assessments
-2. **Question import:** Transactional (all or nothing), uses js-yaml package
+2. **Question import:** Transactional (all or nothing), uses js-yaml package, tracks author_id
 3. **Scoring logic:**
    - SINGLE: Exact match of one option
    - MULTIPLE: Arrays must match (order-independent)
 4. **Analytics:** Success rates scoped to specific test (not global)
 5. **Candidate flow:** State passed via React Router navigation state
 6. **Admin flow:** JWT stored in localStorage
-7. **Environment awareness:**
+7. **Visibility system:**
+   - Questions: PUBLIC (any admin) or PRIVATE (author only can add to tests)
+   - Tests: PUBLIC (slug only) or PRIVATE (slug + access_slug required)
+   - access_slug is 12 characters, auto-generated for PRIVATE tests
+   - Slug is auto-generated from title with 6-character random suffix
+8. **Slug management:**
+   - Test slug: Auto-generated from title (e.g., "javascript-fundamentals-a1b2c3")
+   - Can be regenerated via API (invalidates previous links)
+   - access_slug stored in assessments for continued access during test-taking
+9. **Environment awareness:**
    - Backend `/health` endpoint returns `{ status, timestamp, version, environment }`
    - Frontend displays environment banner on non-production (top of page, light colored)
    - Footer on all pages: "Copyright Clever Badge 2025 - Frontend: v.x.x.x - Backend: v.x.x.x"
    - Backend version fetched from `/health` endpoint
    - Frontend version read from package.json at build time
-8. **Version tracking:**
-   - Both frontend and backend have version in package.json
-   - Always increment version when touching code (minor for features, patch for fixes)
-   - Versions displayed in footer and accessible via health endpoint
+10. **Version tracking:**
+    - Both frontend and backend have version in package.json
+    - Always increment version when touching code (minor for features, patch for fixes)
+    - Versions displayed in footer and accessible via health endpoint
 
 ## Documentation
 

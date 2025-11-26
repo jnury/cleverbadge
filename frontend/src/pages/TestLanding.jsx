@@ -9,6 +9,7 @@ const TestLanding = () => {
   const [candidateName, setCandidateName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [accessRestricted, setAccessRestricted] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -17,13 +18,23 @@ const TestLanding = () => {
       .then(async res => {
         if (!res.ok) {
           const errorData = await res.json();
+
+          // Check for protected test error
+          if (res.status === 403 && errorData.code === 'PROTECTED_TEST') {
+            setAccessRestricted(true);
+            setLoading(false);
+            return;
+          }
+
           throw new Error(errorData.error || 'Test not found');
         }
         return res.json();
       })
       .then(data => {
-        setTest(data);
-        setLoading(false);
+        if (data) {
+          setTest(data);
+          setLoading(false);
+        }
       })
       .catch(err => {
         setError(err.message);
@@ -83,6 +94,33 @@ const TestLanding = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
           <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessRestricted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600 mb-6">
+                This test requires authentication to access. Please contact your administrator for access or log in to continue.
+              </p>
+              <p className="text-sm text-gray-500">
+                Protected test access will be available in a future update.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );

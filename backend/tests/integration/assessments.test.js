@@ -8,10 +8,11 @@ describe('Assessments Integration Tests', () => {
   it('should create new assessment (start test)', async () => {
     const testId = '550e8400-e29b-41d4-a716-446655440020';
     const candidateName = 'Test Candidate';
+    const accessSlug = 'math-geo';
 
     const result = await sql`
-      INSERT INTO ${sql(schema)}.assessments (test_id, candidate_name, status)
-      VALUES (${testId}, ${candidateName}, 'STARTED')
+      INSERT INTO ${sql(schema)}.assessments (test_id, candidate_name, status, access_slug)
+      VALUES (${testId}, ${candidateName}, 'STARTED', ${accessSlug})
       RETURNING *
     `;
 
@@ -19,6 +20,7 @@ describe('Assessments Integration Tests', () => {
     expect(result[0].test_id).toBe(testId);
     expect(result[0].candidate_name).toBe(candidateName);
     expect(result[0].status).toBe('STARTED');
+    expect(result[0].access_slug).toBe(accessSlug);
     expect(result[0].score_percentage).toBeNull();
     expect(result[0].started_at).toBeDefined();
     expect(result[0].completed_at).toBeNull();

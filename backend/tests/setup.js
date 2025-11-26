@@ -35,6 +35,22 @@ beforeAll(async () => {
   const testMigration2SQL = migration2SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
   await testSql.unsafe(testMigration2SQL);
 
+  const migration3SQL = fs.readFileSync('./db/migrations/003_add_visibility_enum.sql', 'utf8');
+  const testMigration3SQL = migration3SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration3SQL);
+
+  const migration4SQL = fs.readFileSync('./db/migrations/004_add_test_visibility_and_update_slug.sql', 'utf8');
+  const testMigration4SQL = migration4SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration4SQL);
+
+  const migration5SQL = fs.readFileSync('./db/migrations/005_add_assessment_access_slug.sql', 'utf8');
+  const testMigration5SQL = migration5SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration5SQL);
+
+  const migration6SQL = fs.readFileSync('./db/migrations/006_add_question_title_author_visibility.sql', 'utf8');
+  const testMigration6SQL = migration6SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigration6SQL);
+
   // Seed test data
   await seedTestData();
 
@@ -78,54 +94,69 @@ async function seedTestData() {
     // SINGLE choice - correct answer
     {
       id: '550e8400-e29b-41d4-a716-446655440010',
+      title: 'Math Addition Question',
       text: 'What is 2 + 2?',
       type: 'SINGLE',
       options: JSON.stringify(['3', '4', '5', '6']),
       correct_answers: JSON.stringify([1]),
-      tags: JSON.stringify(['math', 'easy'])
+      tags: JSON.stringify(['math', 'easy']),
+      author_id: adminId,
+      visibility: 'private'
     },
     // SINGLE choice - for wrong answer test
     {
       id: '550e8400-e29b-41d4-a716-446655440011',
+      title: 'France Capital Question',
       text: 'What is the capital of France?',
       type: 'SINGLE',
       options: JSON.stringify(['London', 'Paris', 'Berlin', 'Madrid']),
       correct_answers: JSON.stringify([1]),
-      tags: JSON.stringify(['geography'])
+      tags: JSON.stringify(['geography']),
+      author_id: adminId,
+      visibility: 'private'
     },
     // MULTIPLE choice
     {
       id: '550e8400-e29b-41d4-a716-446655440012',
+      title: 'Even Numbers Question',
       text: 'Select all even numbers:',
       type: 'MULTIPLE',
       options: JSON.stringify(['1', '2', '3', '4']),
       correct_answers: JSON.stringify([1, 3]),
-      tags: JSON.stringify(['math'])
+      tags: JSON.stringify(['math']),
+      author_id: adminId,
+      visibility: 'private'
     },
     // MULTIPLE choice - for partial answer test
     {
       id: '550e8400-e29b-41d4-a716-446655440013',
+      title: 'Primary Colors Question',
       text: 'Select all primary colors:',
       type: 'MULTIPLE',
       options: JSON.stringify(['Red', 'Green', 'Blue', 'Yellow']),
       correct_answers: JSON.stringify([0, 2, 3]),
-      tags: JSON.stringify(['art'])
+      tags: JSON.stringify(['art']),
+      author_id: adminId,
+      visibility: 'private'
     },
     // SINGLE choice - no tags
     {
       id: '550e8400-e29b-41d4-a716-446655440014',
+      title: 'Sky Color Question',
       text: 'Is the sky blue?',
       type: 'SINGLE',
       options: JSON.stringify(['Yes', 'No']),
       correct_answers: JSON.stringify([0]),
-      tags: null
+      tags: null,
+      author_id: adminId,
+      visibility: 'private'
     }
   ];
 
   for (const q of questions) {
     await testSql.unsafe(`
-      INSERT INTO ${TEST_SCHEMA}.questions (id, text, type, options, correct_answers, tags)
-      VALUES ('${q.id}', '${q.text}', '${q.type}', '${q.options}', '${q.correct_answers}', ${q.tags ? `'${q.tags}'` : 'NULL'})
+      INSERT INTO ${TEST_SCHEMA}.questions (id, title, text, type, options, correct_answers, tags, author_id, visibility)
+      VALUES ('${q.id}', '${q.title}', '${q.text}', '${q.type}', '${q.options}', '${q.correct_answers}', ${q.tags ? `'${q.tags}'` : 'NULL'}, '${q.author_id}', '${q.visibility}')
     `);
   }
 
@@ -137,7 +168,8 @@ async function seedTestData() {
       title: 'Math & Geography Test',
       slug: 'math-geo',
       description: 'Test your math and geography knowledge',
-      is_enabled: true
+      is_enabled: true,
+      visibility: 'private'
     },
     // Disabled test
     {
@@ -145,7 +177,8 @@ async function seedTestData() {
       title: 'Disabled Test',
       slug: 'disabled-test',
       description: 'This test is disabled',
-      is_enabled: false
+      is_enabled: false,
+      visibility: 'private'
     },
     // Empty test (no questions)
     {
@@ -153,14 +186,15 @@ async function seedTestData() {
       title: 'Empty Test',
       slug: 'empty-test',
       description: 'This test has no questions',
-      is_enabled: true
+      is_enabled: true,
+      visibility: 'private'
     }
   ];
 
   for (const t of tests) {
     await testSql.unsafe(`
-      INSERT INTO ${TEST_SCHEMA}.tests (id, title, slug, description, is_enabled, pass_threshold)
-      VALUES ('${t.id}', '${t.title}', '${t.slug}', '${t.description}', ${t.is_enabled}, 0)
+      INSERT INTO ${TEST_SCHEMA}.tests (id, title, slug, description, is_enabled, pass_threshold, visibility)
+      VALUES ('${t.id}', '${t.title}', '${t.slug}', '${t.description}', ${t.is_enabled}, 0, '${t.visibility}')
     `);
   }
 
@@ -178,7 +212,7 @@ async function seedTestData() {
   // Assessment - completed with perfect score
   const perfectAssessmentId = '550e8400-e29b-41d4-a716-446655440030';
   await testSql.unsafe(`
-    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at)
+    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at, access_slug)
     VALUES (
       '${perfectAssessmentId}',
       '550e8400-e29b-41d4-a716-446655440020',
@@ -186,7 +220,8 @@ async function seedTestData() {
       'COMPLETED',
       100.0,
       NOW() - INTERVAL '10 minutes',
-      NOW() - INTERVAL '5 minutes'
+      NOW() - INTERVAL '5 minutes',
+      'math-geo'
     )
   `);
 
@@ -202,7 +237,7 @@ async function seedTestData() {
   // Assessment - completed with partial score
   const partialAssessmentId = '550e8400-e29b-41d4-a716-446655440031';
   await testSql.unsafe(`
-    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at)
+    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at, access_slug)
     VALUES (
       '${partialAssessmentId}',
       '550e8400-e29b-41d4-a716-446655440020',
@@ -210,7 +245,8 @@ async function seedTestData() {
       'COMPLETED',
       33.33,
       NOW() - INTERVAL '20 minutes',
-      NOW() - INTERVAL '15 minutes'
+      NOW() - INTERVAL '15 minutes',
+      'math-geo'
     )
   `);
 
@@ -225,13 +261,14 @@ async function seedTestData() {
 
   // Assessment - in progress
   await testSql.unsafe(`
-    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, started_at)
+    INSERT INTO ${TEST_SCHEMA}.assessments (id, test_id, candidate_name, status, started_at, access_slug)
     VALUES (
       '550e8400-e29b-41d4-a716-446655440032',
       '550e8400-e29b-41d4-a716-446655440020',
       'Current Student',
       'STARTED',
-      NOW() - INTERVAL '2 minutes'
+      NOW() - INTERVAL '2 minutes',
+      'math-geo'
     )
   `);
 }

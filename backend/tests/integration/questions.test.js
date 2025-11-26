@@ -17,21 +17,27 @@ describe('Questions Integration Tests', () => {
   });
 
   it('should create a new question', async () => {
+    const title = 'Addition Test Question';
     const text = 'What is 3 + 3?';
     const type = 'SINGLE';
     const options = JSON.stringify(['5', '6', '7', '8']);
     const correctAnswers = JSON.stringify([1]);
     const tags = JSON.stringify(['math', 'test']);
+    const authorId = '550e8400-e29b-41d4-a716-446655440001'; // testadmin
+    const visibility = 'private';
 
     const result = await sql`
-      INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-      VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+      INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
+      VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
       RETURNING *
     `;
 
     expect(result).toHaveLength(1);
+    expect(result[0].title).toBe(title);
     expect(result[0].text).toBe(text);
     expect(result[0].type).toBe(type);
+    expect(result[0].author_id).toBe(authorId);
+    expect(result[0].visibility).toBe(visibility);
     // When inserting JSONB as strings, postgres-js returns them as strings too
     // We need to compare the stored value (which might be string or parsed)
     const storedOptions = typeof result[0].options === 'string'
@@ -108,7 +114,11 @@ describe('Questions Integration Tests', () => {
   });
 
   describe('Markdown Validation', () => {
+    const authorId = '550e8400-e29b-41d4-a716-446655440001'; // testadmin
+    const visibility = 'private';
+
     it('should accept valid markdown in question text', async () => {
+      const title = 'JavaScript Question';
       const text = '**What is** `JavaScript`?';
       const type = 'SINGLE';
       const options = JSON.stringify(['A language', 'A framework']);
@@ -116,8 +126,8 @@ describe('Questions Integration Tests', () => {
       const tags = JSON.stringify(['programming']);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -126,6 +136,7 @@ describe('Questions Integration Tests', () => {
     });
 
     it('should accept valid code blocks in question text', async () => {
+      const title = 'Code Block Question';
       const text = 'What does this do?\n```javascript\nconst x = 1;\n```';
       const type = 'SINGLE';
       const options = JSON.stringify(['Declares variable', 'Prints output']);
@@ -133,8 +144,8 @@ describe('Questions Integration Tests', () => {
       const tags = JSON.stringify([]);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -143,6 +154,7 @@ describe('Questions Integration Tests', () => {
     });
 
     it('should reject unclosed code blocks in question text', async () => {
+      const title = 'Bad Code Block Question';
       const text = 'Bad code block\n```javascript\nconst x = 1;';
       const type = 'SINGLE';
       const options = JSON.stringify(['A', 'B']);
@@ -153,8 +165,8 @@ describe('Questions Integration Tests', () => {
       // For now, we're testing that the database layer accepts the data
       // API validation will be added in the next step
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -163,6 +175,7 @@ describe('Questions Integration Tests', () => {
     });
 
     it('should accept markdown in options', async () => {
+      const title = 'Markdown Options Question';
       const text = 'Select the correct code';
       const type = 'SINGLE';
       const options = JSON.stringify(['`const x = 1`', '`let y = 2`']);
@@ -170,8 +183,8 @@ describe('Questions Integration Tests', () => {
       const tags = JSON.stringify([]);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-        VALUES (${text}, ${type}, ${options}, ${correctAnswers}, ${tags})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 

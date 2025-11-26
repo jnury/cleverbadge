@@ -40,8 +40,10 @@ const createTestQuestionsRouter = (sql, schema) => {
   // POST create question
   router.post('/',
     authenticateToken,
+    body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
     body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
     body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
+    body('visibility').optional().isIn(['public', 'private', 'protected']).withMessage('Invalid visibility value'),
     body('options').isArray({ min: 1 }).withMessage('Options must be a non-empty array'),
     body('options.*').isString().withMessage('Each option must be a string'),
     body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
@@ -51,7 +53,7 @@ const createTestQuestionsRouter = (sql, schema) => {
     handleValidationErrors,
     async (req, res) => {
       try {
-        const { text, type, options, correct_answers, tags } = req.body;
+        const { title, text, type, visibility = 'private', options, correct_answers, tags } = req.body;
 
         // Validate markdown in question text
         const textValidation = validateMarkdown(text);
@@ -71,9 +73,12 @@ const createTestQuestionsRouter = (sql, schema) => {
           }
         }
 
+        // Get author_id from authenticated user
+        const author_id = req.user.id;
+
         const newQuestions = await sql`
-          INSERT INTO ${sql(schema)}.questions (text, type, options, correct_answers, tags)
-          VALUES (${text}, ${type}, ${options}, ${correct_answers}, ${tags || []})
+          INSERT INTO ${sql(schema)}.questions (title, text, type, visibility, options, correct_answers, tags, author_id)
+          VALUES (${title}, ${text}, ${type}, ${visibility}, ${options}, ${correct_answers}, ${tags || []}, ${author_id})
           RETURNING *
         `;
 
@@ -89,8 +94,10 @@ const createTestQuestionsRouter = (sql, schema) => {
   router.put('/:id',
     authenticateToken,
     param('id').isUUID().withMessage('ID must be a valid UUID'),
+    body('title').notEmpty().withMessage('Title is required').isString().withMessage('Title must be a string'),
     body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
     body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
+    body('visibility').optional().isIn(['public', 'private', 'protected']).withMessage('Invalid visibility value'),
     body('options').isArray({ min: 1 }).withMessage('Options must be a non-empty array'),
     body('options.*').isString().withMessage('Each option must be a string'),
     body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
@@ -100,7 +107,7 @@ const createTestQuestionsRouter = (sql, schema) => {
     handleValidationErrors,
     async (req, res) => {
       try {
-        const { text, type, options, correct_answers, tags } = req.body;
+        const { title, text, type, visibility, options, correct_answers, tags } = req.body;
 
         // Validate markdown in question text
         const textValidation = validateMarkdown(text);
@@ -123,8 +130,10 @@ const createTestQuestionsRouter = (sql, schema) => {
         const updatedQuestions = await sql`
           UPDATE ${sql(schema)}.questions
           SET
+            title = ${title},
             text = ${text},
             type = ${type},
+            visibility = ${visibility},
             options = ${options},
             correct_answers = ${correct_answers},
             tags = ${tags},
@@ -180,6 +189,7 @@ describe('POST /api/questions - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'JavaScript Question',
         text: '**What is** `JavaScript`?',
         type: 'SINGLE',
         options: ['A language', 'A framework'],
@@ -196,6 +206,7 @@ describe('POST /api/questions - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Code Block Question',
         text: 'What does this do?\n```javascript\nconst x = 1;\n```',
         type: 'SINGLE',
         options: ['Declares variable', 'Prints output'],
@@ -211,6 +222,7 @@ describe('POST /api/questions - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Bad Code Block Question',
         text: 'Bad code block\n```javascript\nconst x = 1;',
         type: 'SINGLE',
         options: ['A', 'B'],
@@ -228,6 +240,7 @@ describe('POST /api/questions - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Markdown Options Question',
         text: 'Select the correct code',
         type: 'SINGLE',
         options: ['`const x = 1`', '`let y = 2`'],
@@ -243,6 +256,7 @@ describe('POST /api/questions - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Invalid Markdown Question',
         text: 'Question',
         type: 'SINGLE',
         options: ['```unclosed', 'Option 2'],
@@ -263,6 +277,7 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Original Question',
         text: 'Original question',
         type: 'SINGLE',
         options: ['A', 'B'],
@@ -277,8 +292,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
       .put(`/api/questions/${questionId}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Updated Question',
         text: '**Updated with** `markdown`',
         type: 'SINGLE',
+        visibility: 'private',
         options: ['A', 'B'],
         correct_answers: [0],
         tags: []
@@ -294,6 +311,7 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
       .post('/api/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Another Original Question',
         text: 'Original question',
         type: 'SINGLE',
         options: ['A', 'B'],
@@ -308,8 +326,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
       .put(`/api/questions/${questionId}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
+        title: 'Invalid Update',
         text: 'Question with ```unclosed code',
         type: 'SINGLE',
+        visibility: 'private',
         options: ['A', 'B'],
         correct_answers: [0],
         tags: []

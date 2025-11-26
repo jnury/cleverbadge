@@ -19,8 +19,10 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
   };
 
   const [formData, setFormData] = useState({
+    title: question?.title || '',
     text: question?.text || '',
     type: question?.type || 'SINGLE',
+    visibility: question?.visibility || 'private',
     options: Array.isArray(question?.options) ? question.options : ['', ''],
     correct_answers: getCorrectAnswersText(),
     tags: Array.isArray(question?.tags) ? question.tags.join(', ') : ''
@@ -99,12 +101,25 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
   const validate = () => {
     const newErrors = {};
 
+    // Title validation
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (formData.title.length > 200) {
+      newErrors.title = 'Title must be 200 characters or less';
+    }
+
+    // Text validation
     if (!formData.text.trim()) {
       newErrors.text = 'Question text is required';
     } else if (formData.text.length < 10) {
       newErrors.text = 'Question must be at least 10 characters';
     } else if (formData.text.length > 1000) {
       newErrors.text = 'Question must be at most 1000 characters';
+    }
+
+    // Visibility validation
+    if (!['public', 'private', 'protected'].includes(formData.visibility)) {
+      newErrors.visibility = 'Invalid visibility value';
     }
 
     const nonEmptyOptions = formData.options.filter(opt => opt.trim());
@@ -140,8 +155,10 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
       }).filter(index => index !== -1);
 
       const submitData = {
+        title: formData.title.trim(),
         text: formData.text.trim(),
         type: formData.type,
+        visibility: formData.visibility,
         options: cleanedOptions,
         correct_answers: correctAnswersIndices,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
@@ -155,6 +172,37 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
+        label="Title"
+        name="title"
+        value={formData.title}
+        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+        error={errors.title}
+        required
+        placeholder="e.g., Capital of France"
+        help="A short, unique title to identify this question (max 200 characters)"
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Visibility
+        </label>
+        <select
+          name="visibility"
+          value={formData.visibility}
+          onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value }))}
+          className="w-full border border-gray-300 rounded-md px-3 py-2"
+        >
+          <option value="private">Private - Only in private/protected tests</option>
+          <option value="public">Public - Can be used in any test</option>
+          <option value="protected">Protected - Only in protected tests</option>
+        </select>
+        {errors.visibility && <p className="mt-1 text-sm text-red-600">{errors.visibility}</p>}
+        <p className="text-sm text-gray-500 mt-1">
+          Controls which tests can use this question based on test visibility.
+        </p>
+      </div>
+
       <Textarea
         label="Question Text"
         value={formData.text}

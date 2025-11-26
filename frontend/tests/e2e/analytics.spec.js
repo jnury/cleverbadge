@@ -31,8 +31,8 @@ test.describe('Analytics Tab', () => {
     await expect(page.locator('text=No test selected')).toBeVisible();
     await expect(page.locator('text=/Select a test from the dropdown/i')).toBeVisible();
 
-    // Verify empty state icon
-    await expect(page.locator('svg')).toBeVisible();
+    // Verify empty state icon (be more specific to avoid matching multiple SVGs like the user dropdown)
+    await expect(page.getByRole('tabpanel', { name: 'Analytics' }).locator('svg')).toBeVisible();
   });
 
   test('should load analytics when test is selected', async ({ page }) => {
@@ -178,7 +178,7 @@ test.describe('Analytics Tab', () => {
       await expect(page.locator('text=/Very Hard.*<30%/i')).toBeVisible();
       await expect(page.locator('text=/Hard.*30-49%/i')).toBeVisible();
       await expect(page.locator('text=/Medium.*50-74%/i')).toBeVisible();
-      await expect(page.locator('text=/Easy.*75%/i')).toBeVisible();
+      await expect(page.locator('text=/Easy.*75-89%/i')).toBeVisible();
     }
   });
 

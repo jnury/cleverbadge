@@ -8,6 +8,7 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
     title: '',
     description: '',
     slug: '',
+    visibility: 'private',
     is_enabled: false,
     pass_threshold: 0
   });
@@ -20,6 +21,7 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
         title: test.title || '',
         description: test.description || '',
         slug: test.slug || '',
+        visibility: test.visibility || 'private',
         is_enabled: test.is_enabled || false,
         pass_threshold: test.pass_threshold ?? 0
       });
@@ -39,13 +41,6 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
     }
   };
 
-  const generateSlug = () => {
-    const slug = formData.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    setFormData(prev => ({ ...prev, slug }));
-  };
 
   const validate = () => {
     const newErrors = {};
@@ -54,10 +49,9 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
       newErrors.title = 'Title is required';
     }
 
-    if (!formData.slug.trim()) {
-      newErrors.slug = 'Slug is required';
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = 'Slug must contain only lowercase letters, numbers, and hyphens';
+    const validVisibilities = ['private', 'public', 'protected'];
+    if (!validVisibilities.includes(formData.visibility)) {
+      newErrors.visibility = 'Invalid visibility option';
     }
 
     const threshold = parseInt(formData.pass_threshold);
@@ -78,14 +72,15 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
 
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
-    } catch (error) {
-      // Handle specific errors
-      if (error.message.includes('slug already exists')) {
-        setErrors({ slug: 'This slug is already in use' });
-      } else {
-        setErrors({ general: error.message || 'Failed to save test' });
+      // For new tests, don't include slug (backend auto-generates)
+      // For editing, include slug as-is
+      const dataToSubmit = test ? formData : { ...formData };
+      if (!test) {
+        delete dataToSubmit.slug;
       }
+      await onSubmit(dataToSubmit);
+    } catch (error) {
+      setErrors({ general: error.message || 'Failed to save test' });
     } finally {
       setIsSubmitting(false);
     }
@@ -119,32 +114,47 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
         placeholder="Brief description of the test..."
       />
 
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <Input
-            label="Slug"
-            name="slug"
-            value={formData.slug}
-            onChange={handleChange}
-            error={errors.slug}
-            required
-            placeholder="e.g., javascript-fundamentals"
-            disabled={!!test}
-          />
-        </div>
-        {!test && (
-          <div className="pt-7">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+        <select
+          name="visibility"
+          value={formData.visibility}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-md px-3 py-2"
+        >
+          <option value="private">Private - Requires direct link</option>
+          <option value="public">Public - Listed on home page (v2)</option>
+          <option value="protected">Protected - Access restricted (v2)</option>
+        </select>
+        {errors.visibility && (
+          <p className="text-sm text-red-600 mt-1">{errors.visibility}</p>
+        )}
+        <p className="text-sm text-gray-500 mt-1">
+          Private tests require the direct link. Public/protected features coming in v2.
+        </p>
+      </div>
+
+      {test && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Test Link</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-gray-100 px-3 py-2 rounded-md text-sm">
+              /t/{formData.slug}
+            </code>
             <Button
               type="button"
               variant="secondary"
-              onClick={generateSlug}
-              disabled={!formData.title}
+              size="sm"
+              onClick={() => navigator.clipboard.writeText(`${window.location.origin}/t/${formData.slug}`)}
             >
-              Generate
+              Copy Link
             </Button>
           </div>
-        )}
-      </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Link regeneration available in test settings.
+          </p>
+        </div>
+      )}
 
       <Input
         label="Pass Threshold (%)"

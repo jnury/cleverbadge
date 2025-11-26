@@ -12,6 +12,8 @@ const TestsTab = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
   const [managingTest, setManagingTest] = useState(null);
+  const [regenerateConfirm, setRegenerateConfirm] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     loadTests();
@@ -106,7 +108,37 @@ const TestsTab = () => {
   const handleCopySlug = (slug) => {
     const url = `${window.location.origin}/t/${slug}`;
     navigator.clipboard.writeText(url);
-    alert('Test URL copied to clipboard!');
+    setSuccessMessage('Test URL copied to clipboard!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleRegenerateSlug = async (testId) => {
+    try {
+      const result = await apiRequest(`/api/tests/${testId}/regenerate-slug`, {
+        method: 'POST'
+      });
+      setSuccessMessage(`Link regenerated: /t/${result.slug}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      setRegenerateConfirm(null);
+      loadTests();
+    } catch (error) {
+      setError(error.message || 'Failed to regenerate link');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const getVisibilityBadge = (visibility) => {
+    const badges = {
+      public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
+      private: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Private' },
+      protected: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Protected' }
+    };
+    const badge = badges[visibility] || badges.private;
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded ${badge.bg} ${badge.text}`}>
+        {badge.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -128,6 +160,13 @@ const TestsTab = () => {
 
   return (
     <div>
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          {successMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -162,6 +201,7 @@ const TestsTab = () => {
                     <h3 className="text-lg font-medium text-gray-900">
                       {test.title}
                     </h3>
+                    {getVisibilityBadge(test.visibility)}
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded ${
                         test.is_enabled
@@ -179,10 +219,20 @@ const TestsTab = () => {
                     </p>
                   )}
 
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <span>Link: /t/{test.slug}</span>
+                    <button
+                      onClick={() => handleCopySlug(test.slug)}
+                      className="text-tech hover:text-tech-dark"
+                      title="Copy link"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>
-                      Slug: <span className="font-mono text-gray-700">{test.slug}</span>
-                    </span>
                     <span>
                       Questions: <span className="font-medium text-gray-700">{test.question_count}</span>
                     </span>
@@ -198,10 +248,9 @@ const TestsTab = () => {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleCopySlug(test.slug)}
-                      title="Copy test URL"
+                      onClick={() => setEditingTest(test)}
                     >
-                      Copy URL
+                      Edit
                     </Button>
                     <Button
                       size="sm"
@@ -216,9 +265,9 @@ const TestsTab = () => {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => setEditingTest(test)}
+                      onClick={() => setRegenerateConfirm(test)}
                     >
-                      Edit
+                      Regenerate Link
                     </Button>
                     <Button
                       size="sm"
@@ -277,6 +326,34 @@ const TestsTab = () => {
           onClose={() => setManagingTest(null)}
           onUpdate={loadTests}
         />
+      )}
+
+      {/* Regenerate Slug Confirmation Modal */}
+      {regenerateConfirm && (
+        <Modal
+          isOpen={!!regenerateConfirm}
+          onClose={() => setRegenerateConfirm(null)}
+          title="Regenerate Test Link"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you sure you want to regenerate the link for "{regenerateConfirm.title}"?
+            </p>
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
+              <strong>Warning:</strong> Regenerating the link will make the current link invalid.
+              Candidates with the old link will no longer be able to access this test.
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setRegenerateConfirm(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => handleRegenerateSlug(regenerateConfirm.id)}>
+                Regenerate Link
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

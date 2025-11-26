@@ -112,8 +112,10 @@ Bulk import questions from a YAML file.
 **YAML Format:**
 ```yaml
 questions:
-  - text: "What is the capital of France?"
+  - title: "Geography - France Capital"
+    text: "What is the capital of France?"
     type: "SINGLE"
+    visibility: "PUBLIC"
     options:
       - "London"
       - "Paris"
@@ -122,8 +124,10 @@ questions:
     correct_answers: ["Paris"]
     tags: ["geography", "europe"]
 
-  - text: "Select all programming languages"
+  - title: "Programming Languages Identification"
+    text: "Select all programming languages"
     type: "MULTIPLE"
+    visibility: "PRIVATE"
     options:
       - "Python"
       - "HTML"
@@ -134,8 +138,10 @@ questions:
 ```
 
 **Validation:**
+- `title`: Optional, string, 3-200 characters (auto-generated from first 50 chars of text if not provided)
 - `text`: Required, string, 10-1000 characters
 - `type`: Required, enum: "SINGLE" or "MULTIPLE"
+- `visibility`: Optional, enum: "PUBLIC" or "PRIVATE", default: "PUBLIC"
 - `options`: Required, array of 2-10 strings
 - `correct_answers`: Required, array of strings matching options
 - `tags`: Optional, array of strings
@@ -147,11 +153,14 @@ questions:
   "questions": [
     {
       "id": "uuid-1",
+      "title": "Geography - France Capital",
       "text": "What is the capital of France?",
       "type": "SINGLE",
+      "visibility": "PUBLIC",
       "options": ["London", "Paris", "Berlin", "Madrid"],
       "correct_answers": ["Paris"],
       "tags": ["geography", "europe"],
+      "author_id": "uuid-admin",
       "created_at": "2025-01-23T10:30:00.000Z"
     }
   ]
@@ -176,13 +185,15 @@ Retrieve all questions with optional filtering.
 
 **Query Parameters:**
 - `type`: Filter by question type (SINGLE or MULTIPLE)
+- `visibility`: Filter by visibility (PUBLIC or PRIVATE)
+- `author_id`: Filter by author ID (UUID)
 - `tags`: Comma-separated list of tags to filter by
 - `limit`: Number of results (default: 100, max: 500)
 - `offset`: Pagination offset (default: 0)
 
 **Example:**
 ```
-GET /api/questions?type=SINGLE&tags=geography,europe&limit=20&offset=0
+GET /api/questions?type=SINGLE&visibility=PUBLIC&tags=geography,europe&limit=20&offset=0
 ```
 
 **Success Response (200):**
@@ -191,11 +202,15 @@ GET /api/questions?type=SINGLE&tags=geography,europe&limit=20&offset=0
   "questions": [
     {
       "id": "uuid",
+      "title": "Geography - France Capital",
       "text": "What is the capital of France?",
       "type": "SINGLE",
+      "visibility": "PUBLIC",
       "options": ["London", "Paris", "Berlin", "Madrid"],
       "correct_answers": ["Paris"],
       "tags": ["geography", "europe"],
+      "author_id": "uuid-admin",
+      "author_name": "admin",
       "created_at": "2025-01-23T10:30:00.000Z",
       "updated_at": "2025-01-23T10:30:00.000Z"
     }
@@ -218,11 +233,15 @@ Retrieve a single question by ID.
 ```json
 {
   "id": "uuid",
+  "title": "Geography - France Capital",
   "text": "What is the capital of France?",
   "type": "SINGLE",
+  "visibility": "PUBLIC",
   "options": ["London", "Paris", "Berlin", "Madrid"],
   "correct_answers": ["Paris"],
   "tags": ["geography", "europe"],
+  "author_id": "uuid-admin",
+  "author_name": "admin",
   "created_at": "2025-01-23T10:30:00.000Z",
   "updated_at": "2025-01-23T10:30:00.000Z"
 }
@@ -265,6 +284,34 @@ Delete a question by ID.
 }
 ```
 
+### Get Question Authors
+
+#### `GET /api/questions/authors`
+
+Get a list of all authors who have created questions (for filtering purposes).
+
+**Authentication:** Required (Admin)
+
+**Success Response (200):**
+```json
+{
+  "authors": [
+    {
+      "id": "uuid-1",
+      "username": "admin"
+    },
+    {
+      "id": "uuid-2",
+      "username": "john_doe"
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns only authors who have created at least one question
+- Ordered alphabetically by username
+
 ---
 
 ## Test Endpoints
@@ -282,7 +329,7 @@ Create a new test.
 {
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
-  "slug": "javascript-fundamentals",
+  "visibility": "PUBLIC",
   "is_enabled": true,
   "pass_threshold": 70
 }
@@ -291,9 +338,13 @@ Create a new test.
 **Validation:**
 - `title`: Required, string, 3-200 characters
 - `description`: Optional, string, max 2000 characters
-- `slug`: Required, string, 3-100 characters, alphanumeric and hyphens only, unique
+- `visibility`: Optional, enum: "PUBLIC" or "PRIVATE", default: "PUBLIC"
 - `is_enabled`: Optional, boolean, default: false
 - `pass_threshold`: Optional, integer, 0-100, default: 0 (0 = neutral scoring, >0 = pass/fail mode)
+
+**Notes:**
+- `slug` is auto-generated from title (not provided in request body)
+- Slug is URL-friendly: lowercase, hyphens, with random suffix for uniqueness
 
 **Success Response (201):**
 ```json
@@ -301,18 +352,12 @@ Create a new test.
   "id": "uuid",
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
-  "slug": "javascript-fundamentals",
+  "slug": "javascript-fundamentals-a1b2c3",
+  "visibility": "PUBLIC",
   "is_enabled": true,
   "pass_threshold": 70,
   "created_at": "2025-01-23T10:30:00.000Z",
   "updated_at": "2025-01-23T10:30:00.000Z"
-}
-```
-
-**Error Response (409):**
-```json
-{
-  "error": "Test with slug 'javascript-fundamentals' already exists"
 }
 ```
 
@@ -325,6 +370,7 @@ Retrieve all tests.
 **Authentication:** Required (Admin)
 
 **Query Parameters:**
+- `visibility`: Filter by visibility (PUBLIC or PRIVATE)
 - `is_enabled`: Filter by enabled status (true/false)
 - `limit`: Number of results (default: 100, max: 500)
 - `offset`: Pagination offset (default: 0)
@@ -337,7 +383,8 @@ Retrieve all tests.
       "id": "uuid",
       "title": "JavaScript Fundamentals",
       "description": "Test your knowledge of JavaScript basics",
-      "slug": "javascript-fundamentals",
+      "slug": "javascript-fundamentals-a1b2c3",
+      "visibility": "PUBLIC",
       "is_enabled": true,
       "pass_threshold": 70,
       "question_count": 25,
@@ -359,13 +406,23 @@ Retrieve test information for candidates (public endpoint).
 
 **Authentication:** Not required
 
+**Query Parameters:**
+- `access_slug`: Optional, required for PRIVATE tests to verify access
+
+**Example:**
+```
+GET /api/tests/slug/javascript-fundamentals-a1b2c3
+GET /api/tests/slug/secret-test-x1y2z3?access_slug=abc123def456
+```
+
 **Success Response (200):**
 ```json
 {
   "id": "uuid",
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
-  "slug": "javascript-fundamentals",
+  "slug": "javascript-fundamentals-a1b2c3",
+  "visibility": "PUBLIC",
   "question_count": 25
 }
 ```
@@ -376,6 +433,18 @@ Retrieve test information for candidates (public endpoint).
   "error": "Test not found or disabled"
 }
 ```
+
+**Error Response (403) - PRIVATE test without valid access_slug:**
+```json
+{
+  "error": "Access denied. This is a private test."
+}
+```
+
+**Notes:**
+- PUBLIC tests: Can be accessed by anyone with just the slug
+- PRIVATE tests: Require both slug and access_slug in query parameter
+- access_slug is a separate 12-character token for PRIVATE tests
 
 ### Get Test by ID (Admin)
 
@@ -391,15 +460,19 @@ Retrieve full test details including questions.
   "id": "uuid",
   "title": "JavaScript Fundamentals",
   "description": "Test your knowledge of JavaScript basics",
-  "slug": "javascript-fundamentals",
+  "slug": "javascript-fundamentals-a1b2c3",
+  "access_slug": "abc123def456",
+  "visibility": "PRIVATE",
   "is_enabled": true,
   "pass_threshold": 70,
   "questions": [
     {
       "question_id": "uuid",
       "weight": 1,
+      "title": "JavaScript Closures",
       "text": "What is a closure?",
       "type": "SINGLE",
+      "visibility": "PUBLIC",
       "options": ["A", "B", "C", "D"],
       "tags": ["javascript", "functions"]
     }
@@ -408,6 +481,10 @@ Retrieve full test details including questions.
   "updated_at": "2025-01-23T10:30:00.000Z"
 }
 ```
+
+**Notes:**
+- `access_slug` is only present for PRIVATE tests
+- Use access_slug when sharing PRIVATE test links with candidates
 
 ### Update Test
 
@@ -422,12 +499,15 @@ Update test details.
 {
   "title": "JavaScript Advanced",
   "description": "Updated description",
+  "visibility": "PRIVATE",
   "is_enabled": false,
   "pass_threshold": 80
 }
 ```
 
-**Note:** Cannot update `slug` after creation
+**Notes:**
+- Cannot update `slug` or `access_slug` after creation (use regenerate-slug endpoint)
+- Changing visibility from PUBLIC to PRIVATE auto-generates access_slug
 
 **Success Response (200):**
 ```json
@@ -435,7 +515,9 @@ Update test details.
   "id": "uuid",
   "title": "JavaScript Advanced",
   "description": "Updated description",
-  "slug": "javascript-fundamentals",
+  "slug": "javascript-fundamentals-a1b2c3",
+  "access_slug": "xyz789abc012",
+  "visibility": "PRIVATE",
   "is_enabled": false,
   "pass_threshold": 80,
   "updated_at": "2025-01-23T11:00:00.000Z"
@@ -457,6 +539,29 @@ Delete a test and all associated data.
   "id": "uuid"
 }
 ```
+
+### Regenerate Test Slug
+
+#### `POST /api/tests/:id/regenerate-slug`
+
+Regenerate the main slug for a test (invalidates previous test links).
+
+**Authentication:** Required (Admin)
+
+**Success Response (200):**
+```json
+{
+  "message": "Slug regenerated successfully",
+  "slug": "javascript-fundamentals-x9y8z7",
+  "access_slug": "def456ghi789"
+}
+```
+
+**Notes:**
+- Generates a new random slug based on the test title
+- Also regenerates access_slug for PRIVATE tests
+- Invalidates all previous links to this test
+- Use with caution - existing links will stop working
 
 ### Add Questions to Test
 
@@ -526,22 +631,26 @@ Create a new assessment instance for a candidate.
 ```json
 {
   "test_id": "uuid",
-  "candidate_name": "John Doe"
+  "candidate_name": "John Doe",
+  "access_slug": "abc123def456"
 }
 ```
 
 **Validation:**
 - `test_id`: Required, valid UUID
 - `candidate_name`: Required, string, 2-100 characters
+- `access_slug`: Required for PRIVATE tests, optional for PUBLIC tests
 
 **Success Response (201):**
 ```json
 {
   "assessment_id": "uuid",
+  "access_slug": "abc123def456",
   "test": {
     "id": "uuid",
     "title": "JavaScript Fundamentals",
-    "description": "Test your knowledge of JavaScript basics"
+    "description": "Test your knowledge of JavaScript basics",
+    "visibility": "PRIVATE"
   },
   "questions": [
     {
@@ -563,6 +672,17 @@ Create a new assessment instance for a candidate.
   "error": "Test not found or disabled"
 }
 ```
+
+**Error Response (403) - PRIVATE test without valid access_slug:**
+```json
+{
+  "error": "Access denied. This is a private test."
+}
+```
+
+**Notes:**
+- `access_slug` is stored with the assessment for continued access
+- Questions returned do not include correct_answers (for security)
 
 ### Submit Answer
 
@@ -725,6 +845,65 @@ Get success rate statistics for each question in a test.
   ]
 }
 ```
+
+---
+
+## Visibility System
+
+Clever Badge implements a two-level visibility system for questions and tests to control access.
+
+### Visibility Types
+
+- **PUBLIC**: Accessible to all users
+- **PRIVATE**: Requires additional access credentials
+
+### Question Visibility
+
+| Visibility | Admin Access | Test Assignment | Candidate View |
+|------------|--------------|-----------------|----------------|
+| PUBLIC     | Yes (read/write) | Can be added to any test | Visible if in test |
+| PRIVATE    | Yes (read/write) | Can be added to tests by author only | Visible if in test |
+
+**Rules:**
+- PUBLIC questions: Can be added to any test by any admin
+- PRIVATE questions: Can only be added to tests by the question author
+- Question visibility does NOT affect candidate access (test visibility controls that)
+- Admins can filter questions by visibility and author in the UI
+
+### Test Visibility
+
+| Visibility | Access Requirements | Link Format | Use Case |
+|------------|-------------------|-------------|----------|
+| PUBLIC     | Just the slug | `/t/{slug}` | Public assessments, certifications |
+| PRIVATE    | Slug + access_slug | `/t/{slug}?access={access_slug}` | Private evaluations, controlled access |
+
+**Rules:**
+- PUBLIC tests: Anyone with the link can take the test
+- PRIVATE tests: Requires both slug and access_slug to access
+- access_slug is a 12-character token auto-generated for PRIVATE tests
+- Changing test from PUBLIC to PRIVATE auto-generates access_slug
+- Changing test from PRIVATE to PUBLIC removes access requirement (access_slug persists but is ignored)
+
+### Access Slug Management
+
+**Generation:**
+- Auto-generated when creating a PRIVATE test
+- Auto-generated when changing test from PUBLIC to PRIVATE
+- Can be manually regenerated via `POST /api/tests/:id/regenerate-slug`
+
+**Format:**
+- 12 alphanumeric characters (lowercase)
+- Example: `abc123def456`
+
+**Usage:**
+- Required as query parameter: `?access_slug=abc123def456`
+- Validated on test access and assessment start
+- Stored with assessment for continued access during test-taking
+
+**Security Notes:**
+- access_slug provides security through obscurity
+- Regenerating slug invalidates all previous links
+- Use PRIVATE visibility for sensitive assessments
 
 ---
 

@@ -19,13 +19,14 @@ describe('Tests Integration Tests', () => {
 
   it('should create a new test', async () => {
     const title = 'New Test';
-    const slug = 'new-test';
+    const slug = 'new-test-integration';
     const description = 'A new test for testing';
     const isEnabled = true;
+    const visibility = 'private';
 
     const result = await sql`
-      INSERT INTO ${sql(schema)}.tests (title, slug, description, is_enabled)
-      VALUES (${title}, ${slug}, ${description}, ${isEnabled})
+      INSERT INTO ${sql(schema)}.tests (title, slug, description, is_enabled, visibility)
+      VALUES (${title}, ${slug}, ${description}, ${isEnabled}, ${visibility})
       RETURNING *
     `;
 
@@ -34,6 +35,7 @@ describe('Tests Integration Tests', () => {
     expect(result[0].slug).toBe(slug);
     expect(result[0].description).toBe(description);
     expect(result[0].is_enabled).toBe(isEnabled);
+    expect(result[0].visibility).toBe(visibility);
   });
 
   it('should add questions to a test', async () => {

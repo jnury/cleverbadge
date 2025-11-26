@@ -65,8 +65,8 @@ describe('Test Infrastructure', () => {
 
     // Insert a new question
     await db.unsafe(`
-      INSERT INTO ${schema}.questions (text, type, options, correct_answers)
-      VALUES ('Rollback test question?', 'SINGLE', '["A", "B"]', '[0]')
+      INSERT INTO ${schema}.questions (title, text, type, options, correct_answers, author_id, visibility)
+      VALUES ('Rollback Test', 'Rollback test question?', 'SINGLE', '["A", "B"]', '[0]', '550e8400-e29b-41d4-a716-446655440001', 'private')
     `);
 
     // Verify it was inserted
