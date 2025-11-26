@@ -20,10 +20,9 @@ test.describe('Tests Management', () => {
   test('should create a new test', async ({ page }) => {
     await page.click('button:has-text("Create Test")');
 
-    // Fill in form
+    // Fill in form (slug is auto-generated now)
     await page.fill('input[name="title"]', 'E2E Test Assessment');
     await page.fill('textarea[name="description"]', 'Test description for E2E');
-    await page.fill('input[name="slug"]', 'e2e-test-assessment');
     await page.check('input[name="is_enabled"]');
 
     // Click the submit button inside the modal
@@ -33,15 +32,6 @@ test.describe('Tests Management', () => {
     await expect(page.locator('text=E2E Test Assessment')).toBeVisible();
   });
 
-  test('should generate slug from title', async ({ page }) => {
-    await page.click('button:has-text("Create Test")');
-
-    await page.fill('input[name="title"]', 'JavaScript Basics 101');
-    await page.click('button:has-text("Generate")');
-
-    const slugValue = await page.inputValue('input[name="slug"]');
-    expect(slugValue).toBe('javascript-basics-101');
-  });
 
   test('should edit a test', async ({ page }) => {
     // Wait for tests to load
@@ -74,19 +64,17 @@ test.describe('Tests Management', () => {
   });
 
   test('should copy test URL', async ({ page }) => {
-    // Wait for tests to load
-    await page.waitForSelector('button:has-text("Copy URL")');
+    // Wait for tests to load - look for copy link button by title
+    await page.waitForSelector('button[title="Copy link"]');
 
     // Grant clipboard permissions
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await page.locator('button:has-text("Copy URL")').first().click();
+    // Click the copy link button using the title attribute
+    await page.locator('button[title="Copy link"]').first().click();
 
-    // Check that alert appeared
-    page.on('dialog', async dialog => {
-      expect(dialog.message()).toContain('copied');
-      await dialog.accept();
-    });
+    // Wait for success message to appear (it's a green banner, not toast)
+    await expect(page.locator('text=Test URL copied to clipboard!')).toBeVisible({ timeout: 3000 });
   });
 
   test('should open manage questions modal', async ({ page }) => {
@@ -95,9 +83,9 @@ test.describe('Tests Management', () => {
 
     await page.locator('[data-testid="manage-questions-btn"]').first().click();
 
-    // Modal should open
+    // Modal should open with new structure
     await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
-    await expect(page.locator('h4:has-text("Add Question to Test")')).toBeVisible();
+    await expect(page.locator('h4:has-text("Available Questions")')).toBeVisible();
     await expect(page.locator('h4:has-text("Current Questions")')).toBeVisible();
   });
 
@@ -107,34 +95,35 @@ test.describe('Tests Management', () => {
 
     await page.locator('[data-testid="manage-questions-btn"]').first().click();
 
-    // Wait for modal and questions to load
-    await page.waitForSelector('select');
+    // Wait for modal and available questions section to load
+    await page.waitForSelector('h4:has-text("Available Questions")');
 
-    // Check if there are available questions
-    const selectOptions = await page.locator('select option').count();
+    // Check if there are available questions (look for Add buttons in available section)
+    const addButtons = page.locator('h4:has-text("Available Questions")').locator('..').locator('button:has-text("Add")');
+    const addButtonCount = await addButtons.count();
 
-    if (selectOptions > 1) { // More than just "Select a question..."
-      // Select first available question
-      await page.selectOption('select', { index: 1 });
+    if (addButtonCount > 0) {
+      // Get the first available question's weight input and Add button
+      const firstQuestionContainer = page.locator('h4:has-text("Available Questions")').locator('..').locator('button:has-text("Add")').first().locator('..');
 
-      // Set weight
-      await page.fill('input[type="number"]', '5');
+      // Set weight in the input field for first question
+      await firstQuestionContainer.locator('input[type="number"]').fill('5');
 
-      // Add question
-      await page.click('button:has-text("Add")');
+      // Click Add button
+      await firstQuestionContainer.locator('button:has-text("Add")').click();
 
-      // Wait for question to be added
+      // Wait for question to be added to current questions
       await page.waitForTimeout(500);
 
-      // Question should appear in list
-      await expect(page.locator('button:has-text("Remove")')).toBeVisible();
+      // Question should appear in Current Questions section with Remove button
+      await expect(page.locator('h4:has-text("Current Questions")').locator('..').locator('button:has-text("Remove")')).toBeVisible();
 
       // Remove the question
       page.on('dialog', async dialog => {
         await dialog.accept();
       });
 
-      await page.locator('button:has-text("Remove")').first().click();
+      await page.locator('h4:has-text("Current Questions")').locator('..').locator('button:has-text("Remove")').first().click();
 
       // Wait for removal
       await page.waitForTimeout(500);
