@@ -3,48 +3,42 @@
  */
 
 /**
- * Checks if a candidate's answer is correct based on question type
- * @param {string} questionType - Either 'SINGLE' or 'MULTIPLE'
- * @param {number[]} selectedOptions - Array of selected option indices
- * @param {number[]} correctAnswers - Array of correct option indices
- * @returns {boolean} - True if answer is correct
+ * Check if a candidate's answer is correct
+ * @param {string} type - 'SINGLE' or 'MULTIPLE'
+ * @param {Array<string>} selectedOptions - Array of option IDs selected by candidate
+ * @param {Array<string>} correctOptions - Array of correct option IDs
+ * @returns {boolean}
  */
-export function isAnswerCorrect(questionType, selectedOptions, correctAnswers) {
-  if (questionType === 'SINGLE') {
-    // SINGLE: correct if selected_options has exactly 1 item AND it's in correct_answers
-    return selectedOptions.length === 1 && correctAnswers.includes(selectedOptions[0]);
-  } else {
-    // MULTIPLE: arrays must match (order-independent)
-    const selectedSorted = [...selectedOptions].sort((a, b) => a - b);
-    const correctSorted = [...correctAnswers].sort((a, b) => a - b);
-    return JSON.stringify(selectedSorted) === JSON.stringify(correctSorted);
+export function isAnswerCorrect(type, selectedOptions, correctOptions) {
+  // Normalize to arrays of strings
+  const selected = selectedOptions.map(String).sort();
+  const correct = correctOptions.map(String).sort();
+
+  if (type === 'SINGLE') {
+    // For single choice, must select exactly one and it must be correct
+    return selected.length === 1 && selected[0] === correct[0];
   }
+
+  // For multiple choice, must select exactly the correct options
+  if (selected.length !== correct.length) {
+    return false;
+  }
+
+  return selected.every((val, idx) => val === correct[idx]);
 }
 
 /**
- * Calculates the overall score percentage based on weighted questions
- * @param {Array} questions - Array of question objects with {id, type, correct_answers, weight}
- * @param {Object} answers - Object mapping question IDs to selected options arrays
- * @returns {number} - Score percentage (0-100)
+ * Calculate weighted score percentage
+ * @param {Array<{isCorrect: boolean, weight: number}>} answers
+ * @returns {number} Percentage 0-100
  */
-export function calculateScore(questions, answers) {
-  let totalScore = 0;
-  let maxScore = 0;
+export function calculateScore(answers) {
+  if (answers.length === 0) return 0;
 
-  for (const question of questions) {
-    maxScore += question.weight;
+  const totalWeight = answers.reduce((sum, a) => sum + a.weight, 0);
+  const earnedWeight = answers
+    .filter(a => a.isCorrect)
+    .reduce((sum, a) => sum + a.weight, 0);
 
-    // Get selected options for this question (default to empty array if not answered)
-    const selectedOptions = answers[question.id] || [];
-
-    // Check if answer is correct
-    const correct = isAnswerCorrect(question.type, selectedOptions, question.correct_answers);
-
-    if (correct) {
-      totalScore += question.weight;
-    }
-  }
-
-  // Calculate percentage
-  return maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+  return totalWeight > 0 ? Math.round((earnedWeight / totalWeight) * 100) : 0;
 }
