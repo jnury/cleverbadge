@@ -74,7 +74,7 @@ const TestResults = () => {
 
         <div className={`${statusBg} ${statusBorder} border-2 rounded-lg p-8 mb-6`}>
           <div className="text-6xl font-bold text-primary mb-2">
-            {scoreNum.toFixed(1)}%
+            {Math.round(scoreNum)}%
           </div>
           <div className={`text-xl font-semibold ${statusColor}`}>
             {status.toUpperCase()}

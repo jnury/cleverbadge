@@ -63,7 +63,7 @@ test.describe('Questions Management', () => {
     await expect(page.locator('text=/Showing \\d+ of \\d+ questions/')).toBeVisible();
   });
 
-  test('should edit a question', async ({ page }) => {
+  test('should edit a question text', async ({ page }) => {
     await page.locator('button:has-text("Edit")').first().click();
     await page.fill('textarea[placeholder*="question"]', 'Updated question text for E2E');
     await page.locator('button:has-text("Update Question")').click();
@@ -71,6 +71,28 @@ test.describe('Questions Management', () => {
     // Wait for modal to close and verify the updated text appears
     await page.waitForTimeout(1000);
     await expect(page.locator('text=Updated question text for E2E')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should edit a question and preserve correct answers', async ({ page }) => {
+    // This test verifies the fix for sending correct_answers as strings (not indices)
+    await page.locator('button:has-text("Edit")').first().click();
+
+    // Wait for the form to load
+    await page.waitForSelector('textarea[placeholder*="question"]');
+
+    // Change the question title slightly
+    const titleInput = page.locator('input[name="title"]');
+    const currentTitle = await titleInput.inputValue();
+    await titleInput.fill(currentTitle + ' (edited)');
+
+    // Submit the update
+    await page.locator('button:has-text("Update Question")').click();
+
+    // Wait for modal to close - should not get a 400 error
+    await expect(page.locator('h3:has-text("Edit Question")')).not.toBeVisible({ timeout: 5000 });
+
+    // Verify the updated title appears in the list
+    await expect(page.locator(`text=${currentTitle} (edited)`)).toBeVisible({ timeout: 5000 });
   });
 
   // TODO: Delete test depends on question creation which has form submission issues

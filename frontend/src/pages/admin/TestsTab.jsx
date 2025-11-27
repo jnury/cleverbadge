@@ -90,7 +90,7 @@ const TestsTab = () => {
   };
 
   const handleDeleteTest = async (test) => {
-    if (!confirm(`Are you sure you want to delete "${test.title}"? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete "${test.title}"?\n\nThe test link will no longer work. Historical assessment data will be preserved.`)) {
       return;
     }
 

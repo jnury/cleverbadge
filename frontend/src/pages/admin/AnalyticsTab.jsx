@@ -234,7 +234,7 @@ const AnalyticsTab = () => {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getSuccessRateColor(stat.success_rate)}`}>
-                          {stat.success_rate.toFixed(1)}%
+                          {Math.round(stat.success_rate)}%
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm text-center">

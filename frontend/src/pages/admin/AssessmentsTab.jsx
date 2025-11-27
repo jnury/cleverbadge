@@ -53,7 +53,7 @@ const AssessmentsTab = () => {
 
   const formatScore = (score) => {
     if (score === null || score === undefined) return 'N/A';
-    return `${parseFloat(score).toFixed(1)}%`;
+    return `${Math.round(parseFloat(score))}%`;
   };
 
   // Filter and sort assessments

@@ -109,6 +109,7 @@ router.post('/start',
       const testQuestionsData = await sql`
         SELECT
           q.id,
+          q.title,
           q.text,
           q.type,
           q.options,

@@ -36,11 +36,12 @@ async function generateUniqueSlug() {
   throw new Error('Failed to generate unique slug after maximum attempts');
 }
 
-// GET all tests
+// GET all tests (excludes archived)
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const allTests = await sql`
       SELECT * FROM ${sql(dbSchema)}.tests
+      WHERE is_archived = false
       ORDER BY created_at DESC
     `;
     res.json({ tests: allTests, total: allTests.length });
@@ -59,7 +60,7 @@ router.get('/:id',
     try {
       const tests = await sql`
         SELECT * FROM ${sql(dbSchema)}.tests
-        WHERE id = ${req.params.id}
+        WHERE id = ${req.params.id} AND is_archived = false
       `;
 
       if (tests.length === 0) {
@@ -98,7 +99,7 @@ router.get('/slug/:slug',
     try {
       const tests = await sql`
         SELECT * FROM ${sql(dbSchema)}.tests
-        WHERE slug = ${req.params.slug}
+        WHERE slug = ${req.params.slug} AND is_archived = false
       `;
 
       if (tests.length === 0) {
@@ -282,20 +283,28 @@ router.post('/:id/regenerate-slug',
   }
 );
 
-// DELETE test
+// DELETE test (soft delete - archives the test)
 router.delete('/:id',
   authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const deletedTests = await sql`
-        DELETE FROM ${sql(dbSchema)}.tests
-        WHERE id = ${req.params.id}
+      // First, remove all questions from the test
+      await sql`
+        DELETE FROM ${sql(dbSchema)}.test_questions
+        WHERE test_id = ${req.params.id}
+      `;
+
+      // Soft delete - set is_archived to true
+      const archivedTests = await sql`
+        UPDATE ${sql(dbSchema)}.tests
+        SET is_archived = true, is_enabled = false, updated_at = NOW()
+        WHERE id = ${req.params.id} AND is_archived = false
         RETURNING *
       `;
 
-      if (deletedTests.length === 0) {
+      if (archivedTests.length === 0) {
         return res.status(404).json({ error: 'Test not found' });
       }
 

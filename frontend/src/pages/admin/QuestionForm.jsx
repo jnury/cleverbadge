@@ -149,10 +149,10 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
     try {
       const cleanedOptions = formData.options.filter(opt => opt.trim());
 
-      // Convert correct_answers from option text to indices
-      const correctAnswersIndices = formData.correct_answers.map(answer => {
-        return cleanedOptions.indexOf(answer);
-      }).filter(index => index !== -1);
+      // Filter correct_answers to only include valid options (strings)
+      const validCorrectAnswers = formData.correct_answers.filter(answer =>
+        cleanedOptions.includes(answer)
+      );
 
       const submitData = {
         title: formData.title.trim(),
@@ -160,7 +160,7 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
         type: formData.type,
         visibility: formData.visibility,
         options: cleanedOptions,
-        correct_answers: correctAnswersIndices,
+        correct_answers: validCorrectAnswers,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
       };
 

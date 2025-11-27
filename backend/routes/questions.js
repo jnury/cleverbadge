@@ -10,6 +10,8 @@ const router = express.Router();
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', JSON.stringify(errors.array(), null, 2));
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({ errors: errors.array() });
   }
   next();
@@ -35,7 +37,7 @@ router.get('/',
           SELECT q.*, u.username as author_username
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
-          WHERE q.author_id = ${author_id} AND q.visibility = ${visibility}
+          WHERE q.author_id = ${author_id} AND q.visibility = ${visibility} AND q.is_archived = false
           ORDER BY q.created_at DESC
         `;
       } else if (author_id) {
@@ -43,7 +45,7 @@ router.get('/',
           SELECT q.*, u.username as author_username
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
-          WHERE q.author_id = ${author_id}
+          WHERE q.author_id = ${author_id} AND q.is_archived = false
           ORDER BY q.created_at DESC
         `;
       } else if (visibility) {
@@ -51,7 +53,7 @@ router.get('/',
           SELECT q.*, u.username as author_username
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
-          WHERE q.visibility = ${visibility}
+          WHERE q.visibility = ${visibility} AND q.is_archived = false
           ORDER BY q.created_at DESC
         `;
       } else {
@@ -59,6 +61,7 @@ router.get('/',
           SELECT q.*, u.username as author_username
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
+          WHERE q.is_archived = false
           ORDER BY q.created_at DESC
         `;
       }
@@ -80,6 +83,7 @@ router.get('/authors',
         SELECT DISTINCT u.id, u.username
         FROM ${sql(dbSchema)}.users u
         INNER JOIN ${sql(dbSchema)}.questions q ON q.author_id = u.id
+        WHERE q.is_archived = false
         ORDER BY u.username
       `;
       res.json({ authors });
@@ -101,7 +105,7 @@ router.get('/:id',
         SELECT q.*, u.username as author_username
         FROM ${sql(dbSchema)}.questions q
         LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
-        WHERE q.id = ${req.params.id}
+        WHERE q.id = ${req.params.id} AND q.is_archived = false
       `;
 
       if (questions.length === 0) {
@@ -248,29 +252,43 @@ router.put('/:id',
   }
 );
 
-// DELETE question
+// DELETE question (soft delete - archives the question)
 router.delete('/:id',
   authenticateToken,
   param('id').isUUID().withMessage('ID must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const deletedQuestions = await sql`
-        DELETE FROM ${sql(dbSchema)}.questions
-        WHERE id = ${req.params.id}
+      // Check if question is used in any tests
+      const testsUsingQuestion = await sql`
+        SELECT t.id, t.title
+        FROM ${sql(dbSchema)}.test_questions tq
+        INNER JOIN ${sql(dbSchema)}.tests t ON tq.test_id = t.id
+        WHERE tq.question_id = ${req.params.id} AND t.is_archived = false
+      `;
+
+      if (testsUsingQuestion.length > 0) {
+        const testTitles = testsUsingQuestion.map(t => t.title).join(', ');
+        return res.status(400).json({
+          error: `Cannot delete question: it is used in tests: ${testTitles}`,
+          testsUsing: testsUsingQuestion
+        });
+      }
+
+      // Soft delete - set is_archived to true
+      const archivedQuestions = await sql`
+        UPDATE ${sql(dbSchema)}.questions
+        SET is_archived = true, updated_at = NOW()
+        WHERE id = ${req.params.id} AND is_archived = false
         RETURNING *
       `;
 
-      if (deletedQuestions.length === 0) {
+      if (archivedQuestions.length === 0) {
         return res.status(404).json({ error: 'Question not found' });
       }
 
       res.json({ message: 'Question deleted successfully', id: req.params.id });
     } catch (error) {
-      // Check for foreign key constraint violation (question used in test)
-      if (error.code === '23503') {
-        return res.status(400).json({ error: 'Cannot delete question: it is used in one or more tests' });
-      }
       console.error('Error deleting question:', error);
       res.status(500).json({ error: 'Failed to delete question' });
     }

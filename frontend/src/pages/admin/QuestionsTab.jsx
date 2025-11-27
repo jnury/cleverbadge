@@ -24,6 +24,7 @@ const QuestionsTab = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'preview'
   const [previewData, setPreviewData] = useState(null); // Live preview data
+  const [previewSelections, setPreviewSelections] = useState([]); // Preview selected options
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
 
@@ -246,17 +247,9 @@ const QuestionsTab = () => {
                   </div>
 
                   {/* Question text preview */}
-                  <p className="text-gray-600 text-sm mb-2 font-mono">
-                    {question.text.split('\n')[0].substring(0, 100)}{question.text.length > 100 ? '...' : ''}
+                  <p className="text-gray-600 text-sm font-mono">
+                    {question.text.split('\n')[0].substring(0, 150)}{question.text.length > 150 ? '...' : ''}
                   </p>
-
-                  {/* Options and correct answers */}
-                  <div className="text-sm text-gray-600">
-                    <strong>Options:</strong> {Array.isArray(question.options) ? question.options.join(', ') : JSON.stringify(question.options)}
-                  </div>
-                  <div className="text-sm text-green-600 mt-1">
-                    <strong>Correct:</strong> {Array.isArray(question.correct_answers) ? question.correct_answers.join(', ') : JSON.stringify(question.correct_answers)}
-                  </div>
                 </div>
 
                 {/* Action buttons */}
@@ -267,6 +260,7 @@ const QuestionsTab = () => {
                     onClick={() => {
                       setEditingQuestion(question);
                       setPreviewData(question); // Initialize preview with current question
+                      setPreviewSelections([]); // Reset preview selections
                       setActiveTab('edit');
                     }}
                   >
@@ -307,6 +301,7 @@ const QuestionsTab = () => {
           isOpen={!!editingQuestion}
           onClose={() => {
             setEditingQuestion(null);
+            setPreviewSelections([]);
             setActiveTab('edit');
           }}
           title="Edit Question"
@@ -344,6 +339,7 @@ const QuestionsTab = () => {
               onCancel={() => {
                 setEditingQuestion(null);
                 setPreviewData(null);
+                setPreviewSelections([]);
                 setActiveTab('edit');
               }}
               onFormChange={setPreviewData}
@@ -353,25 +349,55 @@ const QuestionsTab = () => {
 
           {activeTab === 'preview' && (
             <div className="space-y-4">
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <div className="text-xl font-bold text-gray-800 mb-4">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+                {/* Question title */}
+                {(previewData?.title || editingQuestion.title) && (
+                  <h2 className="text-xl font-bold text-gray-800 mb-3">
+                    {previewData?.title || editingQuestion.title}
+                  </h2>
+                )}
+
+                {/* Question text - lighter font weight */}
+                <div className="text-lg text-gray-600 mb-6">
                   <MarkdownRenderer content={previewData?.text || editingQuestion.text || ''} />
                 </div>
 
                 <div className="space-y-3">
                   {(previewData?.options || editingQuestion.options || []).map((option, index) => {
                     const questionType = previewData?.type || editingQuestion.type;
+                    const isSelected = previewSelections.includes(option);
+
+                    const handleOptionClick = () => {
+                      if (questionType === 'SINGLE') {
+                        setPreviewSelections([option]);
+                      } else {
+                        // MULTIPLE: toggle selection
+                        if (isSelected) {
+                          setPreviewSelections(previewSelections.filter(o => o !== option));
+                        } else {
+                          setPreviewSelections([...previewSelections, option]);
+                        }
+                      }
+                    };
+
                     return (
                       <label
                         key={index}
-                        className="flex items-center p-4 border-2 rounded-lg border-gray-200 cursor-pointer hover:border-gray-300"
+                        className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-tech bg-tech/10 shadow-sm'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                        onClick={handleOptionClick}
                       >
                         <input
                           type={questionType === 'SINGLE' ? 'radio' : 'checkbox'}
                           name="preview-question"
+                          checked={isSelected}
+                          onChange={() => {}} // Handled by label onClick
                           className="mr-3 flex-shrink-0"
                         />
-                        <div className="flex-1">
+                        <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
                           <MarkdownRenderer content={option || ''} />
                         </div>
                       </label>
@@ -396,6 +422,7 @@ const QuestionsTab = () => {
               onClick={() => {
                 setEditingQuestion(null);
                 setPreviewData(null);
+                setPreviewSelections([]);
                 setActiveTab('edit');
               }}
             >
@@ -430,10 +457,10 @@ const QuestionsTab = () => {
               Are you sure you want to delete this question?
             </p>
             <p className="text-sm text-gray-600 italic">
-              "{deleteConfirm.text}"
+              "{deleteConfirm.title || deleteConfirm.text}"
             </p>
-            <p className="text-sm text-red-600">
-              This action cannot be undone.
+            <p className="text-sm text-gray-500">
+              Note: Questions that are part of a test cannot be deleted. Remove them from tests first.
             </p>
 
             <div className="flex gap-3 justify-end">

@@ -148,7 +148,15 @@ const QuestionRunner = () => {
 
       {/* Question card */}
       <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-        <div className="text-2xl font-bold text-gray-800 mb-6">
+        {/* Question title */}
+        {currentQuestion.title && (
+          <h2 className="text-xl font-bold text-gray-800 mb-3">
+            {currentQuestion.title}
+          </h2>
+        )}
+
+        {/* Question text - lighter font weight */}
+        <div className="text-lg text-gray-600 mb-6">
           <MarkdownRenderer content={currentQuestion.text} />
         </div>
 
@@ -160,10 +168,10 @@ const QuestionRunner = () => {
             return (
               <label
                 key={index}
-                className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
                   isSelected
-                    ? 'border-tech bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-tech bg-tech/10 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <input
@@ -171,9 +179,9 @@ const QuestionRunner = () => {
                   name={`question-${currentQuestion.id}`}
                   checked={isSelected}
                   onChange={() => handleOptionChange(index)}
-                  className="mr-3 flex-shrink-0"
+                  className={`mr-3 flex-shrink-0 ${isSelected ? 'accent-tech' : ''}`}
                 />
-                <div className="flex-1">
+                <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
                   <MarkdownRenderer content={option} />
                 </div>
               </label>

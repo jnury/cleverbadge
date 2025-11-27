@@ -111,7 +111,7 @@ const AssessmentDetail = () => {
               <p className={`text-3xl font-bold ${
                 assessment.score_percentage >= 70 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {assessment.score_percentage !== null ? `${assessment.score_percentage.toFixed(1)}%` : 'N/A'}
+                {assessment.score_percentage !== null ? `${Math.round(assessment.score_percentage)}%` : 'N/A'}
               </p>
             </div>
             <div>
