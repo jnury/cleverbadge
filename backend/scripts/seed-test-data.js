@@ -23,59 +23,77 @@ async function seedTestData() {
     ON CONFLICT (id) DO NOTHING
   `);
 
-  // Questions: Comprehensive set
+  // Questions: Comprehensive set (new options format with is_correct per option)
   const questions = [
-    // SINGLE choice - correct answer
+    // SINGLE choice - correct answer is "4" (index 1)
     {
       id: '550e8400-e29b-41d4-a716-446655440010',
       text: 'What is 2 + 2?',
       type: 'SINGLE',
-      options: JSON.stringify(['3', '4', '5', '6']),
-      correct_answers: JSON.stringify([1]),
+      options: JSON.stringify({
+        "0": { text: '3', is_correct: false },
+        "1": { text: '4', is_correct: true },
+        "2": { text: '5', is_correct: false },
+        "3": { text: '6', is_correct: false }
+      }),
       tags: JSON.stringify(['math', 'easy'])
     },
-    // SINGLE choice - for wrong answer test
+    // SINGLE choice - correct answer is "Paris" (index 1)
     {
       id: '550e8400-e29b-41d4-a716-446655440011',
       text: 'What is the capital of France?',
       type: 'SINGLE',
-      options: JSON.stringify(['London', 'Paris', 'Berlin', 'Madrid']),
-      correct_answers: JSON.stringify([1]),
+      options: JSON.stringify({
+        "0": { text: 'London', is_correct: false, explanation: 'London is the capital of the United Kingdom.' },
+        "1": { text: 'Paris', is_correct: true, explanation: 'Paris has been France\'s capital since the 10th century.' },
+        "2": { text: 'Berlin', is_correct: false, explanation: 'Berlin is the capital of Germany.' },
+        "3": { text: 'Madrid', is_correct: false, explanation: 'Madrid is the capital of Spain.' }
+      }),
       tags: JSON.stringify(['geography'])
     },
-    // MULTIPLE choice
+    // MULTIPLE choice - correct answers are "2" and "4" (indices 1 and 3)
     {
       id: '550e8400-e29b-41d4-a716-446655440012',
       text: 'Select all even numbers:',
       type: 'MULTIPLE',
-      options: JSON.stringify(['1', '2', '3', '4']),
-      correct_answers: JSON.stringify([1, 3]),
+      options: JSON.stringify({
+        "0": { text: '1', is_correct: false, explanation: '1 is an odd number.' },
+        "1": { text: '2', is_correct: true, explanation: '2 is the smallest even number.' },
+        "2": { text: '3', is_correct: false, explanation: '3 is an odd number.' },
+        "3": { text: '4', is_correct: true, explanation: '4 is an even number (4 = 2 × 2).' }
+      }),
       tags: JSON.stringify(['math'])
     },
-    // MULTIPLE choice - for partial answer test
+    // MULTIPLE choice - correct answers are "Red", "Blue", "Yellow" (indices 0, 2, 3)
     {
       id: '550e8400-e29b-41d4-a716-446655440013',
       text: 'Select all primary colors:',
       type: 'MULTIPLE',
-      options: JSON.stringify(['Red', 'Green', 'Blue', 'Yellow']),
-      correct_answers: JSON.stringify([0, 2, 3]),
+      options: JSON.stringify({
+        "0": { text: 'Red', is_correct: true },
+        "1": { text: 'Green', is_correct: false, explanation: 'Green is a secondary color (blue + yellow).' },
+        "2": { text: 'Blue', is_correct: true },
+        "3": { text: 'Yellow', is_correct: true }
+      }),
       tags: JSON.stringify(['art'])
     },
-    // SINGLE choice - no tags
+    // SINGLE choice - no tags, correct is "Yes" (index 0)
     {
       id: '550e8400-e29b-41d4-a716-446655440014',
       text: 'Is the sky blue?',
       type: 'SINGLE',
-      options: JSON.stringify(['Yes', 'No']),
-      correct_answers: JSON.stringify([0]),
+      options: JSON.stringify({
+        "0": { text: 'Yes', is_correct: true },
+        "1": { text: 'No', is_correct: false }
+      }),
       tags: null
     }
   ];
 
   for (const q of questions) {
     await sql.unsafe(`
-      INSERT INTO ${TEST_SCHEMA}.questions (id, text, type, options, correct_answers, tags)
-      VALUES ('${q.id}', '${q.text}', '${q.type}', '${q.options}', '${q.correct_answers}', ${q.tags ? `'${q.tags}'` : 'NULL'})
+      INSERT INTO ${TEST_SCHEMA}.questions (id, text, type, options, tags)
+      VALUES ('${q.id}', '${q.text}', '${q.type}', '${q.options}', ${q.tags ? `'${q.tags}'` : 'NULL'})
       ON CONFLICT (id) DO NOTHING
     `);
   }
