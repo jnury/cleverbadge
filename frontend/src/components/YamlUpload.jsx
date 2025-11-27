@@ -3,20 +3,34 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const EXAMPLE_YAML = `# Example YAML format - root array of questions
+# Options use 0-based indexing (first option is index 0)
 - title: "Basic Addition"
   text: "What is 2+2?"
   type: "SINGLE"
   visibility: "public"
-  options: ["3", "4", "5", "6"]
-  correct_answers: ["4"]
+  options:
+    - text: "3"
+      is_correct: false
+    - text: "4"
+      is_correct: true
+      explanation: "2+2=4"
+    - text: "5"
+      is_correct: false
   tags: ["math", "easy"]
 
 - title: "Prime Numbers Selection"
   text: "Select all prime numbers"
   type: "MULTIPLE"
   visibility: "private"
-  options: ["2", "3", "4", "5"]
-  correct_answers: ["2", "3", "5"]
+  options:
+    - text: "2"
+      is_correct: true
+    - text: "3"
+      is_correct: true
+    - text: "4"
+      is_correct: false
+    - text: "5"
+      is_correct: true
   tags: ["math"]`;
 
 const YamlUpload = ({ onUploadSuccess }) => {
@@ -407,16 +421,29 @@ const YamlUpload = ({ onUploadSuccess }) => {
               <p className="text-sm text-gray-800 font-medium mt-3 mb-1">Required fields:</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
                 <li><code className="bg-gray-100 px-1 rounded font-mono">title</code> - Short descriptive title (1-200 chars, unique per author)</li>
-                <li><code className="bg-gray-100 px-1 rounded font-mono">text</code> - The question text (10-1000 chars, supports Markdown)</li>
+                <li><code className="bg-gray-100 px-1 rounded font-mono">text</code> - The question text (supports Markdown)</li>
                 <li><code className="bg-gray-100 px-1 rounded font-mono">type</code> - Either "SINGLE" or "MULTIPLE"</li>
-                <li><code className="bg-gray-100 px-1 rounded font-mono">options</code> - Array of answer choices (2-10 options)</li>
-                <li><code className="bg-gray-100 px-1 rounded font-mono">correct_answers</code> - Array of correct options</li>
+                <li><code className="bg-gray-100 px-1 rounded font-mono">options</code> - Array of option objects (2-10 options)</li>
               </ul>
-              <p className="text-sm text-gray-800 font-medium mt-3 mb-1">Optional fields:</p>
+              <p className="text-sm text-gray-800 font-medium mt-3 mb-1">Option object fields:</p>
+              <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                <li><code className="bg-gray-100 px-1 rounded font-mono">text</code> - The option text (required)</li>
+                <li><code className="bg-gray-100 px-1 rounded font-mono">is_correct</code> - Boolean true/false (required)</li>
+                <li><code className="bg-gray-100 px-1 rounded font-mono">explanation</code> - Why this answer is right/wrong (optional)</li>
+              </ul>
+              <p className="text-sm text-gray-800 font-medium mt-3 mb-1">Optional question fields:</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
                 <li><code className="bg-gray-100 px-1 rounded font-mono">visibility</code> - "public", "private" (default), or "protected"</li>
                 <li><code className="bg-gray-100 px-1 rounded font-mono">tags</code> - Array of category tags</li>
               </ul>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Important:</strong> Option indices are 0-based. The first option is index 0, second is index 1, etc.
+                For SINGLE type, exactly one option must have <code className="bg-gray-100 px-1 rounded font-mono">is_correct: true</code>.
+                For MULTIPLE type, at least one option must have <code className="bg-gray-100 px-1 rounded font-mono">is_correct: true</code>.
+              </p>
             </div>
 
             <div>
@@ -436,27 +463,41 @@ const YamlUpload = ({ onUploadSuccess }) => {
               </p>
               <pre className="text-xs text-gray-700 overflow-x-auto bg-gray-50 p-3 rounded border border-gray-200">
 {`# Root-level array of questions
+# Options use 0-based indexing (first option is index 0)
 - title: "Basic Addition"
   text: "What is 2+2?"
   type: "SINGLE"
   visibility: "public"
-  options: ["3", "4", "5", "6"]
-  correct_answers: ["4"]
+  options:
+    - text: "3"
+      is_correct: false
+    - text: "4"
+      is_correct: true
+      explanation: "2+2=4"
+    - text: "5"
+      is_correct: false
   tags: ["math", "easy"]
 
 - title: "Prime Numbers Selection"
   text: "Select all prime numbers"
   type: "MULTIPLE"
   visibility: "private"
-  options: ["2", "3", "4", "5"]
-  correct_answers: ["2", "3", "5"]
+  options:
+    - text: "2"
+      is_correct: true
+    - text: "3"
+      is_correct: true
+    - text: "4"
+      is_correct: false
+    - text: "5"
+      is_correct: true
   tags: ["math"]`}
               </pre>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded p-3">
               <p className="text-sm text-gray-700">
-                <strong>Tip:</strong> Download our <a href="/questions-example.yaml" download className="text-tech underline hover:text-primary font-medium">example YAML file</a> with 16 sample questions covering all visibility levels.
+                <strong>Tip:</strong> Download our <a href="/questions-example.yaml" download className="text-tech underline hover:text-primary font-medium">example YAML file</a> with 4 sample questions covering all visibility levels and demonstrating explanations.
               </p>
             </div>
           </div>
