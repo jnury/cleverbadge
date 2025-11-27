@@ -214,29 +214,39 @@ On `TestLanding` page load:
 
 ## Test Preview Feature
 
-### Route
+### Trigger
+
+"Preview" button on each test row in the Tests management page opens a modal.
+
+### Modal Layout
 
 ```
-/admin/tests/:testId/preview
++---------------------------------------------------------------------+
+|  Preview: "JavaScript Basics"                                  [x]  |
++---------------------------------------------------------------------+
+|  [Show Answers: OFF/ON]                            Question 1/5     |
++---------------------------------------------------------------------+
+|                                                                     |
+|   What is the output of console.log(typeof null)?                   |
+|                                                                     |
+|   o "null"                                                          |
+|   o "undefined"                                                     |
+|   o "object"        <-- green highlight when toggle ON              |
+|       "typeof null returns 'object' due to a legacy bug in JS"      |
+|   o "string"                                                        |
+|                                                                     |
+|                                         [<- Prev]  [Next ->]        |
++---------------------------------------------------------------------+
 ```
-
-Accessible from Tests management page via "Preview" button on each test row.
 
 ### UI Behavior
 
-- Renders the same `QuestionRunner` component candidates see
-- One question at a time, same navigation
+- Full-width modal (consistent with TestForm, ManageTestQuestions modals)
+- One question at a time with Prev/Next navigation
 - No assessment record created (pure frontend preview)
+- Closing modal returns to test list (no navigation)
 
-### Admin Toolbar
-
-Floating toolbar at top of preview page:
-
-```
-+----------------------------------------------------------+
-|  Preview Mode    [Show Answers: OFF/ON]    [Exit]        |
-+----------------------------------------------------------+
-```
+### Toggle Behavior
 
 | Toggle State | Behavior |
 |--------------|----------|
@@ -249,10 +259,7 @@ Floating toolbar at top of preview page:
 - Toggle controls whether to display correctness indicators
 - No backend changes needed for preview itself
 - Questions displayed in shuffled order (same as candidate would see)
-
-### Exit Behavior
-
-"Exit" button returns to `/admin` tests tab.
+- New component: `components/TestPreviewModal.jsx`
 
 ---
 
@@ -276,7 +283,7 @@ Floating toolbar at top of preview page:
 | `pages/QuestionRunner.jsx` | Use `option.id` for selection, save to LocalStorage, display feedback if provided |
 | `pages/TestResults.jsx` | Display explanations based on what backend returns |
 | `pages/admin/TestsTab.jsx` | Add Preview button, add test settings fields to form |
-| `pages/admin/TestPreview.jsx` | New component for preview mode with answer toggle |
+| `components/TestPreviewModal.jsx` | New modal component for preview mode with answer toggle |
 | `components/YamlUpload.jsx` | Update format reference documentation |
 | `public/questions-example.yaml` | Update to new format |
 
