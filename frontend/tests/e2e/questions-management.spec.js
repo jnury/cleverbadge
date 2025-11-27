@@ -64,18 +64,36 @@ test.describe('Questions Management', () => {
   });
 
   test('should edit a question text', async ({ page }) => {
-    await page.locator('button:has-text("Edit")').first().click();
-    await page.fill('textarea[placeholder*="question"]', 'Updated question text for E2E');
+    // Wait for questions table to load
+    await page.waitForSelector('table', { timeout: 5000 });
+
+    // Click Edit on first question
+    await page.getByRole('button', { name: 'Edit' }).first().click();
+
+    // Wait for modal to open with textarea
+    const textarea = page.locator('textarea[placeholder*="question"]');
+    await expect(textarea).toBeVisible({ timeout: 5000 });
+
+    // Type slowly to trigger React's onChange handlers
+    await textarea.click();
+    await textarea.selectText();
+    await textarea.type('Edited E2E question text', { delay: 10 });
+
+    // Wait for Update Question button to appear (only shows when changes detected)
+    await expect(page.locator('button:has-text("Update Question")')).toBeVisible({ timeout: 5000 });
     await page.locator('button:has-text("Update Question")').click();
 
-    // Wait for modal to close and verify the updated text appears
-    await page.waitForTimeout(1000);
-    await expect(page.locator('text=Updated question text for E2E')).toBeVisible({ timeout: 5000 });
+    // Wait for modal to close
+    await expect(page.locator('h3:has-text("Question")')).not.toBeVisible({ timeout: 5000 });
+
+    // Reopen the edit modal to verify the change was saved
+    await page.getByRole('button', { name: 'Edit' }).first().click();
+    await expect(page.locator('textarea[placeholder*="question"]')).toHaveValue('Edited E2E question text', { timeout: 5000 });
   });
 
   test('should edit a question and preserve correct answers', async ({ page }) => {
     // This test verifies the fix for sending correct_answers as strings (not indices)
-    await page.locator('button:has-text("Edit")').first().click();
+    await page.getByRole('button', { name: 'Edit' }).first().click();
 
     // Wait for the form to load
     await page.waitForSelector('textarea[placeholder*="question"]');
