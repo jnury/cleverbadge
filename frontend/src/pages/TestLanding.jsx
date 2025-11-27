@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import { loadAssessment, clearAssessment } from '../utils/assessmentStorage';
 
 const TestLanding = () => {
   const { slug } = useParams();
@@ -10,6 +11,7 @@ const TestLanding = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accessRestricted, setAccessRestricted] = useState(false);
+  const [existingAssessment, setExistingAssessment] = useState(null);
   const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -34,6 +36,12 @@ const TestLanding = () => {
         if (data) {
           setTest(data);
           setLoading(false);
+
+          // Check for existing assessment in LocalStorage
+          const saved = loadAssessment(slug);
+          if (saved) {
+            setExistingAssessment(saved);
+          }
         }
       })
       .catch(err => {
@@ -48,6 +56,12 @@ const TestLanding = () => {
     if (!candidateName.trim()) {
       alert('Please enter your name');
       return;
+    }
+
+    // Clear any existing assessment since we're starting fresh
+    if (existingAssessment) {
+      clearAssessment(slug);
+      setExistingAssessment(null);
     }
 
     try {
@@ -70,12 +84,33 @@ const TestLanding = () => {
         state: {
           assessmentId: data.assessment_id,
           questions: data.questions,
-          candidateName: candidateName.trim()
+          candidateName: candidateName.trim(),
+          testSlug: slug
         }
       });
     } catch (err) {
       alert('Failed to start test: ' + err.message);
     }
+  };
+
+  const handleResume = () => {
+    // Navigate to question runner with saved state
+    navigate(`/t/${slug}/run`, {
+      state: {
+        assessmentId: existingAssessment.assessmentId,
+        questions: existingAssessment.questions,
+        candidateName: existingAssessment.candidateName,
+        currentQuestionIndex: existingAssessment.currentQuestionIndex,
+        answers: existingAssessment.answers,
+        testSlug: slug,
+        isResuming: true
+      }
+    });
+  };
+
+  const handleStartFresh = () => {
+    clearAssessment(slug);
+    setExistingAssessment(null);
   };
 
   if (loading) {
@@ -147,6 +182,40 @@ const TestLanding = () => {
             <strong>Format:</strong> One question at a time
           </p>
         </div>
+
+        {existingAssessment && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-yellow-800 font-medium mb-1">
+                  In-Progress Assessment Found
+                </p>
+                <p className="text-yellow-700 text-sm mb-3">
+                  You have an in-progress assessment as "{existingAssessment.candidateName}". Would you like to resume where you left off?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleResume}
+                    className="px-4 py-2 bg-tech hover:bg-tech/90 text-white font-medium rounded-md text-sm transition-colors"
+                  >
+                    Resume Assessment
+                  </button>
+                  <button
+                    onClick={handleStartFresh}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-md border border-gray-300 text-sm transition-colors"
+                  >
+                    Start Fresh
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleStart}>
           <div className="mb-6">

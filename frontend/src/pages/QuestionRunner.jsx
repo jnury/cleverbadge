@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import { saveAssessment, clearAssessment } from '../utils/assessmentStorage';
 
 const QuestionRunner = () => {
   const { slug } = useParams();
@@ -9,10 +10,18 @@ const QuestionRunner = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
 
   // Get data from navigation state
-  const { assessmentId, questions, candidateName } = location.state || {};
+  const {
+    assessmentId,
+    questions,
+    candidateName,
+    testSlug,
+    currentQuestionIndex = 0,
+    answers: savedAnswers = {},
+    isResuming = false
+  } = location.state || {};
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
+  const [currentIndex, setCurrentIndex] = useState(currentQuestionIndex);
+  const [answers, setAnswers] = useState(savedAnswers);
   const [submitting, setSubmitting] = useState(false);
 
   // Redirect if no state
@@ -21,6 +30,19 @@ const QuestionRunner = () => {
       navigate(`/t/${slug}`);
     }
   }, [assessmentId, questions, slug, navigate]);
+
+  // Save progress to LocalStorage whenever answers or currentIndex changes
+  useEffect(() => {
+    if (assessmentId && testSlug && questions) {
+      saveAssessment(testSlug, {
+        assessmentId,
+        candidateName,
+        currentQuestionIndex: currentIndex,
+        answers,
+        questions
+      });
+    }
+  }, [assessmentId, testSlug, candidateName, currentIndex, answers, questions]);
 
   if (!questions || questions.length === 0) {
     return <div>Loading...</div>;
@@ -33,25 +55,25 @@ const QuestionRunner = () => {
   // Get current answer
   const currentAnswer = answers[currentQuestion.id] || [];
 
-  const handleOptionChange = (optionIndex) => {
+  const handleOptionChange = (optionId) => {
     if (currentQuestion.type === 'SINGLE') {
       // Single choice - replace selection
       setAnswers({
         ...answers,
-        [currentQuestion.id]: [optionIndex]
+        [currentQuestion.id]: [optionId]
       });
     } else {
       // Multiple choice - toggle selection
       const current = answers[currentQuestion.id] || [];
-      if (current.includes(optionIndex)) {
+      if (current.includes(optionId)) {
         setAnswers({
           ...answers,
-          [currentQuestion.id]: current.filter(o => o !== optionIndex)
+          [currentQuestion.id]: current.filter(o => o !== optionId)
         });
       } else {
         setAnswers({
           ...answers,
-          [currentQuestion.id]: [...current, optionIndex]
+          [currentQuestion.id]: [...current, optionId]
         });
       }
     }
@@ -112,6 +134,11 @@ const QuestionRunner = () => {
 
       const data = await response.json();
 
+      // Clear LocalStorage on successful submit
+      if (testSlug) {
+        clearAssessment(testSlug);
+      }
+
       // Navigate to results page
       navigate(`/t/${slug}/result`, {
         state: {
@@ -161,13 +188,16 @@ const QuestionRunner = () => {
         </div>
 
         <div className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
-            const isSelected = currentAnswer.includes(index);
+          {currentQuestion.options.map((option) => {
+            // Options are now objects with { id, text } from the new format
+            const optionId = option.id || option;
+            const optionText = option.text || option;
+            const isSelected = currentAnswer.includes(optionId);
             const inputType = currentQuestion.type === 'SINGLE' ? 'radio' : 'checkbox';
 
             return (
               <label
-                key={index}
+                key={optionId}
                 className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
                   isSelected
                     ? 'border-tech bg-tech/10 shadow-sm'
@@ -178,11 +208,11 @@ const QuestionRunner = () => {
                   type={inputType}
                   name={`question-${currentQuestion.id}`}
                   checked={isSelected}
-                  onChange={() => handleOptionChange(index)}
+                  onChange={() => handleOptionChange(optionId)}
                   className={`mr-3 flex-shrink-0 ${isSelected ? 'accent-tech' : ''}`}
                 />
                 <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-                  <MarkdownRenderer content={option} />
+                  <MarkdownRenderer content={optionText} />
                 </div>
               </label>
             );
