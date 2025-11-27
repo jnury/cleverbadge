@@ -109,9 +109,12 @@ const YamlUpload = ({ onUploadSuccess }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle detailed validation errors
-        if (data.details && Array.isArray(data.details)) {
-          throw new Error(data.error + ': ' + data.details.join(', '));
+        // Handle detailed validation errors (array for validation, string for YAML parse)
+        if (data.details) {
+          const detailsStr = Array.isArray(data.details)
+            ? data.details.join(', ')
+            : data.details;
+          throw new Error(data.error + ': ' + detailsStr);
         }
         throw new Error(data.error || 'Upload failed');
       }
@@ -164,9 +167,12 @@ const YamlUpload = ({ onUploadSuccess }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle detailed validation errors
-        if (data.details && Array.isArray(data.details)) {
-          throw new Error(data.error + ': ' + data.details.join(', '));
+        // Handle detailed validation errors (array for validation, string for YAML parse)
+        if (data.details) {
+          const detailsStr = Array.isArray(data.details)
+            ? data.details.join(', ')
+            : data.details;
+          throw new Error(data.error + ': ' + detailsStr);
         }
         throw new Error(data.error || 'Upload failed');
       }
