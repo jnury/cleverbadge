@@ -10,7 +10,9 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
     slug: '',
     visibility: 'private',
     is_enabled: false,
-    pass_threshold: 0
+    pass_threshold: 0,
+    show_explanations: 'never',
+    explanation_scope: 'selected_only'
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +25,9 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
         slug: test.slug || '',
         visibility: test.visibility || 'private',
         is_enabled: test.is_enabled || false,
-        pass_threshold: test.pass_threshold ?? 0
+        pass_threshold: test.pass_threshold ?? 0,
+        show_explanations: test.show_explanations || 'never',
+        explanation_scope: test.explanation_scope || 'selected_only'
       });
     }
   }, [test]);
@@ -168,6 +172,35 @@ const TestForm = ({ test, onSubmit, onCancel }) => {
         placeholder="0"
         help="Set to 0 for neutral scoring (no pass/fail). Set to 1-100 to show pass/fail based on score."
       />
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Show Explanations</label>
+        <select
+          name="show_explanations"
+          value={formData.show_explanations}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-md px-3 py-2"
+        >
+          <option value="never">Never - Candidates see score only</option>
+          <option value="after_each_question">After Each Question</option>
+          <option value="after_submit">After Test Submission</option>
+        </select>
+      </div>
+
+      {formData.show_explanations !== 'never' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Explanation Scope</label>
+          <select
+            name="explanation_scope"
+            value={formData.explanation_scope}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            <option value="selected_only">Selected Answers Only</option>
+            <option value="all_answers">All Answer Options</option>
+          </select>
+        </div>
+      )}
 
       <div className="flex items-center">
         <input
