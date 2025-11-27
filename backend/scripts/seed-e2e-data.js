@@ -43,7 +43,7 @@ async function seedE2EData() {
       console.log('✓ Admin user created');
     }
 
-    // Create test questions if not exist
+    // Create test questions if not exist (new options format with is_correct per option)
     console.log('Checking for test questions...');
     const questionsCheck = await sql`
       SELECT COUNT(*) as count FROM ${sql(dbSchema)}.questions
@@ -53,22 +53,68 @@ async function seedE2EData() {
     const q2Id = '550e8400-e29b-41d4-a716-446655440011';
     const q3Id = '550e8400-e29b-41d4-a716-446655440012';
     const q4Id = '550e8400-e29b-41d4-a716-446655440013';
-
     const q5Id = '550e8400-e29b-41d4-a716-446655440014';
     const q6Id = '550e8400-e29b-41d4-a716-446655440015';
+
+    // Options in new format: dict with string keys, each option has text, is_correct, optional explanation
+    const q1Options = {
+      "0": { text: '3', is_correct: false },
+      "1": { text: '4', is_correct: true },
+      "2": { text: '5', is_correct: false },
+      "3": { text: '6', is_correct: false }
+    };
+
+    const q2Options = {
+      "0": { text: 'London', is_correct: false, explanation: 'London is the capital of the United Kingdom.' },
+      "1": { text: 'Paris', is_correct: true, explanation: 'Paris has been France\'s capital since the 10th century.' },
+      "2": { text: 'Berlin', is_correct: false, explanation: 'Berlin is the capital of Germany.' },
+      "3": { text: 'Madrid', is_correct: false, explanation: 'Madrid is the capital of Spain.' }
+    };
+
+    const q3Options = {
+      "0": { text: '1', is_correct: false, explanation: '1 is an odd number.' },
+      "1": { text: '2', is_correct: true, explanation: '2 is the smallest even number.' },
+      "2": { text: '3', is_correct: false, explanation: '3 is an odd number.' },
+      "3": { text: '4', is_correct: true, explanation: '4 is an even number (4 = 2 × 2).' }
+    };
+
+    const q4Options = {
+      "0": { text: 'Multiplies array elements', is_correct: false },
+      "1": { text: 'Sums array elements using `reduce()`', is_correct: true, explanation: 'The reduce() method executes a reducer function on each element of the array, resulting in single output value.' },
+      "2": { text: 'Filters array using `map()`', is_correct: false },
+      "3": { text: 'Sorts the array', is_correct: false }
+    };
+
+    const q5Options = {
+      "0": { text: '3', is_correct: false },
+      "1": { text: '4', is_correct: false },
+      "2": { text: '5', is_correct: true },
+      "3": { text: '6', is_correct: false }
+    };
+
+    const q6Options = {
+      "0": { text: 'Red', is_correct: false },
+      "1": { text: 'Blue', is_correct: true },
+      "2": { text: 'Green', is_correct: false },
+      "3": { text: 'Yellow', is_correct: false }
+    };
 
     if (parseInt(questionsCheck[0].count) === 0) {
       console.log('Creating sample questions...');
 
       await sql`
-        INSERT INTO ${sql(dbSchema)}.questions (id, title, text, type, options, correct_answers, tags, author_id, visibility)
+        INSERT INTO ${sql(dbSchema)}.questions (id, title, text, type, options, tags, author_id, visibility)
         VALUES
-          (${q1Id}, 'Basic Math Question', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', ${adminId}, 'private'),
-          (${q2Id}, 'Geography Capital', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', ${adminId}, 'public'),
-          (${q3Id}, 'Even Numbers', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', ${adminId}, 'public'),
-          (${q4Id}, 'JavaScript Code Analysis', '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]', ${adminId}, 'protected'),
-          (${q5Id}, 'Protected Question Example', 'This is a protected question. What is 10 / 2?', 'SINGLE', '["3", "4", "5", "6"]', '[2]', '["math"]', ${adminId}, 'protected'),
-          (${q6Id}, 'Public Question Example', 'What color is the sky?', 'SINGLE', '["Red", "Blue", "Green", "Yellow"]', '[1]', '["general"]', ${adminId}, 'public')
+          (${q1Id}, 'Basic Math Question', 'What is 2 + 2?', 'SINGLE', ${q1Options}, '["math", "easy"]', ${adminId}, 'private'),
+          (${q2Id}, 'Geography Capital', 'What is the capital of France?', 'SINGLE', ${q2Options}, '["geography"]', ${adminId}, 'public'),
+          (${q3Id}, 'Even Numbers', 'Select all even numbers:', 'MULTIPLE', ${q3Options}, '["math"]', ${adminId}, 'public'),
+          (${q4Id}, 'JavaScript Code Analysis', '**What does this code do?**
+
+\`\`\`javascript
+const sum = arr => arr.reduce((a, b) => a + b, 0);
+\`\`\`', 'SINGLE', ${q4Options}, '["javascript", "markdown"]', ${adminId}, 'protected'),
+          (${q5Id}, 'Protected Question Example', 'This is a protected question. What is 10 / 2?', 'SINGLE', ${q5Options}, '["math"]', ${adminId}, 'protected'),
+          (${q6Id}, 'Public Question Example', 'What color is the sky?', 'SINGLE', ${q6Options}, '["general"]', ${adminId}, 'public')
       `;
       console.log('✓ Sample questions created');
     } else {

@@ -23,28 +23,35 @@ async function seedMarkdownTest() {
 
     console.log(`Created test: ${test.title} (${test.slug})`);
 
-    // Create markdown questions
+    // Create markdown questions (new options format with is_correct per option)
     const questions = [
       {
         text: '**What does this code do?**\n\n```javascript\nconst sum = (a, b) => a + b;\n```',
         type: 'SINGLE',
-        options: ['Adds two numbers', 'Multiplies two numbers', 'Subtracts two numbers'],
-        correct_answers: ['Adds two numbers'],
+        options: {
+          "0": { text: 'Adds two numbers', is_correct: true, explanation: 'Arrow function syntax for addition.' },
+          "1": { text: 'Multiplies two numbers', is_correct: false },
+          "2": { text: 'Subtracts two numbers', is_correct: false }
+        },
         tags: ['javascript', 'functions']
       },
       {
         text: 'Select all `array methods`:',
         type: 'MULTIPLE',
-        options: ['`map()`', '`filter()`', '`console.log()`', '`reduce()`'],
-        correct_answers: ['`map()`', '`filter()`', '`reduce()`'],
+        options: {
+          "0": { text: '`map()`', is_correct: true, explanation: 'map() transforms each element in an array.' },
+          "1": { text: '`filter()`', is_correct: true, explanation: 'filter() returns elements that pass a test.' },
+          "2": { text: '`console.log()`', is_correct: false, explanation: 'console.log() is not an array method.' },
+          "3": { text: '`reduce()`', is_correct: true, explanation: 'reduce() combines all elements into a single value.' }
+        },
         tags: ['javascript', 'arrays']
       }
     ];
 
     for (const q of questions) {
       const [question] = await sql`
-        INSERT INTO ${sql(dbSchema)}.questions (text, type, options, correct_answers, tags)
-        VALUES (${q.text}, ${q.type}, ${q.options}, ${q.correct_answers}, ${q.tags})
+        INSERT INTO ${sql(dbSchema)}.questions (text, type, options, tags)
+        VALUES (${q.text}, ${q.type}, ${q.options}, ${q.tags})
         RETURNING *
       `;
 
