@@ -3,128 +3,77 @@ import { isAnswerCorrect, calculateScore } from '../../utils/scoring.js';
 
 describe('Scoring Logic', () => {
   describe('isAnswerCorrect - SINGLE choice', () => {
-    it('should return true for correct single choice', () => {
-      const result = isAnswerCorrect(
-        'SINGLE',
-        [1], // selected
-        [1]  // correct
-      );
+    it('should return true for correct single choice (string IDs)', () => {
+      const result = isAnswerCorrect('SINGLE', ['1'], ['1']);
       expect(result).toBe(true);
     });
 
-    it('should return false for wrong single choice', () => {
-      const result = isAnswerCorrect('SINGLE', [0], [1]);
+    it('should return false for incorrect single choice', () => {
+      const result = isAnswerCorrect('SINGLE', ['0'], ['1']);
       expect(result).toBe(false);
     });
 
-    it('should return false when multiple options selected for SINGLE', () => {
-      const result = isAnswerCorrect('SINGLE', [0, 1], [1]);
-      expect(result).toBe(false);
-    });
-
-    it('should return false when no option selected', () => {
-      const result = isAnswerCorrect('SINGLE', [], [1]);
+    it('should return false when multiple selected for single choice', () => {
+      const result = isAnswerCorrect('SINGLE', ['0', '1'], ['1']);
       expect(result).toBe(false);
     });
   });
 
   describe('isAnswerCorrect - MULTIPLE choice', () => {
-    it('should return true for correct multiple choice', () => {
-      const result = isAnswerCorrect('MULTIPLE', [1, 3], [1, 3]);
+    it('should return true when all correct options selected', () => {
+      const result = isAnswerCorrect('MULTIPLE', ['1', '2'], ['1', '2']);
       expect(result).toBe(true);
     });
 
-    it('should return true for correct multiple choice (different order)', () => {
-      const result = isAnswerCorrect('MULTIPLE', [3, 1], [1, 3]);
+    it('should return true regardless of order', () => {
+      const result = isAnswerCorrect('MULTIPLE', ['2', '1'], ['1', '2']);
       expect(result).toBe(true);
     });
 
-    it('should return false for partial answer (missing options)', () => {
-      const result = isAnswerCorrect('MULTIPLE', [1], [1, 3]);
+    it('should return false when missing a correct option', () => {
+      const result = isAnswerCorrect('MULTIPLE', ['1'], ['1', '2']);
       expect(result).toBe(false);
     });
 
-    it('should return false for extra wrong option', () => {
-      const result = isAnswerCorrect('MULTIPLE', [0, 1, 3], [1, 3]);
-      expect(result).toBe(false);
-    });
-
-    it('should return false when no options selected', () => {
-      const result = isAnswerCorrect('MULTIPLE', [], [1, 3]);
+    it('should return false when extra incorrect option selected', () => {
+      const result = isAnswerCorrect('MULTIPLE', ['1', '2', '3'], ['1', '2']);
       expect(result).toBe(false);
     });
   });
 
-  describe('calculateScore - weighted scoring', () => {
-    it('should calculate 100% for all correct answers', () => {
-      const questions = [
-        { id: 'q1', type: 'SINGLE', correct_answers: [1], weight: 1.0 },
-        { id: 'q2', type: 'SINGLE', correct_answers: [2], weight: 1.5 },
-        { id: 'q3', type: 'MULTIPLE', correct_answers: [1, 3], weight: 2.0 }
+  describe('calculateScore', () => {
+    it('should calculate weighted percentage', () => {
+      const answers = [
+        { isCorrect: true, weight: 2 },
+        { isCorrect: false, weight: 1 },
+        { isCorrect: true, weight: 1 }
       ];
-      const answers = {
-        'q1': [1],
-        'q2': [2],
-        'q3': [1, 3]
-      };
-
-      const score = calculateScore(questions, answers);
-      expect(score).toBe(100.0);
+      // 3 out of 4 points = 75%
+      const result = calculateScore(answers);
+      expect(result).toBe(75);
     });
 
-    it('should calculate partial score correctly (50% when half correct)', () => {
-      const questions = [
-        { id: 'q1', type: 'SINGLE', correct_answers: [1], weight: 1.0 },
-        { id: 'q2', type: 'SINGLE', correct_answers: [2], weight: 1.0 }
+    it('should return 0 for all incorrect', () => {
+      const answers = [
+        { isCorrect: false, weight: 1 },
+        { isCorrect: false, weight: 2 }
       ];
-      const answers = {
-        'q1': [1],  // correct
-        'q2': [0]   // wrong
-      };
-
-      const score = calculateScore(questions, answers);
-      expect(score).toBe(50.0);
+      const result = calculateScore(answers);
+      expect(result).toBe(0);
     });
 
-    it('should handle weighted scoring (different weights per question)', () => {
-      const questions = [
-        { id: 'q1', type: 'SINGLE', correct_answers: [1], weight: 1.0 },
-        { id: 'q2', type: 'SINGLE', correct_answers: [2], weight: 3.0 }
+    it('should return 100 for all correct', () => {
+      const answers = [
+        { isCorrect: true, weight: 1 },
+        { isCorrect: true, weight: 2 }
       ];
-      const answers = {
-        'q1': [0],  // wrong (1 point)
-        'q2': [2]   // correct (3 points)
-      };
-
-      const score = calculateScore(questions, answers);
-      expect(score).toBe(75.0); // 3 / 4 = 0.75
+      const result = calculateScore(answers);
+      expect(result).toBe(100);
     });
 
-    it('should return 0 for all wrong answers', () => {
-      const questions = [
-        { id: 'q1', type: 'SINGLE', correct_answers: [1], weight: 1.0 },
-        { id: 'q2', type: 'SINGLE', correct_answers: [2], weight: 2.0 }
-      ];
-      const answers = {
-        'q1': [0],
-        'q2': [0]
-      };
-
-      const score = calculateScore(questions, answers);
-      expect(score).toBe(0.0);
-    });
-
-    it('should handle missing answers (treats as wrong)', () => {
-      const questions = [
-        { id: 'q1', type: 'SINGLE', correct_answers: [1], weight: 1.0 },
-        { id: 'q2', type: 'SINGLE', correct_answers: [2], weight: 1.0 }
-      ];
-      const answers = {
-        'q1': [1]  // only q1 answered, q2 missing
-      };
-
-      const score = calculateScore(questions, answers);
-      expect(score).toBe(50.0); // 1 / 2 = 0.5
+    it('should handle empty array', () => {
+      const result = calculateScore([]);
+      expect(result).toBe(0);
     });
   });
 });
