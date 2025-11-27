@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
 import { isAnswerCorrect } from '../utils/scoring.js';
+import { shuffleOptions, getCorrectOptionIds } from '../utils/options.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -120,11 +121,21 @@ router.post('/start',
         ORDER BY tq.id
       `;
 
-      // Add question numbers
-      const questionsWithNumbers = testQuestionsData.map((q, index) => ({
-        ...q,
-        question_number: index + 1
-      }));
+      // Add question numbers and shuffle options
+      const questionsWithNumbers = testQuestionsData.map((q, index) => {
+        // Parse options if stored as JSON string
+        const options = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+
+        return {
+          id: q.id,
+          title: q.title,
+          text: q.text,
+          type: q.type,
+          options: shuffleOptions(options), // Shuffled array with id/text only
+          weight: q.weight,
+          question_number: index + 1
+        };
+      });
 
       res.status(201).json({
         assessment_id: assessment.id,
@@ -209,11 +220,51 @@ router.post('/:assessmentId/answer',
         WHERE test_id = ${assessment.test_id}
       `;
 
+      // Get test settings for feedback
+      const testSettings = await sql`
+        SELECT show_explanations, explanation_scope
+        FROM ${sql(dbSchema)}.tests
+        WHERE id = ${assessment.test_id}
+      `;
+
+      let feedback = null;
+
+      if (testSettings[0].show_explanations === 'after_each_question') {
+        // Get question options
+        const questions = await sql`
+          SELECT options FROM ${sql(dbSchema)}.questions WHERE id = ${question_id}
+        `;
+        const options = typeof questions[0].options === 'string'
+          ? JSON.parse(questions[0].options)
+          : questions[0].options;
+
+        // Build feedback based on scope
+        const selectedFeedback = selected_options.map(id => ({
+          id: String(id),
+          text: options[String(id)]?.text,
+          is_correct: options[String(id)]?.is_correct || false,
+          explanation: options[String(id)]?.explanation
+        }));
+
+        feedback = {
+          selected: selectedFeedback,
+          all: testSettings[0].explanation_scope === 'all_answers'
+            ? Object.entries(options).map(([id, opt]) => ({
+                id,
+                text: opt.text,
+                is_correct: opt.is_correct,
+                explanation: opt.explanation
+              }))
+            : null
+        };
+      }
+
       res.json({
         message: 'Answer recorded',
         question_id,
         answered_questions: parseInt(answeredQuestions[0].count),
-        total_questions: parseInt(totalQuestions[0].count)
+        total_questions: parseInt(totalQuestions[0].count),
+        feedback
       });
     } catch (error) {
       console.error('Error submitting answer:', error);
@@ -246,13 +297,13 @@ router.post('/:assessmentId/submit',
         return res.status(400).json({ error: 'Assessment already completed' });
       }
 
-      // Get all answers with correct answers and weights
+      // Get all answers with options and weights
       const answers = await sql`
         SELECT
           aa.id,
           aa.question_id,
           aa.selected_options,
-          q.correct_answers,
+          q.options,
           q.type,
           tq.weight
         FROM ${sql(dbSchema)}.assessment_answers aa
@@ -268,11 +319,20 @@ router.post('/:assessmentId/submit',
       for (const answer of answers) {
         maxScore += answer.weight;
 
+        // Parse options if stored as JSON string
+        const options = typeof answer.options === 'string'
+          ? JSON.parse(answer.options)
+          : answer.options;
+
+        // Get correct option IDs from options dict
+        const correctIds = getCorrectOptionIds(options);
+        const selectedIds = answer.selected_options.map(String);
+
         // Check if answer is correct using utility function
         const correct = isAnswerCorrect(
           answer.type,
-          answer.selected_options,
-          answer.correct_answers
+          selectedIds,
+          correctIds
         );
 
         if (correct) {
@@ -301,11 +361,45 @@ router.post('/:assessmentId/submit',
         RETURNING *
       `;
 
-      // Get test pass_threshold
+      // Get test settings
       const tests = await sql`
-        SELECT pass_threshold FROM ${sql(dbSchema)}.tests
+        SELECT pass_threshold, show_explanations, explanation_scope FROM ${sql(dbSchema)}.tests
         WHERE id = ${assessment.test_id}
       `;
+
+      let feedback = null;
+
+      if (tests[0].show_explanations === 'after_submit') {
+        // Build feedback for all questions
+        feedback = [];
+
+        for (const answer of answers) {
+          const options = typeof answer.options === 'string'
+            ? JSON.parse(answer.options)
+            : answer.options;
+
+          const selectedIds = answer.selected_options.map(String);
+          const selectedFeedback = selectedIds.map(id => ({
+            id,
+            text: options[id]?.text,
+            is_correct: options[id]?.is_correct || false,
+            explanation: options[id]?.explanation
+          }));
+
+          feedback.push({
+            question_id: answer.question_id,
+            selected: selectedFeedback,
+            all: tests[0].explanation_scope === 'all_answers'
+              ? Object.entries(options).map(([id, opt]) => ({
+                  id,
+                  text: opt.text,
+                  is_correct: opt.is_correct,
+                  explanation: opt.explanation
+                }))
+              : null
+          });
+        }
+      }
 
       res.json({
         assessment_id: assessmentId,
@@ -313,7 +407,8 @@ router.post('/:assessmentId/submit',
         total_questions: answers.length,
         status: 'COMPLETED',
         completed_at: updatedAssessments[0].completed_at,
-        pass_threshold: tests[0]?.pass_threshold ?? 0
+        pass_threshold: tests[0]?.pass_threshold ?? 0,
+        feedback
       });
     } catch (error) {
       console.error('Error submitting assessment:', error);
@@ -322,8 +417,9 @@ router.post('/:assessmentId/submit',
   }
 );
 
-// GET assessment details (no authentication required - public access for candidates)
+// GET assessment details (admin only)
 router.get('/:id/details',
+  authenticateToken,
   param('id').isUUID().withMessage('id must be a valid UUID'),
   handleValidationErrors,
   async (req, res) => {
@@ -363,7 +459,6 @@ router.get('/:id/details',
           q.text as question_text,
           q.type as question_type,
           q.options as question_options,
-          q.correct_answers,
           tq.weight
         FROM ${sql(dbSchema)}.assessment_answers aa
         INNER JOIN ${sql(dbSchema)}.questions q ON aa.question_id = q.id
@@ -393,17 +488,27 @@ router.get('/:id/details',
           total_weight: totalWeight,
           earned_weight: earnedWeight
         },
-        answers: answers.map(a => ({
-          question_id: a.question_id,
-          question_text: a.question_text,
-          question_type: a.question_type,
-          options: a.question_options,
-          correct_answers: a.correct_answers,
-          selected_options: a.selected_options,
-          is_correct: a.is_correct,
-          weight: a.weight,
-          answered_at: a.answered_at
-        }))
+        answers: answers.map(a => {
+          // Parse options if stored as JSON string
+          const options = typeof a.question_options === 'string'
+            ? JSON.parse(a.question_options)
+            : a.question_options;
+
+          // Get correct option IDs from options dict
+          const correctOptionIds = getCorrectOptionIds(options);
+
+          return {
+            question_id: a.question_id,
+            question_text: a.question_text,
+            question_type: a.question_type,
+            options: options,
+            correct_option_ids: correctOptionIds,
+            selected_options: a.selected_options,
+            is_correct: a.is_correct,
+            weight: a.weight,
+            answered_at: a.answered_at
+          };
+        })
       });
     } catch (error) {
       console.error('Error fetching assessment details:', error);
