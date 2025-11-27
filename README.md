@@ -1,5 +1,7 @@
 # Clever Badge
 
+[![codecov](https://codecov.io/gh/jnury/cleverbadge/graph/badge.svg)](https://codecov.io/gh/jnury/cleverbadge)
+
 Online skills assessment platform for evaluating candidates through shareable MCQ tests.
 
 ## Overview
