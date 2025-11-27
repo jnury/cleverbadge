@@ -4,27 +4,37 @@ import Input from '../../components/ui/Input';
 import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 
+// Helper to initialize options from either format
+function initializeOptions(options) {
+  if (!options) {
+    return [
+      { text: '', is_correct: false, explanation: '' },
+      { text: '', is_correct: false, explanation: '' }
+    ];
+  }
+
+  // If dict format, convert to array for editing
+  if (typeof options === 'object' && !Array.isArray(options)) {
+    return Object.entries(options)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .map(([_, opt]) => ({
+        text: opt.text || '',
+        is_correct: opt.is_correct || false,
+        explanation: opt.explanation || ''
+      }));
+  }
+
+  // Already array format (shouldn't happen but handle it)
+  return options;
+}
+
 const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons = false }) => {
-  // Convert correct_answers from indices to option text if editing
-  const getCorrectAnswersText = () => {
-    if (!question?.correct_answers || !question?.options) return [];
-
-    // If correct_answers contains indices (numbers), convert to option text
-    return question.correct_answers.map(answer => {
-      if (typeof answer === 'number') {
-        return question.options[answer];
-      }
-      return answer;
-    }).filter(Boolean);
-  };
-
   const [formData, setFormData] = useState({
     title: question?.title || '',
     text: question?.text || '',
     type: question?.type || 'SINGLE',
     visibility: question?.visibility || 'private',
-    options: Array.isArray(question?.options) ? question.options : ['', ''],
-    correct_answers: getCorrectAnswersText(),
+    options: initializeOptions(question?.options),
     tags: Array.isArray(question?.tags) ? question.tags.join(', ') : ''
   });
 
@@ -50,7 +60,7 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
     if (formData.options.length < 10) {
       setFormData(prev => ({
         ...prev,
-        options: [...prev.options, '']
+        options: [...prev.options, { text: '', is_correct: false, explanation: '' }]
       }));
     }
   };
@@ -59,42 +69,41 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
     if (formData.options.length > 2) {
       setFormData(prev => ({
         ...prev,
-        options: prev.options.filter((_, i) => i !== index),
-        correct_answers: prev.correct_answers.filter(ans => ans !== prev.options[index])
+        options: prev.options.filter((_, i) => i !== index)
       }));
     }
   };
 
-  const handleOptionChange = (index, value) => {
-    const newOptions = [...formData.options];
-    const oldValue = newOptions[index];
-    newOptions[index] = value;
-
-    // Update correct_answers if this option was selected
-    const newCorrectAnswers = formData.correct_answers.map(ans =>
-      ans === oldValue ? value : ans
-    );
-
-    setFormData(prev => ({
-      ...prev,
-      options: newOptions,
-      correct_answers: newCorrectAnswers
-    }));
+  const handleOptionTextChange = (index, text) => {
+    setFormData(prev => {
+      const newOptions = [...prev.options];
+      newOptions[index].text = text;
+      return { ...prev, options: newOptions };
+    });
   };
 
-  const handleCorrectAnswerToggle = (option) => {
+  const handleOptionCorrectChange = (index, isCorrect) => {
     setFormData(prev => {
+      const newOptions = [...prev.options];
+
       if (prev.type === 'SINGLE') {
-        return { ...prev, correct_answers: [option] };
+        // Uncheck all others for SINGLE type
+        newOptions.forEach((opt, i) => {
+          opt.is_correct = i === index ? isCorrect : false;
+        });
       } else {
-        const isSelected = prev.correct_answers.includes(option);
-        return {
-          ...prev,
-          correct_answers: isSelected
-            ? prev.correct_answers.filter(ans => ans !== option)
-            : [...prev.correct_answers, option]
-        };
+        newOptions[index].is_correct = isCorrect;
       }
+
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleOptionExplanationChange = (index, explanation) => {
+    setFormData(prev => {
+      const newOptions = [...prev.options];
+      newOptions[index].explanation = explanation;
+      return { ...prev, options: newOptions };
     });
   };
 
@@ -122,16 +131,19 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
       newErrors.visibility = 'Invalid visibility value';
     }
 
-    const nonEmptyOptions = formData.options.filter(opt => opt.trim());
+    // Options validation
+    const nonEmptyOptions = formData.options.filter(opt => opt.text.trim());
     if (nonEmptyOptions.length < 2) {
       newErrors.options = 'At least 2 options are required';
     }
 
-    if (formData.correct_answers.length === 0) {
+    // Correct answers validation
+    const correctCount = formData.options.filter(opt => opt.is_correct).length;
+    if (correctCount === 0) {
       newErrors.correct_answers = 'At least one correct answer must be selected';
     }
 
-    if (formData.type === 'SINGLE' && formData.correct_answers.length > 1) {
+    if (formData.type === 'SINGLE' && correctCount > 1) {
       newErrors.correct_answers = 'Single choice questions can only have one correct answer';
     }
 
@@ -147,20 +159,24 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
     setSubmitting(true);
 
     try {
-      const cleanedOptions = formData.options.filter(opt => opt.trim());
-
-      // Filter correct_answers to only include valid options (strings)
-      const validCorrectAnswers = formData.correct_answers.filter(answer =>
-        cleanedOptions.includes(answer)
-      );
+      // Convert options array to dict format for API
+      const optionsDict = {};
+      formData.options.forEach((opt, index) => {
+        if (opt.text.trim()) {
+          optionsDict[String(index)] = {
+            text: opt.text.trim(),
+            is_correct: opt.is_correct,
+            ...(opt.explanation?.trim() && { explanation: opt.explanation.trim() })
+          };
+        }
+      });
 
       const submitData = {
         title: formData.title.trim(),
         text: formData.text.trim(),
         type: formData.type,
         visibility: formData.visibility,
-        options: cleanedOptions,
-        correct_answers: validCorrectAnswers,
+        options: optionsDict,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
       };
 
@@ -218,8 +234,7 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
         value={formData.type}
         onChange={(e) => setFormData(prev => ({
           ...prev,
-          type: e.target.value,
-          correct_answers: e.target.value === 'SINGLE' ? [prev.correct_answers[0]].filter(Boolean) : prev.correct_answers
+          type: e.target.value
         }))}
         options={[
           { value: 'SINGLE', label: 'Single Choice' },
@@ -238,18 +253,28 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
             <div key={index} className="flex gap-2 items-start">
               <input
                 type={formData.type === 'SINGLE' ? 'radio' : 'checkbox'}
-                checked={formData.correct_answers.includes(option)}
-                onChange={() => handleCorrectAnswerToggle(option)}
-                disabled={!option.trim()}
+                name={formData.type === 'SINGLE' ? 'correct-answer' : undefined}
+                checked={option.is_correct}
+                onChange={(e) => handleOptionCorrectChange(index, e.target.checked)}
+                disabled={!option.text.trim()}
                 className="mt-3"
               />
-              <input
-                type="text"
-                value={option}
-                onChange={(e) => handleOptionChange(index, e.target.value)}
-                placeholder={`Option ${index + 1}`}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-              />
+              <div className="flex-1 space-y-1">
+                <input
+                  type="text"
+                  value={option.text}
+                  onChange={(e) => handleOptionTextChange(index, e.target.value)}
+                  placeholder={`Option ${index}`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+                <input
+                  type="text"
+                  value={option.explanation || ''}
+                  onChange={(e) => handleOptionExplanationChange(index, e.target.value)}
+                  placeholder="Explanation (optional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
               {formData.options.length > 2 && (
                 <Button
                   type="button"
