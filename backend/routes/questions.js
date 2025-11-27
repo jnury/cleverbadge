@@ -3,6 +3,7 @@ import { body, param, query, validationResult } from 'express-validator';
 import { sql, dbSchema } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { canChangeQuestionVisibility } from '../utils/visibility.js';
+import { validateOptionsFormat } from '../utils/options.js';
 
 const router = express.Router();
 
@@ -185,22 +186,20 @@ router.post('/',
   body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
   body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
   body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
-  body('options').isArray({ min: 2, max: 10 }).withMessage('Options must be an array with 2-10 items'),
-  body('options.*').isString().withMessage('Each option must be a string'),
-  body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
-  body('correct_answers.*').isString().withMessage('Each correct answer must be a string'),
+  body('options').isObject().withMessage('Options must be an object'),
   body('tags').optional().isArray().withMessage('Tags must be an array'),
   body('tags.*').optional().isString().withMessage('Each tag must be a string'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, text, type, visibility = 'private', options, correct_answers, tags } = req.body;
+      const { title, text, type, visibility = 'private', options, tags } = req.body;
 
-      // Validate correct_answers are in options
-      const invalidAnswers = correct_answers.filter(ans => !options.includes(ans));
-      if (invalidAnswers.length > 0) {
+      // Validate options format
+      const validation = validateOptionsFormat(options, type);
+      if (!validation.valid) {
         return res.status(400).json({
-          error: `Correct answers must be in options. Invalid: ${invalidAnswers.join(', ')}`
+          error: 'Invalid options format',
+          details: validation.errors
         });
       }
 
@@ -208,8 +207,8 @@ router.post('/',
       const author_id = req.user.id;
 
       const newQuestions = await sql`
-        INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, correct_answers, tags, author_id)
-        VALUES (${title}, ${text}, ${type}, ${visibility}, ${options}, ${correct_answers}, ${tags || []}, ${author_id})
+        INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, tags, author_id)
+        VALUES (${title}, ${text}, ${type}, ${visibility}, ${JSON.stringify(options)}, ${tags || []}, ${author_id})
         RETURNING *
       `;
 
@@ -233,22 +232,20 @@ router.put('/:id',
   body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
   body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
   body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
-  body('options').isArray({ min: 2, max: 10 }).withMessage('Options must be an array with 2-10 items'),
-  body('options.*').isString().withMessage('Each option must be a string'),
-  body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
-  body('correct_answers.*').isString().withMessage('Each correct answer must be a string'),
+  body('options').isObject().withMessage('Options must be an object'),
   body('tags').optional().isArray().withMessage('Tags must be an array'),
   body('tags.*').optional().isString().withMessage('Each tag must be a string'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, text, type, visibility, options, correct_answers, tags } = req.body;
+      const { title, text, type, visibility, options, tags } = req.body;
 
-      // Validate correct_answers are in options
-      const invalidAnswers = correct_answers.filter(ans => !options.includes(ans));
-      if (invalidAnswers.length > 0) {
+      // Validate options format
+      const validation = validateOptionsFormat(options, type);
+      if (!validation.valid) {
         return res.status(400).json({
-          error: `Correct answers must be in options. Invalid: ${invalidAnswers.join(', ')}`
+          error: 'Invalid options format',
+          details: validation.errors
         });
       }
 
@@ -290,8 +287,7 @@ router.put('/:id',
           text = ${text},
           type = ${type},
           visibility = ${visibility || currentQuestion.visibility},
-          options = ${options},
-          correct_answers = ${correct_answers},
+          options = ${JSON.stringify(options)},
           tags = ${tags || []},
           updated_at = NOW()
         WHERE id = ${req.params.id}
