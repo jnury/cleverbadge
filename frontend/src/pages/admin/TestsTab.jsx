@@ -3,6 +3,7 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import TestForm from './TestForm';
 import ManageTestQuestions from './ManageTestQuestions';
+import TestPreviewModal from '../../components/TestPreviewModal';
 import { apiRequest } from '../../utils/api';
 
 const TestsTab = () => {
@@ -14,6 +15,7 @@ const TestsTab = () => {
   const [managingTest, setManagingTest] = useState(null);
   const [regenerateConfirm, setRegenerateConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [previewTest, setPreviewTest] = useState(null);
 
   useEffect(() => {
     loadTests();
@@ -260,6 +262,14 @@ const TestsTab = () => {
                     >
                       Questions
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setPreviewTest(test)}
+                      title="Preview test"
+                    >
+                      Preview
+                    </Button>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -355,6 +365,14 @@ const TestsTab = () => {
           </div>
         </Modal>
       )}
+
+      {/* Test Preview Modal */}
+      <TestPreviewModal
+        isOpen={!!previewTest}
+        onClose={() => setPreviewTest(null)}
+        testId={previewTest?.id}
+        testTitle={previewTest?.title}
+      />
     </div>
   );
 };
