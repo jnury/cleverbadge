@@ -146,92 +146,98 @@ test.describe('Visibility Features', () => {
   });
 
   test.describe('Question Creation with Title and Visibility', () => {
-    // TODO: Form submission not working in E2E tests - needs investigation
-    test.skip('should create a question with title (required)', async ({ page }) => {
+    test('should create a question with title (required)', async ({ page }) => {
+      const uniqueTitle = `Title Required ${Date.now()}`;
+
       await page.click('text=Questions');
-      await page.click('button:has-text("Create Question")');
+      await page.getByRole('button', { name: 'Create Question' }).first().click();
+
+      // Wait for modal to open
+      await expect(page.getByRole('heading', { name: 'Create Question' })).toBeVisible({ timeout: 5000 });
 
       // Title input should be visible and required
-      const titleInput = page.locator('input[name="title"]');
+      const titleInput = page.getByRole('textbox', { name: /Capital of France/i });
       await expect(titleInput).toBeVisible();
 
       // Fill in the form
-      await page.fill('input[name="title"]', 'Sample Question Title');
-      await page.fill('textarea[placeholder*="question"]', 'What is the answer to this test?');
+      await titleInput.fill(uniqueTitle);
+      await page.getByRole('textbox', { name: 'Enter your question...' }).fill('What is the answer to this test?');
 
       // Fill options
-      await page.fill('input[placeholder="Option 1"]', 'Answer 1');
-      await page.fill('input[placeholder="Option 2"]', 'Answer 2');
+      await page.getByRole('textbox', { name: 'Option 1' }).fill('Answer 1');
+      await page.getByRole('textbox', { name: 'Option 2' }).fill('Answer 2');
 
-      // Select correct answer - use click() to ensure onChange fires
+      // Select correct answer
       await page.locator('input[type="radio"]').first().click();
 
-      // Wait a moment for React state updates
-      await page.waitForTimeout(100);
+      // Click submit
+      await page.locator('form').getByRole('button', { name: 'Create Question' }).click();
 
-      // Click submit with force
-      await page.locator('button:has-text("Create Question")').last().click({ force: true });
+      // Wait for success message
+      await expect(page.getByText('Question created successfully')).toBeVisible({ timeout: 10000 });
 
-      // Wait for modal to close
-      await expect(page.locator('h3:has-text("Create Question")')).not.toBeVisible({ timeout: 15000 });
-
-      // Title should be displayed in the list as an h3
-      await expect(page.locator('h3:has-text("Sample Question Title")')).toBeVisible({ timeout: 5000 });
+      // Title should be displayed in the table
+      await expect(page.getByRole('cell', { name: uniqueTitle })).toBeVisible({ timeout: 5000 });
     });
 
-    // TODO: Form submission not working in E2E tests - needs investigation
-    test.skip('should create a question with default visibility (private)', async ({ page }) => {
+    test('should create a question with default visibility (private)', async ({ page }) => {
+      const uniqueTitle = `Private Question ${Date.now()}`;
+
       await page.click('text=Questions');
-      await page.click('button:has-text("Create Question")');
+      await page.getByRole('button', { name: 'Create Question' }).first().click();
+
+      // Wait for modal to open
+      await expect(page.getByRole('heading', { name: 'Create Question' })).toBeVisible({ timeout: 5000 });
 
       // Fill in form
-      await page.fill('input[name="title"]', 'Private Question E2E');
-      await page.fill('textarea[placeholder*="question"]', 'What is the private answer?');
-      await page.fill('input[placeholder="Option 1"]', 'Answer 1');
-      await page.fill('input[placeholder="Option 2"]', 'Answer 2');
-      // Select correct answer - use click() to ensure onChange fires
+      await page.getByRole('textbox', { name: /Capital of France/i }).fill(uniqueTitle);
+      await page.getByRole('textbox', { name: 'Enter your question...' }).fill('What is the private answer?');
+      await page.getByRole('textbox', { name: 'Option 1' }).fill('Answer 1');
+      await page.getByRole('textbox', { name: 'Option 2' }).fill('Answer 2');
       await page.locator('input[type="radio"]').first().click();
 
-      // Verify default visibility is 'private'
-      const visibilitySelect = page.locator('select[name="visibility"]');
-      await expect(visibilitySelect).toHaveValue('private');
+      // Verify default visibility is 'private' (visibility dropdown is inside the form)
+      const visibilitySelect = page.locator('form select').first();
+      await expect(visibilitySelect).toContainText('Private');
 
-      // Wait a moment for React state updates
-      await page.waitForTimeout(100);
+      // Click submit
+      await page.locator('form').getByRole('button', { name: 'Create Question' }).click();
 
-      // Click submit with force
-      await page.locator('button:has-text("Create Question")').last().click({ force: true });
+      // Wait for success message
+      await expect(page.getByText('Question created successfully')).toBeVisible({ timeout: 10000 });
 
-      // Wait for modal to close
-      await expect(page.locator('h3:has-text("Create Question")')).not.toBeVisible({ timeout: 15000 });
-
-      await expect(page.locator('h3:has-text("Private Question E2E")')).toBeVisible({ timeout: 5000 });
+      // Verify question appears with Private visibility
+      await expect(page.getByRole('cell', { name: uniqueTitle })).toBeVisible({ timeout: 5000 });
     });
 
-    // TODO: Form submission not working in E2E tests - needs investigation
-    test.skip('should create a question with public visibility', async ({ page }) => {
+    test('should create a question with public visibility', async ({ page }) => {
+      const uniqueTitle = `Public Question ${Date.now()}`;
+
       await page.click('text=Questions');
-      await page.click('button:has-text("Create Question")');
+      await page.getByRole('button', { name: 'Create Question' }).first().click();
+
+      // Wait for modal to open
+      await expect(page.getByRole('heading', { name: 'Create Question' })).toBeVisible({ timeout: 5000 });
 
       // Fill in form
-      await page.fill('input[name="title"]', 'Public Question E2E');
-      await page.fill('textarea[placeholder*="question"]', 'What is a public question?');
-      await page.selectOption('select[name="visibility"]', 'public');
-      await page.fill('input[placeholder="Option 1"]', 'Answer 1');
-      await page.fill('input[placeholder="Option 2"]', 'Answer 2');
-      // Select correct answer - use click() to ensure onChange fires
+      await page.getByRole('textbox', { name: /Capital of France/i }).fill(uniqueTitle);
+      await page.getByRole('textbox', { name: 'Enter your question...' }).fill('What is a public question?');
+
+      // Select public visibility (use form-scoped selector to avoid matching page filters)
+      await page.locator('form select').first().selectOption({ label: 'Public - Can be used in any test' });
+
+      await page.getByRole('textbox', { name: 'Option 1' }).fill('Answer 1');
+      await page.getByRole('textbox', { name: 'Option 2' }).fill('Answer 2');
       await page.locator('input[type="radio"]').first().click();
 
-      // Wait a moment for React state updates
-      await page.waitForTimeout(100);
+      // Click submit
+      await page.locator('form').getByRole('button', { name: 'Create Question' }).click();
 
-      // Click submit with force
-      await page.locator('button:has-text("Create Question")').last().click({ force: true });
+      // Wait for success message
+      await expect(page.getByText('Question created successfully')).toBeVisible({ timeout: 10000 });
 
-      // Wait for modal to close
-      await expect(page.locator('h3:has-text("Create Question")')).not.toBeVisible({ timeout: 15000 });
-
-      await expect(page.locator('h3:has-text("Public Question E2E")')).toBeVisible({ timeout: 5000 });
+      // Verify question appears
+      await expect(page.getByRole('cell', { name: uniqueTitle })).toBeVisible({ timeout: 5000 });
     });
 
     test('should show visibility dropdown with all three options in question form', async ({ page }) => {

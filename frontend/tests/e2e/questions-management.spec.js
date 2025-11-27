@@ -19,37 +19,42 @@ test.describe('Questions Management', () => {
     await expect(page.locator('h2:has-text("Questions")')).toBeVisible();
   });
 
-  // TODO: Form submission not working in E2E tests - needs investigation
-  // The form click handler doesn't trigger properly via Playwright
-  test.skip('should create a new question', async ({ page }) => {
-    await page.click('text=Create Question');
+  test('should create a new question', async ({ page }) => {
+    // Use unique title to avoid conflicts with previous test runs
+    const uniqueTitle = `E2E Question ${Date.now()}`;
+
+    // Click Create Question button in header
+    await page.getByRole('button', { name: 'Create Question' }).first().click();
+
+    // Wait for modal to open
+    await expect(page.getByRole('heading', { name: 'Create Question' })).toBeVisible({ timeout: 5000 });
 
     // Fill in title (required field)
-    await page.fill('input[name="title"]', 'Simple Math Problem');
+    await page.getByRole('textbox', { name: /Capital of France/i }).fill(uniqueTitle);
 
-    await page.fill('textarea[placeholder*="question"]', 'What is 2+2?');
-    await page.selectOption('select', 'SINGLE');
+    // Fill question text
+    await page.getByRole('textbox', { name: 'Enter your question...' }).fill('What is 2+2?');
+
+    // Type is SINGLE by default, no need to change
 
     // Fill options
-    await page.fill('input[placeholder="Option 1"]', '3');
-    await page.fill('input[placeholder="Option 2"]', '4');
+    await page.getByRole('textbox', { name: 'Option 1' }).fill('3');
+    await page.getByRole('textbox', { name: 'Option 2' }).fill('4');
 
-    // Select correct answer - use click() instead of check() to ensure onChange fires
+    // Select correct answer (option 2 = "4")
     await page.locator('input[type="radio"]').nth(1).click();
 
-    await page.fill('input[placeholder*="tags"]', 'math, easy');
+    // Fill tags
+    await page.getByRole('textbox', { name: /tags/i }).fill('math, easy');
 
-    // Wait a moment for any pending React state updates
-    await page.waitForTimeout(100);
+    // Submit the form - use the button inside the form (not the header button)
+    await page.locator('form').getByRole('button', { name: 'Create Question' }).click();
 
-    // Try using Playwright's native click with force option
-    await page.locator('button:has-text("Create Question")').last().click({ force: true });
+    // Wait for success message or modal to close
+    await expect(page.getByText('Question created successfully')).toBeVisible({ timeout: 10000 });
 
-    // Wait for modal to close - use a longer timeout
-    await expect(page.locator('h3:has-text("Create Question")')).not.toBeVisible({ timeout: 15000 });
-
-    // Verify question appears in the list
-    await expect(page.locator('h3:has-text("Simple Math Problem")')).toBeVisible({ timeout: 5000 });
+    // Verify question appears in the table
+    await expect(page.getByRole('cell', { name: uniqueTitle })).toBeVisible({ timeout: 5000 });
   });
 
   test('should filter questions by type', async ({ page }) => {
@@ -113,26 +118,27 @@ test.describe('Questions Management', () => {
     await expect(page.locator(`text=${currentTitle} (edited)`)).toBeVisible({ timeout: 5000 });
   });
 
-  // TODO: Delete test depends on question creation which has form submission issues
-  test.skip('should delete a question', async ({ page }) => {
-    // Wait for questions to load
-    await page.waitForSelector('button:has-text("Delete")');
+  test('should delete a question', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForSelector('table', { timeout: 5000 });
 
-    // Get a unique identifier from the first question card (its title)
-    const firstQuestionTitle = await page.locator('h3').first().textContent();
+    // Get the title of the first question (second cell of first data row)
+    const firstRow = page.locator('table tbody tr').first();
+    const firstQuestionTitle = await firstRow.locator('td').nth(1).textContent();
 
-    // Click Delete on first question
-    await page.locator('button:has-text("Delete")').first().click();
+    // Click Delete on first question (icon-only button with title attribute)
+    await page.getByRole('button', { name: 'Delete' }).first().click();
 
-    // Confirm deletion in modal
-    await page.locator('button:has-text("Delete Question")').click();
+    // Wait for confirmation modal
+    await expect(page.getByRole('heading', { name: 'Confirm Delete' })).toBeVisible({ timeout: 5000 });
 
-    // Wait for the deletion to complete and question to be removed from list
-    // The question title should no longer appear (or at minimum the delete modal should close)
-    await page.waitForTimeout(1500);
+    // Confirm deletion
+    await page.getByRole('button', { name: 'Delete Question' }).click();
 
-    // Verify the first question is now different (was deleted)
-    const newFirstQuestionTitle = await page.locator('h3').first().textContent();
-    expect(newFirstQuestionTitle).not.toBe(firstQuestionTitle);
+    // Wait for modal to close and deletion to complete
+    await expect(page.getByRole('heading', { name: 'Confirm Delete' })).not.toBeVisible({ timeout: 5000 });
+
+    // Verify the deleted question title is no longer in the table
+    await expect(page.getByRole('cell', { name: firstQuestionTitle })).not.toBeVisible({ timeout: 5000 });
   });
 });
