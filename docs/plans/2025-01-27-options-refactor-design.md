@@ -158,11 +158,36 @@ If test has `show_explanations: "after_each_question"`:
 
 **After submit (`POST /assessments/:id/submit`):**
 
-Same logic - include feedback based on test settings.
+Same logic - include feedback based on test settings. Response includes all data needed for results page:
+```json
+{
+  "assessment_id": "uuid",
+  "score_percentage": 80,
+  "status": "COMPLETED",
+  "pass_threshold": 70,
+  "feedback": [
+    {
+      "question_id": "uuid",
+      "question_text": "What is the capital of France?",
+      "selected": [{"id": "1", "text": "Paris", "is_correct": true, "explanation": "..."}],
+      "all": null
+    }
+  ]
+}
+```
+- `feedback` is `null` if `show_explanations: "never"`
+- `feedback[].all` populated only if `explanation_scope: "all_answers"`
+- Frontend stores this in LocalStorage for results page display
 
 ### Admin Endpoints
 
-Admin routes (`GET /api/questions/:id`, `GET /api/tests/:id/questions`) continue to return full data including `is_correct` and `explanation`.
+| Endpoint | Auth | Returns |
+|----------|------|---------|
+| `GET /api/questions/:id` | Required | Full question with `is_correct`, `explanation` |
+| `GET /api/tests/:id/questions` | Required | All questions with full data |
+| `GET /api/assessments/:id/details` | **Required** | Full assessment with all answers and explanations |
+
+**Security:** The `/details` endpoint now requires authentication. Candidates cannot access it directly - their results page uses data from the `/submit` response stored in LocalStorage.
 
 ---
 
