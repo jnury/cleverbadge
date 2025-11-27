@@ -11,6 +11,7 @@ export default defineConfig({
     'import.meta.env.VITE_VERSION': JSON.stringify(packageJson.version)
   },
   server: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 5173
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
+    strictPort: true
   }
 });

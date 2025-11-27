@@ -4,13 +4,25 @@ set -e
 # E2E Tests - Replicates GitHub Actions CI environment
 # This script matches the e2e-tests job in .github/workflows/ci.yml
 # Manages full PostgreSQL container lifecycle: start → setup → test → cleanup
+#
+# Uses different ports to allow parallel execution with dev environment:
+#   PostgreSQL: 5433 (dev uses 5432)
+#   Backend:    3001 (dev uses 3000)
+#   Frontend:   5174 (dev uses 5173)
 
 CONTAINER_NAME="cleverbadge-test-postgres"
 TEST_FAILED=0
 
+# Test environment ports (different from dev)
+export TEST_BACKEND_PORT=3001
+export TEST_FRONTEND_PORT=5174
+export TEST_POSTGRES_PORT=5433
+
 echo "========================================"
 echo "🌐 E2E TESTS (CI Environment)"
 echo "========================================"
+echo ""
+echo "Ports: PostgreSQL=$TEST_POSTGRES_PORT, Backend=$TEST_BACKEND_PORT, Frontend=$TEST_FRONTEND_PORT"
 echo ""
 
 # Navigate to project root
@@ -38,21 +50,21 @@ cleanup() {
 trap cleanup EXIT
 
 # Check if port 5433 is already in use
-if lsof -Pi :5433 -sTCP:LISTEN -t >/dev/null 2>&1; then
-  echo "❌ Error: Port 5433 is already in use"
+if lsof -Pi :$TEST_POSTGRES_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+  echo "❌ Error: Port $TEST_POSTGRES_PORT is already in use"
   echo "Please stop any containers using this port:"
   echo "  docker stop <container-name>"
   exit 1
 fi
 
 # Start PostgreSQL container on port 5433 (to avoid conflict with local dev on 5432)
-echo "🐳 Starting PostgreSQL container on port 5433..."
+echo "🐳 Starting PostgreSQL container on port $TEST_POSTGRES_PORT..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=cleverbadge \
-  -p 5433:5432 \
+  -p $TEST_POSTGRES_PORT:5432 \
   postgres:14 >/dev/null
 
 echo "  Waiting for PostgreSQL to be ready..."
@@ -108,11 +120,12 @@ echo ""
 
 # Run E2E tests (matching CI workflow lines 188-196)
 echo "🚀 Running E2E tests..."
-export VITE_API_URL=http://localhost:3000
-export DATABASE_URL=postgresql://cleverbadge_test:testpass@localhost:5433/cleverbadge
-export DATABASE_ADMIN_URL=postgresql://cleverbadge_admin:testpass@localhost:5433/cleverbadge
+export VITE_API_URL=http://localhost:$TEST_BACKEND_PORT
+export DATABASE_URL=postgresql://cleverbadge_test:testpass@localhost:$TEST_POSTGRES_PORT/cleverbadge
+export DATABASE_ADMIN_URL=postgresql://cleverbadge_admin:testpass@localhost:$TEST_POSTGRES_PORT/cleverbadge
 export NODE_ENV=testing
 export JWT_SECRET=test-secret-key-for-ci-e2e
+export PORT=$TEST_BACKEND_PORT
 
 if npm run test:e2e; then
   echo ""

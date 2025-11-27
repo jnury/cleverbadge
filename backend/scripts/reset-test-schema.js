@@ -62,6 +62,14 @@ async function resetTestSchema() {
     const testMigration6SQL = migration6SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
     await sql.unsafe(testMigration6SQL);
 
+    const migration7SQL = fs.readFileSync('./db/migrations/007_add_question_is_archived.sql', 'utf8');
+    const testMigration7SQL = migration7SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+    await sql.unsafe(testMigration7SQL);
+
+    const migration8SQL = fs.readFileSync('./db/migrations/008_add_test_is_archived.sql', 'utf8');
+    const testMigration8SQL = migration8SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+    await sql.unsafe(testMigration8SQL);
+
     // Seed test data
     console.log('Seeding test data...');
     await seedTestData(sql, TEST_SCHEMA);
