@@ -1,5 +1,25 @@
 import { test, expect } from '@playwright/test';
 
+// Helper function to select a radio option by its label text
+async function selectRadioByText(page, text) {
+  await page.locator(`label:has-text("${text}") input[type="radio"]`).click();
+}
+
+// Helper function to select a checkbox option by its label text
+async function selectCheckboxByText(page, text) {
+  await page.locator(`label:has-text("${text}") input[type="checkbox"]`).click();
+}
+
+// Helper function to verify a radio is checked by its label text
+async function expectRadioChecked(page, text) {
+  await expect(page.locator(`label:has-text("${text}") input[type="radio"]`)).toBeChecked();
+}
+
+// Helper function to verify a checkbox is checked by its label text
+async function expectCheckboxChecked(page, text) {
+  await expect(page.locator(`label:has-text("${text}") input[type="checkbox"]`)).toBeChecked();
+}
+
 test.describe('Candidate Test Taking Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Assume backend is seeded with math-geo test
@@ -26,8 +46,8 @@ test.describe('Candidate Test Taking Flow', () => {
     const question1Radio = page.locator('input[type="radio"]').first();
     await expect(question1Radio).toBeVisible();
 
-    // Select "4" (index 1)
-    await page.locator('input[type="radio"]').nth(1).click();
+    // Select "4" (correct answer) by text
+    await selectRadioByText(page, '4');
     await page.click('button:has-text("Next")');
 
     // Question 2 (SINGLE: Capital of France?)
@@ -38,8 +58,8 @@ test.describe('Candidate Test Taking Flow', () => {
     const question2Radio = page.locator('input[type="radio"]').first();
     await expect(question2Radio).toBeVisible();
 
-    // Select "Paris" (index 1)
-    await page.locator('input[type="radio"]').nth(1).click();
+    // Select "Paris" (correct answer) by text
+    await selectRadioByText(page, 'Paris');
     await page.click('button:has-text("Next")');
 
     // Question 3 (MULTIPLE: Even numbers)
@@ -51,9 +71,9 @@ test.describe('Candidate Test Taking Flow', () => {
     const question3Checkbox = page.locator('input[type="checkbox"]').first();
     await expect(question3Checkbox).toBeVisible();
 
-    // Select "2" (index 1) and "4" (index 3)
-    await page.locator('input[type="checkbox"]').nth(1).click();
-    await page.locator('input[type="checkbox"]').nth(3).click();
+    // Select "2" and "4" (correct answers) by text
+    await selectCheckboxByText(page, '2');
+    await selectCheckboxByText(page, '4');
 
     // Submit test with confirmation
     page.once('dialog', dialog => dialog.accept());
@@ -91,27 +111,27 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Start Test")');
     await page.waitForURL('**/t/math-geo/run');
 
-    // Answer Q1 - select index 1 ("4")
-    await page.locator('input[type="radio"]').nth(1).click();
+    // Answer Q1 - select "4" (correct)
+    await selectRadioByText(page, '4');
     await page.click('button:has-text("Next")');
 
-    // Answer Q2 - select index 2 ("Berlin")
-    await page.locator('input[type="radio"]').nth(2).click();
+    // Answer Q2 - select "Berlin" (wrong)
+    await selectRadioByText(page, 'Berlin');
     await page.click('button:has-text("Next")');
 
     // On Q3 - go back to Q2
     await page.click('button:has-text("Previous")');
 
-    // Verify we're on Q2 and answer persisted (index 2 should be checked)
+    // Verify we're on Q2 and answer persisted (Berlin should be checked)
     await expect(page.getByText(/capital of France/i)).toBeVisible();
-    await expect(page.locator('input[type="radio"]').nth(2)).toBeChecked();
+    await expectRadioChecked(page, 'Berlin');
 
     // Go back to Q1
     await page.click('button:has-text("Previous")');
 
-    // Verify Q1 answer persisted (index 1 should be checked)
+    // Verify Q1 answer persisted ("4" should be checked)
     await expect(page.getByText('What is 2 + 2?')).toBeVisible();
-    await expect(page.locator('input[type="radio"]').nth(1)).toBeChecked();
+    await expectRadioChecked(page, '4');
 
     // Previous button should be disabled on first question
     await expect(page.locator('button:has-text("Previous")')).toBeDisabled();
@@ -154,20 +174,20 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Start Test")');
     await page.waitForURL('**/t/math-geo/run');
 
-    // Q1: Answer correctly (select "4" - index 1)
+    // Q1: Answer correctly (select "4")
     // Weight: 1
-    await page.locator('input[type="radio"]').nth(1).click();
+    await selectRadioByText(page, '4');
     await page.click('button:has-text("Next")');
 
-    // Q2: Answer incorrectly (select "London" - index 0)
+    // Q2: Answer incorrectly (select "London")
     // Weight: 2
-    await page.locator('input[type="radio"]').nth(0).click();
+    await selectRadioByText(page, 'London');
     await page.click('button:has-text("Next")');
 
     // Q3: Answer incorrectly - only select one correct option out of two (MULTIPLE)
     // Weight: 2
-    // Correct answers are indices 1 and 3, we'll only select 1
-    await page.locator('input[type="checkbox"]').nth(1).click();
+    // Correct answers are "2" and "4", we'll only select "2"
+    await selectCheckboxByText(page, '2');
 
     // Submit test
     page.once('dialog', dialog => dialog.accept());
@@ -194,14 +214,14 @@ test.describe('Candidate Test Taking Flow', () => {
     const radioButtons = page.locator('input[type="radio"]');
     await expect(radioButtons.first()).toBeVisible();
 
-    // Select first option
-    await radioButtons.nth(0).click();
-    await expect(radioButtons.nth(0)).toBeChecked();
+    // Select "3" (first visible option - wrong answer)
+    await selectRadioByText(page, '3');
+    await expectRadioChecked(page, '3');
 
-    // Select second option - first should become unchecked
-    await radioButtons.nth(1).click();
-    await expect(radioButtons.nth(1)).toBeChecked();
-    await expect(radioButtons.nth(0)).not.toBeChecked();
+    // Select "4" - "3" should become unchecked
+    await selectRadioByText(page, '4');
+    await expectRadioChecked(page, '4');
+    await expect(page.locator('label:has-text("3") input[type="radio"]')).not.toBeChecked();
   });
 
   test('should test MULTIPLE choice questions work correctly', async ({ page }) => {
@@ -223,19 +243,19 @@ test.describe('Candidate Test Taking Flow', () => {
     const checkboxes = page.locator('input[type="checkbox"]');
     await expect(checkboxes.first()).toBeVisible();
 
-    // Select first option
-    await checkboxes.nth(0).click();
-    await expect(checkboxes.nth(0)).toBeChecked();
+    // Select "1" (odd number)
+    await selectCheckboxByText(page, '1');
+    await expectCheckboxChecked(page, '1');
 
-    // Select second option - first should remain checked
-    await checkboxes.nth(1).click();
-    await expect(checkboxes.nth(1)).toBeChecked();
-    await expect(checkboxes.nth(0)).toBeChecked();
+    // Select "2" - "1" should remain checked (multiple allowed)
+    await selectCheckboxByText(page, '2');
+    await expectCheckboxChecked(page, '2');
+    await expectCheckboxChecked(page, '1');
 
-    // Uncheck first option
-    await checkboxes.nth(0).click();
-    await expect(checkboxes.nth(0)).not.toBeChecked();
-    await expect(checkboxes.nth(1)).toBeChecked();
+    // Uncheck "1"
+    await selectCheckboxByText(page, '1');
+    await expect(page.locator('label:has-text("1") input[type="checkbox"]')).not.toBeChecked();
+    await expectCheckboxChecked(page, '2');
   });
 
   test('should prevent submission without candidate name', async ({ page }) => {
@@ -309,16 +329,16 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Start Test")');
     await page.waitForURL('**/t/math-geo/run');
 
-    // Q1: Correct (weight 1)
-    await page.locator('input[type="radio"]').nth(1).click();
+    // Q1: Correct (select "4", weight 1)
+    await selectRadioByText(page, '4');
     await page.click('button:has-text("Next")');
 
-    // Q2: Correct (weight 2)
-    await page.locator('input[type="radio"]').nth(1).click();
+    // Q2: Correct (select "Paris", weight 2)
+    await selectRadioByText(page, 'Paris');
     await page.click('button:has-text("Next")');
 
-    // Q3: Wrong (weight 2)
-    await page.locator('input[type="checkbox"]').nth(0).click();
+    // Q3: Wrong (select "1" which is odd, weight 2)
+    await selectCheckboxByText(page, '1');
 
     page.once('dialog', dialog => dialog.accept());
     await page.click('button:has-text("Submit Test")');
@@ -334,16 +354,16 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Start Test")');
     await page.waitForURL('**/t/math-geo/run');
 
-    // Q1: Wrong - select "3" (index 0)
-    await page.locator('input[type="radio"]').nth(0).click();
+    // Q1: Wrong - select "3" (incorrect)
+    await selectRadioByText(page, '3');
     await page.click('button:has-text("Next")');
 
-    // Q2: Wrong - select "London" (index 0)
-    await page.locator('input[type="radio"]').nth(0).click();
+    // Q2: Wrong - select "London" (incorrect)
+    await selectRadioByText(page, 'London');
     await page.click('button:has-text("Next")');
 
-    // Q3: Wrong - select wrong options
-    await page.locator('input[type="checkbox"]').nth(0).click();
+    // Q3: Wrong - select "1" (odd number, incorrect)
+    await selectCheckboxByText(page, '1');
 
     page.once('dialog', dialog => dialog.accept());
     await page.click('button:has-text("Submit Test")');
