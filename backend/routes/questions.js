@@ -94,6 +94,64 @@ router.get('/authors',
   }
 );
 
+// GET global success rates for all questions
+router.get('/success-rates',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const successRates = await sql`
+        SELECT
+          q.id as question_id,
+          COUNT(aa.id) as total_attempts,
+          SUM(CASE WHEN aa.is_correct THEN 1 ELSE 0 END)::integer as correct_attempts,
+          CASE
+            WHEN COUNT(aa.id) > 0 THEN
+              ROUND(SUM(CASE WHEN aa.is_correct THEN 1 ELSE 0 END)::decimal / COUNT(aa.id)::decimal * 100, 0)
+            ELSE NULL
+          END as success_rate
+        FROM ${sql(dbSchema)}.questions q
+        LEFT JOIN ${sql(dbSchema)}.assessment_answers aa ON aa.question_id = q.id
+        LEFT JOIN ${sql(dbSchema)}.assessments a ON a.id = aa.assessment_id AND a.status = 'COMPLETED'
+        WHERE q.is_archived = false
+        GROUP BY q.id
+      `;
+
+      // Convert to a map for easy lookup
+      const ratesMap = {};
+      for (const row of successRates) {
+        ratesMap[row.question_id] = {
+          total_attempts: parseInt(row.total_attempts) || 0,
+          correct_attempts: parseInt(row.correct_attempts) || 0,
+          success_rate: row.success_rate !== null ? parseFloat(row.success_rate) : null
+        };
+      }
+
+      res.json({ success_rates: ratesMap });
+    } catch (error) {
+      console.error('Error fetching success rates:', error);
+      res.status(500).json({ error: 'Failed to fetch success rates' });
+    }
+  }
+);
+
+// GET all users (for change author dropdown)
+router.get('/users',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const users = await sql`
+        SELECT id, username
+        FROM ${sql(dbSchema)}.users
+        ORDER BY username
+      `;
+      res.json({ users });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  }
+);
+
 // GET single question by ID
 router.get('/:id',
   authenticateToken,
@@ -291,6 +349,102 @@ router.delete('/:id',
     } catch (error) {
       console.error('Error deleting question:', error);
       res.status(500).json({ error: 'Failed to delete question' });
+    }
+  }
+);
+
+// POST bulk delete questions
+router.post('/bulk-delete',
+  authenticateToken,
+  body('question_ids').isArray({ min: 1 }).withMessage('question_ids must be a non-empty array'),
+  body('question_ids.*').isUUID().withMessage('Each question_id must be a valid UUID'),
+  body('force_remove_from_tests').optional().isBoolean().withMessage('force_remove_from_tests must be boolean'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { question_ids, force_remove_from_tests = false } = req.body;
+
+      let deleted = 0;
+      let skipped = 0;
+      const skipped_ids = [];
+
+      for (const id of question_ids) {
+        // Check if question is used in any tests
+        const testsUsingQuestion = await sql`
+          SELECT t.id, t.title
+          FROM ${sql(dbSchema)}.test_questions tq
+          INNER JOIN ${sql(dbSchema)}.tests t ON tq.test_id = t.id
+          WHERE tq.question_id = ${id} AND t.is_archived = false
+        `;
+
+        if (testsUsingQuestion.length > 0) {
+          if (force_remove_from_tests) {
+            // Remove from all tests first
+            await sql`
+              DELETE FROM ${sql(dbSchema)}.test_questions
+              WHERE question_id = ${id}
+            `;
+          } else {
+            // Skip this question
+            skipped++;
+            skipped_ids.push(id);
+            continue;
+          }
+        }
+
+        // Soft delete
+        const result = await sql`
+          UPDATE ${sql(dbSchema)}.questions
+          SET is_archived = true, updated_at = NOW()
+          WHERE id = ${id} AND is_archived = false
+          RETURNING id
+        `;
+
+        if (result.length > 0) {
+          deleted++;
+        }
+      }
+
+      res.json({ deleted, skipped, skipped_ids });
+    } catch (error) {
+      console.error('Error bulk deleting questions:', error);
+      res.status(500).json({ error: 'Failed to bulk delete questions' });
+    }
+  }
+);
+
+// POST bulk change author
+router.post('/bulk-change-author',
+  authenticateToken,
+  body('question_ids').isArray({ min: 1 }).withMessage('question_ids must be a non-empty array'),
+  body('question_ids.*').isUUID().withMessage('Each question_id must be a valid UUID'),
+  body('author_id').isUUID().withMessage('author_id must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { question_ids, author_id } = req.body;
+
+      // Verify author exists
+      const users = await sql`
+        SELECT id FROM ${sql(dbSchema)}.users WHERE id = ${author_id}
+      `;
+
+      if (users.length === 0) {
+        return res.status(404).json({ error: 'Author not found' });
+      }
+
+      // Update all questions
+      const result = await sql`
+        UPDATE ${sql(dbSchema)}.questions
+        SET author_id = ${author_id}, updated_at = NOW()
+        WHERE id = ANY(${question_ids}) AND is_archived = false
+        RETURNING id
+      `;
+
+      res.json({ updated: result.length });
+    } catch (error) {
+      console.error('Error bulk changing author:', error);
+      res.status(500).json({ error: 'Failed to bulk change author' });
     }
   }
 );

@@ -25,12 +25,25 @@ const QuestionsTab = () => {
   const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'preview'
   const [previewData, setPreviewData] = useState(null); // Live preview data
   const [previewSelections, setPreviewSelections] = useState([]); // Preview selected options
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [sortOrder, setSortOrder] = useState(null); // null | 'asc' | 'desc'
+  const [bulkAction, setBulkAction] = useState(null); // null | 'delete' | 'changeAuthor' | 'addToTest'
+  const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
+  const [tests, setTests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [forceRemoveFromTests, setForceRemoveFromTests] = useState(false);
+  const [selectedAuthorId, setSelectedAuthorId] = useState('');
+  const [selectedTestId, setSelectedTestId] = useState('');
+  const [successRates, setSuccessRates] = useState({});
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
 
   useEffect(() => {
     fetchQuestions();
     fetchAuthors();
+    fetchTests();
+    fetchUsers();
+    fetchSuccessRates();
   }, []);
 
   const fetchQuestions = async () => {
@@ -52,6 +65,33 @@ const QuestionsTab = () => {
     } catch (error) {
       // Silent fail - authors filter just won't work
       console.error('Failed to load authors:', error);
+    }
+  };
+
+  const fetchTests = async () => {
+    try {
+      const data = await apiRequest('/api/tests');
+      setTests(data.tests || []);
+    } catch (error) {
+      console.error('Failed to load tests:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const data = await apiRequest('/api/questions/users');
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+
+  const fetchSuccessRates = async () => {
+    try {
+      const data = await apiRequest('/api/questions/success-rates');
+      setSuccessRates(data.success_rates || {});
+    } catch (error) {
+      console.error('Failed to load success rates:', error);
     }
   };
 
@@ -102,6 +142,166 @@ const QuestionsTab = () => {
     fetchQuestions();
   };
 
+  const handleSelectAll = () => {
+    if (selectedIds.size === sortedQuestions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedQuestions.map(q => q.id)));
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSortToggle = () => {
+    setSortOrder(current => {
+      if (current === null) return 'asc';
+      if (current === 'asc') return 'desc';
+      return null;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const data = await apiRequest('/api/questions/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({
+          question_ids: Array.from(selectedIds),
+          force_remove_from_tests: forceRemoveFromTests
+        })
+      });
+
+      if (data.skipped > 0) {
+        showSuccess(`Deleted ${data.deleted} questions, ${data.skipped} skipped (in tests)`);
+      } else {
+        showSuccess(`Deleted ${data.deleted} questions`);
+      }
+
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setForceRemoveFromTests(false);
+      fetchQuestions();
+    } catch (error) {
+      showError(error.message || 'Failed to delete questions');
+    }
+  };
+
+  const handleBulkChangeAuthor = async () => {
+    if (!selectedAuthorId) {
+      showError('Please select an author');
+      return;
+    }
+
+    try {
+      const data = await apiRequest('/api/questions/bulk-change-author', {
+        method: 'POST',
+        body: JSON.stringify({
+          question_ids: Array.from(selectedIds),
+          author_id: selectedAuthorId
+        })
+      });
+
+      showSuccess(`Updated author for ${data.updated} questions`);
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setSelectedAuthorId('');
+      fetchQuestions();
+      fetchAuthors();
+    } catch (error) {
+      showError(error.message || 'Failed to change author');
+    }
+  };
+
+  const handleBulkAddToTest = async () => {
+    if (!selectedTestId) {
+      showError('Please select a test');
+      return;
+    }
+
+    try {
+      const data = await apiRequest(`/api/tests/${selectedTestId}/questions/bulk-add`, {
+        method: 'POST',
+        body: JSON.stringify({
+          question_ids: Array.from(selectedIds)
+        })
+      });
+
+      const testName = tests.find(t => t.id === selectedTestId)?.title || 'test';
+      if (data.skipped > 0) {
+        showSuccess(`Added ${data.added} questions to "${testName}", ${data.skipped} already in test`);
+      } else {
+        showSuccess(`Added ${data.added} questions to "${testName}"`);
+      }
+
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setSelectedTestId('');
+    } catch (error) {
+      showError(error.message || 'Failed to add questions to test');
+    }
+  };
+
+  const getSuccessRateBadge = (questionId) => {
+    const rateData = successRates[questionId];
+    if (!rateData || rateData.success_rate === null) {
+      return <span className="text-gray-400 text-sm">-</span>;
+    }
+    const rate = rateData.success_rate;
+    let bgColor, textColor;
+    if (rate >= 70) {
+      bgColor = 'bg-green-100';
+      textColor = 'text-green-800';
+    } else if (rate >= 40) {
+      bgColor = 'bg-yellow-100';
+      textColor = 'text-yellow-800';
+    } else {
+      bgColor = 'bg-red-100';
+      textColor = 'text-red-800';
+    }
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded ${bgColor} ${textColor}`} title={`${rateData.correct_attempts}/${rateData.total_attempts} correct`}>
+        {rate}%
+      </span>
+    );
+  };
+
+  const hasChanges = () => {
+    if (!editingQuestion || !previewData) return false;
+
+    // Compare relevant fields
+    if (previewData.title !== editingQuestion.title) return true;
+    if (previewData.text !== editingQuestion.text) return true;
+    if (previewData.type !== editingQuestion.type) return true;
+    if (previewData.visibility !== editingQuestion.visibility) return true;
+
+    // Compare options arrays
+    const previewOpts = previewData.options || [];
+    const origOpts = editingQuestion.options || [];
+    if (previewOpts.length !== origOpts.length) return true;
+    if (previewOpts.some((opt, i) => opt !== origOpts[i])) return true;
+
+    // Compare correct_answers arrays
+    const previewAnswers = previewData.correct_answers || [];
+    const origAnswers = editingQuestion.correct_answers || [];
+    if (previewAnswers.length !== origAnswers.length) return true;
+    if (previewAnswers.some((ans, i) => ans !== origAnswers[i])) return true;
+
+    // Compare tags arrays
+    const previewTags = previewData.tags || [];
+    const origTags = editingQuestion.tags || [];
+    if (previewTags.length !== origTags.length) return true;
+    if (previewTags.some((tag, i) => tag !== origTags[i])) return true;
+
+    return false;
+  };
+
   const getVisibilityBadge = (visibility) => {
     const badges = {
       public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
@@ -124,6 +324,12 @@ const QuestionsTab = () => {
     return true;
   });
 
+  const sortedQuestions = [...filteredQuestions].sort((a, b) => {
+    if (!sortOrder) return 0;
+    const comparison = (a.title || '').localeCompare(b.title || '');
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -136,6 +342,38 @@ const QuestionsTab = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Questions</h2>
         <div className="flex gap-3">
+          {/* Bulk Actions Dropdown */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              disabled={selectedIds.size === 0}
+              onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
+            >
+              Bulk Actions ▼
+            </Button>
+            {bulkDropdownOpen && selectedIds.size > 0 && (
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('delete'); setBulkDropdownOpen(false); }}
+                >
+                  Delete selected
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('changeAuthor'); setBulkDropdownOpen(false); }}
+                >
+                  Change author
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('addToTest'); setBulkDropdownOpen(false); }}
+                >
+                  Add to test
+                </button>
+              </div>
+            )}
+          </div>
           <Button
             variant="secondary"
             onClick={() => setIsImportOpen(true)}
@@ -205,78 +443,145 @@ const QuestionsTab = () => {
         </div>
 
         <div className="mt-2 text-sm text-gray-600">
-          Showing {filteredQuestions.length} of {questions.length} questions
+          Showing {sortedQuestions.length} of {questions.length} questions
+          {selectedIds.size > 0 && (
+            <span className="ml-2 font-medium text-tech">
+              ({selectedIds.size} selected)
+            </span>
+          )}
         </div>
       </Card>
 
-      {/* Questions List */}
-      <div className="space-y-4">
-        {filteredQuestions.length === 0 ? (
-          <Card>
-            <p className="text-center text-gray-500 py-8">
-              No questions found. Create your first question to get started!
-            </p>
-          </Card>
+      {/* Questions Table */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {sortedQuestions.length === 0 ? (
+          <p className="text-center text-gray-500 py-8">
+            No questions found. Create your first question to get started!
+          </p>
         ) : (
-          filteredQuestions.map(question => (
-            <Card key={question.id} className="hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  {/* Title as primary display */}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {question.title}
-                  </h3>
-
-                  {/* Badges row */}
-                  <div className="flex items-center gap-2 mb-2">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === sortedQuestions.length && sortedQuestions.length > 0}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={handleSortToggle}
+                >
+                  Title {sortOrder === 'asc' ? '▲' : sortOrder === 'desc' ? '▼' : ''}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Visibility
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Author
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tags
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Success
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedQuestions.map(question => (
+                <tr key={question.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(question.id)}
+                      onChange={() => handleSelectOne(question.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm font-medium text-gray-900 truncate max-w-xs" title={question.title}>
+                      {question.title}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs font-medium rounded ${
                       question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                     }`}>
                       {question.type}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
                     {getVisibilityBadge(question.visibility)}
-                    {question.tags && Array.isArray(question.tags) && question.tags.length > 0 && (
-                      <div className="flex gap-1">
-                        {question.tags.map((tag, index) => (
-                          <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Question text preview */}
-                  <p className="text-gray-600 text-sm font-mono">
-                    {question.text.split('\n')[0].substring(0, 150)}{question.text.length > 150 ? '...' : ''}
-                  </p>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setEditingQuestion(question);
-                      setPreviewData(question); // Initialize preview with current question
-                      setPreviewSelections([]); // Reset preview selections
-                      setActiveTab('edit');
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => setDeleteConfirm(question)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {question.author_username || '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-600 truncate max-w-[150px]" title={question.tags?.join(', ')}>
+                      {question.tags?.join(', ') || '-'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {getSuccessRateBadge(question.id)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      {/* Preview */}
+                      <button
+                        onClick={() => {
+                          setEditingQuestion(question);
+                          setPreviewData(question);
+                          setPreviewSelections([]);
+                          setActiveTab('preview');
+                        }}
+                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        title="Preview"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      {/* Edit */}
+                      <button
+                        onClick={() => {
+                          setEditingQuestion(question);
+                          setPreviewData(question);
+                          setPreviewSelections([]);
+                          setActiveTab('edit');
+                        }}
+                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      {/* Delete */}
+                      <button
+                        onClick={() => setDeleteConfirm(question)}
+                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Delete"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -295,7 +600,7 @@ const QuestionsTab = () => {
         </Modal>
       )}
 
-      {/* Edit Modal with Tabs */}
+      {/* Question Modal with Tabs */}
       {editingQuestion && (
         <Modal
           isOpen={!!editingQuestion}
@@ -304,7 +609,7 @@ const QuestionsTab = () => {
             setPreviewSelections([]);
             setActiveTab('edit');
           }}
-          title="Edit Question"
+          title="Question"
           size="lg"
         >
           {/* Tab Navigation */}
@@ -426,20 +731,22 @@ const QuestionsTab = () => {
                 setActiveTab('edit');
               }}
             >
-              Cancel
+              Close
             </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                // Trigger form submission by getting the form element
-                const form = document.querySelector('form');
-                if (form) {
-                  form.requestSubmit();
-                }
-              }}
-            >
-              {editingQuestion ? 'Update Question' : 'Create Question'}
-            </Button>
+            {hasChanges() && (
+              <Button
+                type="button"
+                onClick={() => {
+                  // Trigger form submission by getting the form element
+                  const form = document.querySelector('form');
+                  if (form) {
+                    form.requestSubmit();
+                  }
+                }}
+              >
+                Update Question
+              </Button>
+            )}
           </div>
         </Modal>
       )}
@@ -490,6 +797,140 @@ const QuestionsTab = () => {
           size="lg"
         >
           <YamlUpload onUploadSuccess={handleUploadSuccess} />
+        </Modal>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {bulkAction === 'delete' && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setBulkAction(null); setForceRemoveFromTests(false); }}
+          title={`Delete ${selectedIds.size} Questions`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              This will permanently delete {selectedIds.size} question{selectedIds.size > 1 ? 's' : ''}.
+            </p>
+
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="forceRemove"
+                checked={forceRemoveFromTests}
+                onChange={(e) => setForceRemoveFromTests(e.target.checked)}
+                className="mt-1 rounded border-gray-300"
+              />
+              <label htmlFor="forceRemove" className="text-sm text-gray-600">
+                Remove from tests first (questions in tests will be skipped otherwise)
+              </label>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setBulkAction(null); setForceRemoveFromTests(false); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleBulkDelete}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Change Author Modal */}
+      {bulkAction === 'changeAuthor' && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setBulkAction(null); setSelectedAuthorId(''); }}
+          title={`Change Author for ${selectedIds.size} Questions`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Author
+              </label>
+              <select
+                value={selectedAuthorId}
+                onChange={(e) => setSelectedAuthorId(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select author...</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.username}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setBulkAction(null); setSelectedAuthorId(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkChangeAuthor}
+                disabled={!selectedAuthorId}
+              >
+                Change Author
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Add to Test Modal */}
+      {bulkAction === 'addToTest' && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setBulkAction(null); setSelectedTestId(''); }}
+          title={`Add ${selectedIds.size} Questions to Test`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Test
+              </label>
+              <select
+                value={selectedTestId}
+                onChange={(e) => setSelectedTestId(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select test...</option>
+                {tests.map(test => (
+                  <option key={test.id} value={test.id}>{test.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              Questions already in the test will be skipped.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setBulkAction(null); setSelectedTestId(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkAddToTest}
+                disabled={!selectedTestId}
+              >
+                Add to Test
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

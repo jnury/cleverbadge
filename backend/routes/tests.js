@@ -411,6 +411,82 @@ router.post('/:id/questions',
   }
 );
 
+// POST bulk add questions to test (simplified - skips duplicates)
+router.post('/:id/questions/bulk-add',
+  authenticateToken,
+  param('id').isUUID().withMessage('ID must be a valid UUID'),
+  body('question_ids').isArray({ min: 1 }).withMessage('question_ids must be a non-empty array'),
+  body('question_ids.*').isUUID().withMessage('Each question_id must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { question_ids } = req.body;
+      const testId = req.params.id;
+
+      // Get test with visibility
+      const tests = await sql`
+        SELECT * FROM ${sql(dbSchema)}.tests
+        WHERE id = ${testId} AND is_archived = false
+      `;
+
+      if (tests.length === 0) {
+        return res.status(404).json({ error: 'Test not found' });
+      }
+
+      const test = tests[0];
+
+      // Get questions to check visibility
+      const questionDetails = await sql`
+        SELECT id, title, visibility
+        FROM ${sql(dbSchema)}.questions
+        WHERE id = ANY(${question_ids}) AND is_archived = false
+      `;
+
+      // Check visibility compatibility
+      const incompatible = questionDetails.filter(q =>
+        !canQuestionBeInTest(q.visibility, test.visibility)
+      );
+
+      if (incompatible.length > 0) {
+        const questionTitles = incompatible.map(q => q.title).join(', ');
+        return res.status(400).json({
+          error: `Cannot add questions to ${test.visibility} test: incompatible visibility for: ${questionTitles}`,
+          incompatible: incompatible.map(q => ({ id: q.id, title: q.title, visibility: q.visibility }))
+        });
+      }
+
+      // Get existing questions in test
+      const existing = await sql`
+        SELECT question_id FROM ${sql(dbSchema)}.test_questions
+        WHERE test_id = ${testId}
+      `;
+      const existingIds = new Set(existing.map(e => e.question_id));
+
+      // Filter to only new questions
+      const newQuestionIds = question_ids.filter(id => !existingIds.has(id));
+      const skipped = question_ids.length - newQuestionIds.length;
+
+      if (newQuestionIds.length > 0) {
+        // Build values for insert
+        const values = newQuestionIds.map(qid => ({
+          test_id: testId,
+          question_id: qid,
+          weight: 1
+        }));
+
+        await sql`
+          INSERT INTO ${sql(dbSchema)}.test_questions ${sql(values, 'test_id', 'question_id', 'weight')}
+        `;
+      }
+
+      res.json({ added: newQuestionIds.length, skipped });
+    } catch (error) {
+      console.error('Error bulk adding questions to test:', error);
+      res.status(500).json({ error: 'Failed to bulk add questions to test' });
+    }
+  }
+);
+
 // DELETE remove question from test
 router.delete('/:testId/questions/:questionId',
   authenticateToken,
