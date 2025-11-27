@@ -11,7 +11,7 @@ export default defineConfig({
     setupFiles: [],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['routes/**', 'middleware/**', 'utils/**', 'db/**'],
       exclude: ['**/*.test.js', '**/node_modules/**']
     },

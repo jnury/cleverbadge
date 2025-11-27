@@ -27,7 +27,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    expect(screen.getByText(/Frontend: v\d+\.\d+\.\d+/i)).toBeInTheDocument();
+    expect(screen.getByText(/Frontend: \d+\.\d+\.\d+/i)).toBeInTheDocument();
   });
 
   it('fetches and displays backend version', async () => {
@@ -38,11 +38,11 @@ describe('Footer', () => {
     render(<Footer />);
 
     // Initially shows loading
-    expect(screen.getByText(/Backend: v\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Backend: \.\.\./i)).toBeInTheDocument();
 
     // Wait for backend version to load
     await waitFor(() => {
-      expect(screen.getByText(/Backend: v1\.2\.3/i)).toBeInTheDocument();
+      expect(screen.getByText(/Backend: 1\.2\.3/i)).toBeInTheDocument();
     });
 
     // Verify fetch was called
@@ -57,7 +57,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     await waitFor(() => {
-      expect(screen.getByText(/\(production\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Backend: 1\.0\.0/i)).toBeInTheDocument();
     });
   });
 
@@ -68,8 +68,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Backend: verror/i)).toBeInTheDocument();
-      expect(screen.getByText(/\(error\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Backend: error/i)).toBeInTheDocument();
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
