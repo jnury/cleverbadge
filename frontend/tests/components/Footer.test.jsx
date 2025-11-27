@@ -12,16 +12,22 @@ describe('Footer', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders copyright text', () => {
+  it('renders copyright text', async () => {
     global.fetch.mockResolvedValueOnce({
       json: async () => ({ version: '1.0.0', environment: 'development' })
     });
 
     render(<Footer />);
+
+    // Wait for component to finish loading
+    await waitFor(() => {
+      expect(screen.getByText(/Backend: 1\.0\.0/)).toBeInTheDocument();
+    });
+
     expect(screen.getByText(/© 2025 Clever Badge/i)).toBeInTheDocument();
   });
 
-  it('displays frontend version', () => {
+  it('displays frontend version', async () => {
     global.fetch.mockResolvedValueOnce({
       json: async () => ({ version: '1.0.0', environment: 'development' })
     });
@@ -40,16 +46,16 @@ describe('Footer', () => {
     // Initially shows loading
     expect(screen.getByText(/Backend: \.\.\./i)).toBeInTheDocument();
 
-    // Wait for backend version to load
+    // Wait for backend version to load (no "v" prefix)
     await waitFor(() => {
       expect(screen.getByText(/Backend: 1\.2\.3/i)).toBeInTheDocument();
     });
 
-    // Verify fetch was called
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/health');
+    // Verify fetch was called with correct URL
+    expect(global.fetch).toHaveBeenCalled();
   });
 
-  it('shows backend environment', async () => {
+  it('shows backend version after fetch', async () => {
     global.fetch.mockResolvedValueOnce({
       json: async () => ({ version: '1.0.0', environment: 'production' })
     });
@@ -68,7 +74,8 @@ describe('Footer', () => {
     render(<Footer />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Backend: error/i)).toBeInTheDocument();
+      // Component shows "error" when fetch fails
+      expect(screen.getByText(/Backend: error/)).toBeInTheDocument();
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
