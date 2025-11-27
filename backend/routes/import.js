@@ -3,6 +3,7 @@ import multer from 'multer';
 import yaml from 'js-yaml';
 import { sql, dbSchema } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { convertArrayToDict, validateOptionsFormat } from '../utils/options.js';
 
 const router = express.Router();
 
@@ -105,31 +106,31 @@ router.post('/import', authenticateToken, (req, res, next) => {
         errs.push(`Question ${questionNum}: 'visibility' must be 'public', 'private', or 'protected'`);
       }
 
-      // Required: options
+      // Required: options (new format: array of objects with text, is_correct, explanation?)
       if (!Array.isArray(q.options) || q.options.length < 2) {
         errs.push(`Question ${questionNum}: 'options' must be an array with at least 2 items`);
       } else {
-        // Validate all options are strings
-        const invalidOptions = q.options.filter(opt => typeof opt !== 'string');
-        if (invalidOptions.length > 0) {
-          errs.push(`Question ${questionNum}: all 'options' must be strings`);
+        // Validate each option has required fields
+        for (let i = 0; i < q.options.length; i++) {
+          const opt = q.options[i];
+          if (typeof opt !== 'object' || opt === null) {
+            errs.push(`Question ${questionNum}: option ${i} must be an object`);
+          } else {
+            if (!opt.text || typeof opt.text !== 'string') {
+              errs.push(`Question ${questionNum}: option ${i} must have a 'text' field (string)`);
+            }
+            if (typeof opt.is_correct !== 'boolean') {
+              errs.push(`Question ${questionNum}: option ${i} must have an 'is_correct' field (boolean)`);
+            }
+          }
         }
-      }
 
-      // Required: correct_answers
-      if (!Array.isArray(q.correct_answers) || q.correct_answers.length === 0) {
-        errs.push(`Question ${questionNum}: 'correct_answers' must be a non-empty array`);
-      } else {
-        // Validate all correct_answers are strings
-        const invalidAnswers = q.correct_answers.filter(ans => typeof ans !== 'string');
-        if (invalidAnswers.length > 0) {
-          errs.push(`Question ${questionNum}: all 'correct_answers' must be strings`);
-        }
-        // Validate correct_answers are in options
-        if (Array.isArray(q.options)) {
-          const invalidCorrectAnswers = q.correct_answers.filter(ans => !q.options.includes(ans));
-          if (invalidCorrectAnswers.length > 0) {
-            errs.push(`Question ${questionNum}: 'correct_answers' must match items in 'options'. Invalid: ${invalidCorrectAnswers.join(', ')}`);
+        // Convert to dict format and validate SINGLE/MULTIPLE rules
+        if (errs.length === 0 && q.type) {
+          const optionsDict = convertArrayToDict(q.options);
+          const validation = validateOptionsFormat(optionsDict, q.type);
+          if (!validation.valid) {
+            errs.push(`Question ${questionNum}: ${validation.errors.join(', ')}`);
           }
         }
       }
@@ -147,13 +148,15 @@ router.post('/import', authenticateToken, (req, res, next) => {
       if (errs.length > 0) {
         errors.push(...errs);
       } else {
+        // Convert options array to dict format
+        const optionsDict = convertArrayToDict(q.options);
+
         validQuestions.push({
           title: q.title.trim(),
           text: q.text.trim(),
           type: q.type,
           visibility: q.visibility || 'private',
-          options: q.options,
-          correct_answers: q.correct_answers,
+          options: optionsDict,
           tags: q.tags || [],
           author_id
         });
@@ -174,8 +177,8 @@ router.post('/import', authenticateToken, (req, res, next) => {
       const results = [];
       for (const question of validQuestions) {
         const [insertedQuestion] = await sql`
-          INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, correct_answers, tags, author_id)
-          VALUES (${question.title}, ${question.text}, ${question.type}, ${question.visibility}, ${question.options}, ${question.correct_answers}, ${question.tags}, ${question.author_id})
+          INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, tags, author_id)
+          VALUES (${question.title}, ${question.text}, ${question.type}, ${question.visibility}, ${JSON.stringify(question.options)}, ${question.tags}, ${question.author_id})
           RETURNING *
         `;
         results.push(insertedQuestion);
