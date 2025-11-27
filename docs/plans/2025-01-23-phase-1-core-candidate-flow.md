@@ -1476,7 +1476,7 @@ const Footer = () => {
   return (
     <footer className="bg-gray-800 text-gray-300 py-4 px-6 text-center text-sm">
       <p>
-        Copyright Clever Badge 2025 - Frontend: v{frontendVersion} - Backend: v{backendVersion} ({backendEnv})
+        © 2025 Clever Badge - Frontend: {frontendVersion} - Backend: {backendVersion}
       </p>
     </footer>
   );

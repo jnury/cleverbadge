@@ -63,3 +63,6 @@ yarn-debug.log*
 
 # Misc
 *.tmp
+
+# MCP config files
+.mcp.json
