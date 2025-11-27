@@ -1,7 +1,12 @@
 import dotenv from 'dotenv';
+import { createRequire } from 'module';
 
 // Load environment variables FIRST, before any other imports
 dotenv.config();
+
+// Load package.json for version info
+const require = createRequire(import.meta.url);
+const pkg = require('./package.json');
 
 import express from 'express';
 import cors from 'cors';
@@ -35,7 +40,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: pkg.version,
     environment: NODE_ENV
   });
 });
