@@ -963,7 +963,7 @@ function Footer() {
   return (
     <footer className="w-full py-4 px-4 text-center text-sm text-gray-600 border-t border-gray-200 mt-auto">
       <p>
-        Copyright Clever Badge 2025 - Frontend: v{frontendVersion} - Backend: v{backendVersion}
+        © 2025 Clever Badge - Frontend: {frontendVersion} - Backend: {backendVersion}
       </p>
     </footer>
   );

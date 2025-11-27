@@ -56,7 +56,7 @@ CREATE SCHEMA IF NOT EXISTS production;
 ### Footer (Frontend)
 
 - **Location**: Bottom of every page
-- **Content**: `Copyright Clever Badge 2025 - Frontend: v.x.x.x - Backend: v.x.x.x`
+- **Content**: `© 2025 Clever Badge - Frontend: x.x.x - Backend: x.x.x`
 - **Backend version**: Fetched dynamically from `/health` endpoint
 - **Frontend version**: Injected at build time from package.json
 

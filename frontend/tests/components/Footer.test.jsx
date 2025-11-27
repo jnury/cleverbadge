@@ -18,7 +18,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    expect(screen.getByText(/Copyright Clever Badge 2025/i)).toBeInTheDocument();
+    expect(screen.getByText(/© 2025 Clever Badge/i)).toBeInTheDocument();
   });
 
   it('displays frontend version', () => {
