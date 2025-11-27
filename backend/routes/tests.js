@@ -153,17 +153,19 @@ router.post('/',
   body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
   body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
+  body('show_explanations').optional().isIn(['never', 'after_each_question', 'after_submit']).withMessage('show_explanations must be never, after_each_question, or after_submit'),
+  body('explanation_scope').optional().isIn(['selected_only', 'all_answers']).withMessage('explanation_scope must be selected_only or all_answers'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, visibility = 'private', is_enabled, pass_threshold } = req.body;
+      const { title, description, visibility = 'private', is_enabled, pass_threshold, show_explanations = 'never', explanation_scope = 'selected_only' } = req.body;
 
       // Generate unique random slug
       const slug = await generateUniqueSlug();
 
       const newTests = await sql`
-        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, visibility, is_enabled, pass_threshold)
-        VALUES (${title}, ${description || null}, ${slug}, ${visibility}, ${is_enabled ?? false}, ${pass_threshold ?? 0})
+        INSERT INTO ${sql(dbSchema)}.tests (title, description, slug, visibility, is_enabled, pass_threshold, show_explanations, explanation_scope)
+        VALUES (${title}, ${description || null}, ${slug}, ${visibility}, ${is_enabled ?? false}, ${pass_threshold ?? 0}, ${show_explanations}, ${explanation_scope})
         RETURNING *
       `;
 
@@ -184,10 +186,12 @@ router.put('/:id',
   body('visibility').optional().isIn(VALID_VISIBILITIES).withMessage('Visibility must be public, private, or protected'),
   body('is_enabled').optional().isBoolean().withMessage('is_enabled must be a boolean'),
   body('pass_threshold').optional().isInt({ min: 0, max: 100 }).withMessage('pass_threshold must be an integer between 0 and 100'),
+  body('show_explanations').optional().isIn(['never', 'after_each_question', 'after_submit']).withMessage('show_explanations must be never, after_each_question, or after_submit'),
+  body('explanation_scope').optional().isIn(['selected_only', 'all_answers']).withMessage('explanation_scope must be selected_only or all_answers'),
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { title, description, visibility, is_enabled, pass_threshold } = req.body;
+      const { title, description, visibility, is_enabled, pass_threshold, show_explanations, explanation_scope } = req.body;
 
       // Get current test
       const currentTests = await sql`
@@ -228,6 +232,8 @@ router.put('/:id',
           visibility = ${visibility || currentTest.visibility},
           is_enabled = ${is_enabled !== undefined ? is_enabled : currentTest.is_enabled},
           pass_threshold = ${pass_threshold !== undefined ? pass_threshold : currentTest.pass_threshold},
+          show_explanations = ${show_explanations || currentTest.show_explanations},
+          explanation_scope = ${explanation_scope || currentTest.explanation_scope},
           updated_at = NOW()
         WHERE id = ${req.params.id}
         RETURNING *
