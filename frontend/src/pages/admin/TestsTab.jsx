@@ -163,6 +163,68 @@ const TestsTab = () => {
     setSelectedIds(newSelected);
   };
 
+  const handleBulkEnable = async (enable) => {
+    try {
+      for (const testId of selectedIds) {
+        const test = tests.find(t => t.id === testId);
+        if (test && test.is_enabled !== enable) {
+          await apiRequest(`/api/tests/${testId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              title: test.title,
+              description: test.description,
+              visibility: test.visibility,
+              is_enabled: enable,
+              pass_threshold: test.pass_threshold ?? 0,
+              show_explanations: test.show_explanations,
+              explanation_scope: test.explanation_scope
+            })
+          });
+        }
+      }
+      setSuccessMessage(`${enable ? 'Enabled' : 'Disabled'} ${selectedIds.size} test${selectedIds.size > 1 ? 's' : ''}`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      loadTests();
+    } catch (err) {
+      setError(err.message || 'Failed to update tests');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleBulkChangeVisibility = async () => {
+    if (!bulkVisibility) return;
+    try {
+      for (const testId of selectedIds) {
+        const test = tests.find(t => t.id === testId);
+        if (test) {
+          await apiRequest(`/api/tests/${testId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              title: test.title,
+              description: test.description,
+              visibility: bulkVisibility,
+              is_enabled: test.is_enabled,
+              pass_threshold: test.pass_threshold ?? 0,
+              show_explanations: test.show_explanations,
+              explanation_scope: test.explanation_scope
+            })
+          });
+        }
+      }
+      setSuccessMessage(`Changed visibility for ${selectedIds.size} test${selectedIds.size > 1 ? 's' : ''}`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setBulkVisibility('');
+      loadTests();
+    } catch (err) {
+      setError(err.message || 'Failed to update tests');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   const getVisibilityBadge = (visibility) => {
     const badges = {
       public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
@@ -209,11 +271,50 @@ const TestsTab = () => {
           <h2 className="text-xl font-semibold text-gray-900">Tests</h2>
           <p className="text-sm text-gray-600 mt-1">
             Manage your assessment tests
+            {selectedIds.size > 0 && (
+              <span className="ml-2 font-medium text-tech">
+                ({selectedIds.size} selected)
+              </span>
+            )}
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          Create Test
-        </Button>
+        <div className="flex gap-3">
+          {/* Bulk Actions Dropdown */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              disabled={selectedIds.size === 0}
+              onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
+            >
+              Bulk Actions
+            </Button>
+            {bulkDropdownOpen && selectedIds.size > 0 && (
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('enable'); setBulkDropdownOpen(false); }}
+                >
+                  Enable selected
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('disable'); setBulkDropdownOpen(false); }}
+                >
+                  Disable selected
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('changeVisibility'); setBulkDropdownOpen(false); }}
+                >
+                  Change visibility
+                </button>
+              </div>
+            )}
+          </div>
+          <Button onClick={() => setShowCreateModal(true)}>
+            Create Test
+          </Button>
+        </div>
       </div>
 
       {/* Tests Table */}
@@ -447,6 +548,66 @@ const TestsTab = () => {
         testId={previewTest?.id}
         testTitle={previewTest?.title}
       />
+
+      {/* Bulk Enable/Disable Modal */}
+      {(bulkAction === 'enable' || bulkAction === 'disable') && (
+        <Modal
+          isOpen={true}
+          onClose={() => setBulkAction(null)}
+          title={`${bulkAction === 'enable' ? 'Enable' : 'Disable'} ${selectedIds.size} Test${selectedIds.size > 1 ? 's' : ''}`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you sure you want to {bulkAction} {selectedIds.size} test{selectedIds.size > 1 ? 's' : ''}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setBulkAction(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleBulkEnable(bulkAction === 'enable')}>
+                {bulkAction === 'enable' ? 'Enable' : 'Disable'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Change Visibility Modal */}
+      {bulkAction === 'changeVisibility' && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setBulkAction(null); setBulkVisibility(''); }}
+          title={`Change Visibility for ${selectedIds.size} Test${selectedIds.size > 1 ? 's' : ''}`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Visibility
+              </label>
+              <select
+                value={bulkVisibility}
+                onChange={(e) => setBulkVisibility(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select visibility...</option>
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+                <option value="protected">Protected</option>
+              </select>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => { setBulkAction(null); setBulkVisibility(''); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkChangeVisibility} disabled={!bulkVisibility}>
+                Change Visibility
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
