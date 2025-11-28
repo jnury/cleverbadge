@@ -21,6 +21,38 @@ const handleValidationErrors = (req, res, next) => {
 // Valid visibility values
 const VALID_VISIBILITIES = ['public', 'private', 'protected'];
 
+// Helper to generate archived title with proper numbering
+// Returns "Title (Archived)" or "Title (Archived #N)" if there are already archived questions with same base title
+async function generateArchivedTitle(currentTitle) {
+  // Strip any existing "(Archived)" or "(Archived #N)" suffix
+  const baseTitle = currentTitle.replace(/\s*\(Archived(?:\s*#\d+)?\)\s*$/, '').trim();
+
+  // Count existing archived questions with same base title
+  const existingArchived = await sql`
+    SELECT title FROM ${sql(dbSchema)}.questions
+    WHERE is_archived = true
+    AND (
+      title = ${baseTitle + ' (Archived)'}
+      OR title ~ ${'^' + baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(Archived #\\d+\\)$'}
+    )
+  `;
+
+  if (existingArchived.length === 0) {
+    return `${baseTitle} (Archived)`;
+  }
+
+  // Find the highest existing number
+  let maxNum = 1; // "(Archived)" counts as #1
+  for (const q of existingArchived) {
+    const match = q.title.match(/\(Archived #(\d+)\)$/);
+    if (match) {
+      maxNum = Math.max(maxNum, parseInt(match[1], 10));
+    }
+  }
+
+  return `${baseTitle} (Archived #${maxNum + 1})`;
+}
+
 // GET all questions (with optional filters)
 router.get('/',
   authenticateToken,
@@ -329,10 +361,23 @@ router.delete('/:id',
         });
       }
 
-      // Soft delete - set is_archived to true
+      // Get current question title
+      const currentQuestion = await sql`
+        SELECT title FROM ${sql(dbSchema)}.questions
+        WHERE id = ${req.params.id} AND is_archived = false
+      `;
+
+      if (currentQuestion.length === 0) {
+        return res.status(404).json({ error: 'Question not found' });
+      }
+
+      // Generate archived title with proper numbering
+      const archivedTitle = await generateArchivedTitle(currentQuestion[0].title);
+
+      // Soft delete - set is_archived to true and update title
       const archivedQuestions = await sql`
         UPDATE ${sql(dbSchema)}.questions
-        SET is_archived = true, updated_at = NOW()
+        SET is_archived = true, title = ${archivedTitle}, updated_at = NOW()
         WHERE id = ${req.params.id} AND is_archived = false
         RETURNING *
       `;
@@ -388,10 +433,25 @@ router.post('/bulk-delete',
           }
         }
 
-        // Soft delete
+        // Get current question title
+        const currentQuestion = await sql`
+          SELECT title FROM ${sql(dbSchema)}.questions
+          WHERE id = ${id} AND is_archived = false
+        `;
+
+        if (currentQuestion.length === 0) {
+          skipped++;
+          skipped_ids.push(id);
+          continue;
+        }
+
+        // Generate archived title with proper numbering
+        const archivedTitle = await generateArchivedTitle(currentQuestion[0].title);
+
+        // Soft delete with title update
         const result = await sql`
           UPDATE ${sql(dbSchema)}.questions
-          SET is_archived = true, updated_at = NOW()
+          SET is_archived = true, title = ${archivedTitle}, updated_at = NOW()
           WHERE id = ${id} AND is_archived = false
           RETURNING id
         `;
