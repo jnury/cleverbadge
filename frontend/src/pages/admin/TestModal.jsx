@@ -21,6 +21,9 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [allQuestions, setAllQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionWeights, setQuestionWeights] = useState({});
 
   // Initialize form data when test prop changes
   useEffect(() => {
@@ -57,6 +60,20 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
     }
   }, [isOpen, initialTab]);
 
+  // Load all questions when Questions tab is activated
+  useEffect(() => {
+    if (activeTab === 'questions' && allQuestions.length === 0) {
+      loadQuestions();
+    }
+  }, [activeTab]);
+
+  // Load test questions when editing
+  useEffect(() => {
+    if (test && isOpen) {
+      loadTestQuestions();
+    }
+  }, [test, isOpen]);
+
   const isCreateMode = !test;
   const isTitleFilled = formData.title.trim().length > 0;
   const hasQuestions = selectedQuestionIds.length > 0;
@@ -64,6 +81,73 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
   // Tab enabled states
   const isQuestionsTabEnabled = isCreateMode ? isTitleFilled : true;
   const isPreviewTabEnabled = isCreateMode ? hasQuestions : (test?.question_count > 0 || hasQuestions);
+
+  const loadQuestions = async () => {
+    setQuestionsLoading(true);
+    try {
+      const data = await apiRequest('/api/questions');
+      setAllQuestions(data.questions || []);
+    } catch (err) {
+      setError('Failed to load questions');
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const loadTestQuestions = async () => {
+    try {
+      const data = await apiRequest(`/api/tests/${test.id}/questions`);
+      const ids = data.questions.map(q => q.id);
+      setSelectedQuestionIds(ids);
+      // Store weights
+      const weights = {};
+      data.questions.forEach(q => {
+        weights[q.id] = q.weight || 1;
+      });
+      setQuestionWeights(weights);
+    } catch (err) {
+      console.error('Failed to load test questions:', err);
+    }
+  };
+
+  const truncateText = (text, maxLength = 80) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const getVisibilityBadge = (visibility) => {
+    const badges = {
+      public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
+      private: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Private' },
+      protected: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Protected' }
+    };
+    const badge = badges[visibility] || badges.private;
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded ${badge.bg} ${badge.text}`}>
+        {badge.label}
+      </span>
+    );
+  };
+
+  const VISIBILITY_LEVEL = { public: 0, private: 1, protected: 2 };
+
+  const canQuestionBeInTest = (questionVisibility, testVisibility) => {
+    const questionLevel = VISIBILITY_LEVEL[questionVisibility] || 1;
+    const testLevel = VISIBILITY_LEVEL[testVisibility] || 1;
+    return testLevel >= questionLevel;
+  };
+
+  const handleToggleQuestion = (questionId) => {
+    setSelectedQuestionIds(prev => {
+      if (prev.includes(questionId)) {
+        return prev.filter(id => id !== questionId);
+      } else {
+        return [...prev, questionId];
+      }
+    });
+    setHasChanges(true);
+  };
 
   const handleClose = () => {
     if (hasChanges) {
@@ -357,7 +441,112 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
           </div>
         )}
         {activeTab === 'questions' && (
-          <div>Questions tab content (Task 4)</div>
+          <div className="space-y-4">
+            {/* Test Visibility Display */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm font-medium text-gray-700">Test Visibility:</span>
+              {getVisibilityBadge(formData.visibility)}
+            </div>
+
+            {questionsLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-gray-600">Loading questions...</p>
+              </div>
+            ) : (
+              <>
+                {/* Available Questions */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Available Questions ({allQuestions.length})
+                  </h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                    {allQuestions.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No questions available</p>
+                    ) : (
+                      allQuestions.map(question => {
+                        const isSelected = selectedQuestionIds.includes(question.id);
+                        const isCompatible = canQuestionBeInTest(question.visibility, formData.visibility);
+
+                        return (
+                          <div
+                            key={question.id}
+                            className={`p-3 border rounded flex items-start gap-3 ${
+                              isSelected ? 'bg-tech/10 border-tech' :
+                              isCompatible ? 'hover:bg-gray-50' : 'opacity-50 bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => isCompatible && handleToggleQuestion(question.id)}
+                              disabled={!isCompatible}
+                              className="mt-1 rounded border-gray-300"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">{question.title}</div>
+                              <div className="text-xs text-gray-600">{truncateText(question.text)}</div>
+                              <div className="flex gap-2 mt-1">
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {question.type}
+                                </span>
+                                {getVisibilityBadge(question.visibility)}
+                              </div>
+                              {!isCompatible && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Incompatible visibility
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Selected Questions */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Selected Questions ({selectedQuestionIds.length})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                    {selectedQuestionIds.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No questions selected</p>
+                    ) : (
+                      selectedQuestionIds.map(qId => {
+                        const question = allQuestions.find(q => q.id === qId);
+                        if (!question) return null;
+
+                        return (
+                          <div
+                            key={qId}
+                            className="p-3 border border-tech bg-tech/10 rounded flex items-start justify-between"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">{question.title}</div>
+                              <div className="text-xs text-gray-600">{truncateText(question.text)}</div>
+                            </div>
+                            <button
+                              onClick={() => handleToggleQuestion(qId)}
+                              className="text-red-600 hover:text-red-800 p-1"
+                              title="Remove question"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         )}
         {activeTab === 'preview' && (
           <div>Preview tab content (Task 5)</div>
