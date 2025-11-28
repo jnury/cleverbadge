@@ -142,7 +142,9 @@ router.post('/start',
         test: {
           id: test.id,
           title: test.title,
-          description: test.description
+          description: test.description,
+          show_explanations: test.show_explanations,
+          explanation_scope: test.explanation_scope
         },
         questions: questionsWithNumbers,
         total_questions: questionsWithNumbers.length,

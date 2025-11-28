@@ -80,12 +80,15 @@ const TestLanding = () => {
       const data = await response.json();
 
       // Navigate to question runner with state
+      // Use values from the start response (data.test) as they're guaranteed to be current
       navigate(`/t/${slug}/run`, {
         state: {
           assessmentId: data.assessment_id,
           questions: data.questions,
           candidateName: candidateName.trim(),
-          testSlug: slug
+          testSlug: slug,
+          showExplanations: data.test.show_explanations,
+          explanationScope: data.test.explanation_scope
         }
       });
     } catch (err) {
@@ -103,7 +106,9 @@ const TestLanding = () => {
         currentQuestionIndex: existingAssessment.currentQuestionIndex,
         answers: existingAssessment.answers,
         testSlug: slug,
-        isResuming: true
+        isResuming: true,
+        showExplanations: test.show_explanations,
+        explanationScope: test.explanation_scope
       }
     });
   };

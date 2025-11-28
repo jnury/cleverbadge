@@ -6,26 +6,52 @@ import Select from '../../components/ui/Select';
 
 // Helper to initialize options from either format
 function initializeOptions(options) {
+  const defaultOptions = [
+    { text: '', is_correct: false, explanation: '' },
+    { text: '', is_correct: false, explanation: '' }
+  ];
+
   if (!options) {
-    return [
-      { text: '', is_correct: false, explanation: '' },
-      { text: '', is_correct: false, explanation: '' }
-    ];
+    return defaultOptions;
   }
 
-  // If dict format, convert to array for editing
-  if (typeof options === 'object' && !Array.isArray(options)) {
-    return Object.entries(options)
+  // If options is a string, parse it first (handles double-stringified JSONB)
+  let parsedOptions = options;
+  if (typeof options === 'string') {
+    try {
+      parsedOptions = JSON.parse(options);
+    } catch (e) {
+      console.error('Failed to parse options string:', e);
+      return defaultOptions;
+    }
+  }
+
+  // Already array format
+  if (Array.isArray(parsedOptions)) {
+    return parsedOptions.map(opt => ({
+      text: opt.text || '',
+      is_correct: opt.is_correct || false,
+      explanation: opt.explanation || ''
+    }));
+  }
+
+  // Dict format: {"0": {text, is_correct}, ...}
+  if (typeof parsedOptions === 'object' && parsedOptions !== null) {
+    const entries = Object.entries(parsedOptions);
+    if (entries.length === 0) {
+      return defaultOptions;
+    }
+    return entries
       .sort(([a], [b]) => parseInt(a) - parseInt(b))
       .map(([_, opt]) => ({
-        text: opt.text || '',
-        is_correct: opt.is_correct || false,
-        explanation: opt.explanation || ''
+        text: opt?.text || '',
+        is_correct: opt?.is_correct || false,
+        explanation: opt?.explanation || ''
       }));
   }
 
-  // Already array format (shouldn't happen but handle it)
-  return options;
+  // Fallback for any other case
+  return defaultOptions;
 }
 
 const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons = false }) => {
@@ -264,7 +290,8 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
                   type="text"
                   value={option.text}
                   onChange={(e) => handleOptionTextChange(index, e.target.value)}
-                  placeholder={`Option ${index}`}
+                  placeholder={`Option ${index + 1}`}
+                  aria-label={`Option ${index + 1}`}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
                 <input

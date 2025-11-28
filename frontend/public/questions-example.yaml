@@ -1,5 +1,5 @@
 # Example YAML format for importing questions
-# Options use 0-based indexing (first option is index 0)
+# Each option has is_correct: true/false to mark correct answers
 
 - title: "Capital of France"
   text: "What is the capital of France?"

@@ -39,8 +39,9 @@ Clever Badge uses PostgreSQL with Drizzle ORM. This document describes the compl
 Controls access to questions and tests.
 
 **Values:**
-- `PUBLIC`: Accessible to all users
-- `PRIVATE`: Requires additional access credentials
+- `public`: Accessible to all users
+- `private`: Only visible to the author
+- `protected`: Requires specific access credentials
 
 **Usage:**
 - `questions.visibility`: Controls who can add question to tests
@@ -98,11 +99,11 @@ Individual MCQ questions that can be added to tests.
 | title           | VARCHAR   | NOT NULL                         | Question title (3-200 characters)        |
 | text            | TEXT      | NOT NULL                         | Question text (10-1000 characters)       |
 | type            | ENUM      | NOT NULL                         | 'SINGLE' or 'MULTIPLE'                   |
-| visibility      | ENUM      | NOT NULL, DEFAULT 'PUBLIC'       | 'PUBLIC' or 'PRIVATE'                    |
-| options         | JSON      | NOT NULL                         | Array of answer options                  |
-| correct_answers | JSON      | NOT NULL                         | Array of correct answer(s)               |
-| tags            | JSON      | NULL                             | Array of tags for categorization         |
+| visibility      | ENUM      | NOT NULL, DEFAULT 'private'      | 'public', 'private', or 'protected'      |
+| options         | JSONB     | NOT NULL                         | Dict of options with is_correct flag     |
+| tags            | JSONB     | NULL                             | Array of tags for categorization         |
 | author_id       | UUID      | FOREIGN KEY → users(id), NOT NULL| Author who created the question          |
+| is_archived     | BOOLEAN   | NOT NULL, DEFAULT false          | Soft delete flag                         |
 | created_at      | TIMESTAMP | NOT NULL, DEFAULT NOW            | Creation timestamp                       |
 | updated_at      | TIMESTAMP | NOT NULL, DEFAULT NOW            | Last update timestamp                    |
 
@@ -118,16 +119,16 @@ Individual MCQ questions that can be added to tests.
 **Validation:**
 - `title`: 3-200 characters, auto-generated from text if not provided
 - `type`: Must be 'SINGLE' or 'MULTIPLE'
-- `visibility`: Must be 'PUBLIC' or 'PRIVATE'
-- `options`: Array of 2-10 strings
-- `correct_answers`: Must be subset of `options`
-  - For SINGLE: exactly 1 element
-  - For MULTIPLE: 1+ elements
+- `visibility`: Must be 'public', 'private', or 'protected'
+- `options`: Dict with integer keys, each containing `text`, `is_correct`, optional `explanation`
+  - For SINGLE: exactly 1 option with `is_correct: true`
+  - For MULTIPLE: 1+ options with `is_correct: true`
 - `tags`: Optional array of strings
 
 **Visibility Rules:**
-- PUBLIC questions: Can be added to any test by any admin
-- PRIVATE questions: Can only be added to tests by the author
+- public questions: Can be added to any test by any admin
+- private questions: Can only be added to tests by the author
+- protected questions: Can be added to tests by author or admins with permission
 
 **Example Data:**
 ```json
@@ -135,9 +136,13 @@ Individual MCQ questions that can be added to tests.
   "title": "Geography - France Capital",
   "text": "What is the capital of France?",
   "type": "SINGLE",
-  "visibility": "PUBLIC",
-  "options": ["London", "Paris", "Berlin", "Madrid"],
-  "correct_answers": ["Paris"],
+  "visibility": "public",
+  "options": {
+    "0": { "text": "London", "is_correct": false, "explanation": "London is the capital of the UK." },
+    "1": { "text": "Paris", "is_correct": true, "explanation": "Paris has been France's capital since the 10th century." },
+    "2": { "text": "Berlin", "is_correct": false, "explanation": "Berlin is the capital of Germany." },
+    "3": { "text": "Madrid", "is_correct": false, "explanation": "Madrid is the capital of Spain." }
+  },
   "tags": ["geography", "europe"],
   "author_id": "uuid-admin"
 }
@@ -298,12 +303,17 @@ Individual answers submitted during an assessment.
 
 **Correctness Logic:**
 ```javascript
+// Get correct option indices from options dict
+const correctIndices = Object.entries(options)
+  .filter(([_, opt]) => opt.is_correct)
+  .map(([idx, _]) => parseInt(idx));
+
 // For SINGLE type questions
 is_correct = (selected_options.length === 1 &&
-              correct_answers.includes(selected_options[0]))
+              correctIndices.includes(selected_options[0]))
 
 // For MULTIPLE type questions
-is_correct = (arraysAreEqual(selected_options.sort(), correct_answers.sort()))
+is_correct = (arraysAreEqual(selected_options.sort(), correctIndices.sort()))
 ```
 
 ---
@@ -312,9 +322,11 @@ is_correct = (arraysAreEqual(selected_options.sort(), correct_answers.sort()))
 
 ```sql
 -- Enums
-CREATE TYPE visibility_type AS ENUM ('PUBLIC', 'PRIVATE');
+CREATE TYPE visibility_type AS ENUM ('public', 'private', 'protected');
 CREATE TYPE question_type AS ENUM ('SINGLE', 'MULTIPLE');
 CREATE TYPE assessment_status AS ENUM ('STARTED', 'COMPLETED');
+CREATE TYPE show_explanations_type AS ENUM ('never', 'after_each_question', 'after_submit');
+CREATE TYPE explanation_scope_type AS ENUM ('selected_only', 'all_answers');
 
 -- Users table
 CREATE TABLE users (
@@ -326,23 +338,24 @@ CREATE TABLE users (
 );
 
 -- Questions table
+-- Options format: {"0": {"text": "...", "is_correct": true, "explanation": "..."}, ...}
 CREATE TABLE questions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
   text TEXT NOT NULL,
   type question_type NOT NULL,
-  visibility visibility_type NOT NULL DEFAULT 'PUBLIC',
-  options JSON NOT NULL,
-  correct_answers JSON NOT NULL,
-  tags JSON,
+  visibility visibility_type NOT NULL DEFAULT 'private',
+  options JSONB NOT NULL,
+  tags JSONB,
   author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  is_archived BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_questions_author ON questions(author_id);
 CREATE INDEX idx_questions_visibility ON questions(visibility);
-CREATE INDEX idx_questions_tags ON questions USING GIN(tags);
+CREATE INDEX idx_questions_is_archived ON questions(is_archived);
 
 -- Tests table
 CREATE TABLE tests (

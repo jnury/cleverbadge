@@ -26,30 +26,10 @@ beforeAll(async () => {
   await testSql.unsafe(`DROP SCHEMA IF EXISTS ${TEST_SCHEMA} CASCADE`);
   await testSql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
-  // Run migrations with __SCHEMA__ replacement
-  const migration1SQL = fs.readFileSync('./db/migrations/001_initial_schema.sql', 'utf8');
-  const testMigration1SQL = migration1SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration1SQL);
-
-  const migration2SQL = fs.readFileSync('./db/migrations/002_add_pass_threshold.sql', 'utf8');
-  const testMigration2SQL = migration2SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration2SQL);
-
-  const migration3SQL = fs.readFileSync('./db/migrations/003_add_visibility_enum.sql', 'utf8');
-  const testMigration3SQL = migration3SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration3SQL);
-
-  const migration4SQL = fs.readFileSync('./db/migrations/004_add_test_visibility_and_update_slug.sql', 'utf8');
-  const testMigration4SQL = migration4SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration4SQL);
-
-  const migration5SQL = fs.readFileSync('./db/migrations/005_add_assessment_access_slug.sql', 'utf8');
-  const testMigration5SQL = migration5SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration5SQL);
-
-  const migration6SQL = fs.readFileSync('./db/migrations/006_add_question_title_author_visibility.sql', 'utf8');
-  const testMigration6SQL = migration6SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigration6SQL);
+  // Run consolidated migration with __SCHEMA__ replacement
+  const migrationSQL = fs.readFileSync('./db/migrations/001_init.sql', 'utf8');
+  const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+  await testSql.unsafe(testMigrationSQL);
 
   // Seed test data
   await seedTestData();
@@ -89,64 +69,82 @@ async function seedTestData() {
     VALUES ('${adminId}', 'testadmin', '$argon2id$v=19$m=65536,t=3,p=4$fakehash')
   `);
 
-  // Questions: Comprehensive set
+  // Questions: Comprehensive set (using new dict options format with is_correct per option)
   const questions = [
-    // SINGLE choice - correct answer
+    // SINGLE choice - correct answer is option 1 (4)
     {
       id: '550e8400-e29b-41d4-a716-446655440010',
       title: 'Math Addition Question',
       text: 'What is 2 + 2?',
       type: 'SINGLE',
-      options: JSON.stringify(['3', '4', '5', '6']),
-      correct_answers: JSON.stringify([1]),
+      options: JSON.stringify({
+        "0": { text: "3", is_correct: false },
+        "1": { text: "4", is_correct: true },
+        "2": { text: "5", is_correct: false },
+        "3": { text: "6", is_correct: false }
+      }),
       tags: JSON.stringify(['math', 'easy']),
       author_id: adminId,
       visibility: 'private'
     },
-    // SINGLE choice - for wrong answer test
+    // SINGLE choice - correct answer is option 1 (Paris)
     {
       id: '550e8400-e29b-41d4-a716-446655440011',
       title: 'France Capital Question',
       text: 'What is the capital of France?',
       type: 'SINGLE',
-      options: JSON.stringify(['London', 'Paris', 'Berlin', 'Madrid']),
-      correct_answers: JSON.stringify([1]),
+      options: JSON.stringify({
+        "0": { text: "London", is_correct: false },
+        "1": { text: "Paris", is_correct: true },
+        "2": { text: "Berlin", is_correct: false },
+        "3": { text: "Madrid", is_correct: false }
+      }),
       tags: JSON.stringify(['geography']),
       author_id: adminId,
       visibility: 'private'
     },
-    // MULTIPLE choice
+    // MULTIPLE choice - correct answers are options 1 and 3 (2 and 4)
     {
       id: '550e8400-e29b-41d4-a716-446655440012',
       title: 'Even Numbers Question',
       text: 'Select all even numbers:',
       type: 'MULTIPLE',
-      options: JSON.stringify(['1', '2', '3', '4']),
-      correct_answers: JSON.stringify([1, 3]),
+      options: JSON.stringify({
+        "0": { text: "1", is_correct: false },
+        "1": { text: "2", is_correct: true },
+        "2": { text: "3", is_correct: false },
+        "3": { text: "4", is_correct: true }
+      }),
       tags: JSON.stringify(['math']),
       author_id: adminId,
       visibility: 'private'
     },
-    // MULTIPLE choice - for partial answer test
+    // MULTIPLE choice - correct answers are options 0, 2, 3 (Red, Blue, Yellow)
     {
       id: '550e8400-e29b-41d4-a716-446655440013',
       title: 'Primary Colors Question',
       text: 'Select all primary colors:',
       type: 'MULTIPLE',
-      options: JSON.stringify(['Red', 'Green', 'Blue', 'Yellow']),
-      correct_answers: JSON.stringify([0, 2, 3]),
+      options: JSON.stringify({
+        "0": { text: "Red", is_correct: true },
+        "1": { text: "Green", is_correct: false },
+        "2": { text: "Blue", is_correct: true },
+        "3": { text: "Yellow", is_correct: true }
+      }),
       tags: JSON.stringify(['art']),
       author_id: adminId,
       visibility: 'private'
     },
-    // SINGLE choice - no tags
+    // SINGLE choice - correct answer is option 0 (Yes)
     {
       id: '550e8400-e29b-41d4-a716-446655440014',
       title: 'Sky Color Question',
       text: 'Is the sky blue?',
       type: 'SINGLE',
-      options: JSON.stringify(['Yes', 'No']),
-      correct_answers: JSON.stringify([0]),
+      options: JSON.stringify({
+        "0": { text: "Yes", is_correct: true },
+        "1": { text: "No", is_correct: false }
+      }),
       tags: null,
       author_id: adminId,
       visibility: 'private'
@@ -155,8 +153,8 @@ async function seedTestData() {
 
   for (const q of questions) {
     await testSql.unsafe(`
-      INSERT INTO ${TEST_SCHEMA}.questions (id, title, text, type, options, correct_answers, tags, author_id, visibility)
-      VALUES ('${q.id}', '${q.title}', '${q.text}', '${q.type}', '${q.options}', '${q.correct_answers}', ${q.tags ? `'${q.tags}'` : 'NULL'}, '${q.author_id}', '${q.visibility}')
+      INSERT INTO ${TEST_SCHEMA}.questions (id, title, text, type, options, tags, author_id, visibility)
+      VALUES ('${q.id}', '${q.title}', '${q.text}', '${q.type}', '${q.options}', ${q.tags ? `'${q.tags}'` : 'NULL'}, '${q.author_id}', '${q.visibility}')
     `);
   }
 

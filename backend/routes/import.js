@@ -173,12 +173,12 @@ router.post('/import', authenticateToken, (req, res, next) => {
     }
 
     // Bulk insert (transactional)
-    const inserted = await sql.begin(async sql => {
+    const inserted = await sql.begin(async tx => {
       const results = [];
       for (const question of validQuestions) {
-        const [insertedQuestion] = await sql`
-          INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, tags, author_id)
-          VALUES (${question.title}, ${question.text}, ${question.type}, ${question.visibility}, ${JSON.stringify(question.options)}, ${question.tags}, ${question.author_id})
+        const [insertedQuestion] = await tx`
+          INSERT INTO ${tx(dbSchema)}.questions (title, text, type, visibility, options, tags, author_id)
+          VALUES (${question.title}, ${question.text}, ${question.type}, ${question.visibility}, ${sql.json(question.options)}, ${question.tags}, ${question.author_id})
           RETURNING *
         `;
         results.push(insertedQuestion);

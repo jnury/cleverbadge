@@ -30,12 +30,15 @@ const TestPreviewModal = ({ isOpen, onClose, testId, testTitle }) => {
       const data = await response.json();
 
       // Shuffle options for each question (simulating candidate view)
-      const shuffledQuestions = data.questions.map(q => ({
-        ...q,
-        shuffledOptions: shuffleArray(
-          Object.entries(q.options).map(([id, opt]) => ({ id, ...opt }))
-        )
-      }));
+      const shuffledQuestions = data.questions.map(q => {
+        const parsedOptions = parseOptions(q.options);
+        return {
+          ...q,
+          shuffledOptions: shuffleArray(
+            Object.entries(parsedOptions).map(([id, opt]) => ({ id, ...opt }))
+          )
+        };
+      });
 
       setQuestions(shuffledQuestions);
       setCurrentIndex(0);
@@ -53,6 +56,20 @@ const TestPreviewModal = ({ isOpen, onClose, testId, testTitle }) => {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  };
+
+  // Parse options that might be JSON strings (handles legacy double-stringified data)
+  const parseOptions = (options) => {
+    if (!options) return {};
+    if (typeof options === 'string') {
+      try {
+        return JSON.parse(options);
+      } catch (e) {
+        console.error('Failed to parse options:', e);
+        return {};
+      }
+    }
+    return options;
   };
 
   const currentQuestion = questions[currentIndex];
@@ -101,34 +118,40 @@ const TestPreviewModal = ({ isOpen, onClose, testId, testTitle }) => {
 
           {/* Options */}
           <div className="space-y-2">
-            {currentQuestion.shuffledOptions.map((option) => (
-              <div
-                key={option.id}
-                className={`p-3 rounded-lg border-2 ${
-                  showAnswers && option.is_correct
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs ${
-                    showAnswers && option.is_correct
-                      ? 'border-green-500 bg-green-500 text-white'
-                      : 'border-gray-300'
-                  }`}>
-                    {currentQuestion.type === 'SINGLE' ? '○' : '□'}
-                  </span>
-                  <div className="flex-1">
-                    <span>{option.text}</span>
-                    {showAnswers && option.explanation && (
-                      <p className="mt-1 text-sm text-gray-600 italic">
-                        {option.explanation}
-                      </p>
-                    )}
+            {currentQuestion.shuffledOptions.map((option) => {
+              const isCorrect = option.is_correct;
+              const borderClass = showAnswers
+                ? isCorrect
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-red-300 bg-red-50'
+                : 'border-gray-200';
+              const indicatorClass = showAnswers
+                ? isCorrect
+                  ? 'border-green-500 bg-green-500'
+                  : 'border-red-300 bg-red-300'
+                : 'border-gray-300';
+
+              return (
+                <div
+                  key={option.id}
+                  className={`p-3 rounded-lg border-2 ${borderClass}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={`w-5 h-5 flex-shrink-0 mt-0.5 border-2 ${indicatorClass} ${
+                      currentQuestion.type === 'SINGLE' ? 'rounded-full' : 'rounded'
+                    }`} />
+                    <div className="flex-1 prose prose-sm max-w-none">
+                      <MarkdownRenderer content={option.text} />
+                      {showAnswers && option.explanation && (
+                        <p className="mt-1 text-sm text-gray-600 italic">
+                          {option.explanation}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Navigation */}

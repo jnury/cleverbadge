@@ -208,7 +208,7 @@ router.post('/',
 
       const newQuestions = await sql`
         INSERT INTO ${sql(dbSchema)}.questions (title, text, type, visibility, options, tags, author_id)
-        VALUES (${title}, ${text}, ${type}, ${visibility}, ${JSON.stringify(options)}, ${tags || []}, ${author_id})
+        VALUES (${title}, ${text}, ${type}, ${visibility}, ${sql.json(options)}, ${tags || []}, ${author_id})
         RETURNING *
       `;
 
@@ -287,7 +287,7 @@ router.put('/:id',
           text = ${text},
           type = ${type},
           visibility = ${visibility || currentQuestion.visibility},
-          options = ${JSON.stringify(options)},
+          options = ${sql.json(options)},
           tags = ${tags || []},
           updated_at = NOW()
         WHERE id = ${req.params.id}

@@ -25,11 +25,8 @@ cd backend && npm test
 cd frontend && npm test
 
 # E2E tests (uses ports 5433/3001/5174 to run parallel with dev)
-./scripts/e2e-tests.sh                    # Self-contained: starts, tests, cleans up
-
-# Debug E2E (persistent environment)
 ./scripts/start-test.sh                   # Start test env
-cd frontend && PLAYWRIGHT_REUSE_SERVER=1 TEST_BACKEND_PORT=3001 TEST_FRONTEND_PORT=5174 npx playwright test <file>
+./scripts/e2e-tests.sh                    # Run all E2E tests
 ./scripts/stop-test.sh                    # Clean up
 ```
 

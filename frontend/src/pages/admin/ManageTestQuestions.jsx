@@ -14,6 +14,13 @@ const ManageTestQuestions = ({ test, isOpen, onClose, onUpdate }) => {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState(null);
 
+  // Truncate text helper
+  const truncateText = (text, maxLength = 80) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   // Visibility badge helper
   const getVisibilityBadge = (visibility) => {
     const badges = {
@@ -153,7 +160,7 @@ const ManageTestQuestions = ({ test, isOpen, onClose, onUpdate }) => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="font-medium">{question.title}</div>
-                          <div className="text-sm text-gray-600 truncate">{question.text}</div>
+                          <div className="text-sm text-gray-600">{truncateText(question.text)}</div>
                           <div className="flex gap-2 mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded ${
                               question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
@@ -215,7 +222,7 @@ const ManageTestQuestions = ({ test, isOpen, onClose, onUpdate }) => {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="font-medium">{tq.question?.title || tq.title}</div>
-                        <div className="text-sm text-gray-600 truncate">{tq.question?.text || tq.text}</div>
+                        <div className="text-sm text-gray-600">{truncateText(tq.question?.text || tq.text)}</div>
                         <div className="flex gap-2 mt-1">
                           <span className={`text-xs px-2 py-0.5 rounded ${
                             (tq.question?.type || tq.type) === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'

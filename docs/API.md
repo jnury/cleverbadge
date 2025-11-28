@@ -111,39 +111,47 @@ Bulk import questions from a YAML file.
 
 **YAML Format:**
 ```yaml
-questions:
-  - title: "Geography - France Capital"
-    text: "What is the capital of France?"
-    type: "SINGLE"
-    visibility: "PUBLIC"
-    options:
-      - "London"
-      - "Paris"
-      - "Berlin"
-      - "Madrid"
-    correct_answers: ["Paris"]
-    tags: ["geography", "europe"]
+- title: "Geography - France Capital"
+  text: "What is the capital of France?"
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "London"
+      is_correct: false
+      explanation: "London is the capital of the United Kingdom."
+    - text: "Paris"
+      is_correct: true
+      explanation: "Paris has been the capital of France since the 10th century."
+    - text: "Berlin"
+      is_correct: false
+    - text: "Madrid"
+      is_correct: false
+  tags: ["geography", "europe"]
 
-  - title: "Programming Languages Identification"
-    text: "Select all programming languages"
-    type: "MULTIPLE"
-    visibility: "PRIVATE"
-    options:
-      - "Python"
-      - "HTML"
-      - "JavaScript"
-      - "CSS"
-    correct_answers: ["Python", "JavaScript"]
-    tags: ["programming", "languages"]
+- title: "Programming Languages Identification"
+  text: "Select all programming languages"
+  type: "MULTIPLE"
+  visibility: "private"
+  options:
+    - text: "Python"
+      is_correct: true
+    - text: "HTML"
+      is_correct: false
+      explanation: "HTML is a markup language, not a programming language."
+    - text: "JavaScript"
+      is_correct: true
+    - text: "CSS"
+      is_correct: false
+      explanation: "CSS is a styling language, not a programming language."
+  tags: ["programming", "languages"]
 ```
 
 **Validation:**
 - `title`: Optional, string, 3-200 characters (auto-generated from first 50 chars of text if not provided)
 - `text`: Required, string, 10-1000 characters
 - `type`: Required, enum: "SINGLE" or "MULTIPLE"
-- `visibility`: Optional, enum: "PUBLIC" or "PRIVATE", default: "PUBLIC"
-- `options`: Required, array of 2-10 strings
-- `correct_answers`: Required, array of strings matching options
+- `visibility`: Optional, enum: "public", "private", or "protected", default: "private"
+- `options`: Required, array of objects with `text` (string), `is_correct` (boolean), optional `explanation` (string)
 - `tags`: Optional, array of strings
 
 **Success Response (201):**
@@ -156,9 +164,13 @@ questions:
       "title": "Geography - France Capital",
       "text": "What is the capital of France?",
       "type": "SINGLE",
-      "visibility": "PUBLIC",
-      "options": ["London", "Paris", "Berlin", "Madrid"],
-      "correct_answers": ["Paris"],
+      "visibility": "public",
+      "options": {
+        "0": { "text": "London", "is_correct": false, "explanation": "London is the capital of the UK." },
+        "1": { "text": "Paris", "is_correct": true, "explanation": "Paris has been France's capital since the 10th century." },
+        "2": { "text": "Berlin", "is_correct": false },
+        "3": { "text": "Madrid", "is_correct": false }
+      },
       "tags": ["geography", "europe"],
       "author_id": "uuid-admin",
       "created_at": "2025-01-23T10:30:00.000Z"
@@ -205,9 +217,13 @@ GET /api/questions?type=SINGLE&visibility=PUBLIC&tags=geography,europe&limit=20&
       "title": "Geography - France Capital",
       "text": "What is the capital of France?",
       "type": "SINGLE",
-      "visibility": "PUBLIC",
-      "options": ["London", "Paris", "Berlin", "Madrid"],
-      "correct_answers": ["Paris"],
+      "visibility": "public",
+      "options": {
+        "0": { "text": "London", "is_correct": false },
+        "1": { "text": "Paris", "is_correct": true },
+        "2": { "text": "Berlin", "is_correct": false },
+        "3": { "text": "Madrid", "is_correct": false }
+      },
       "tags": ["geography", "europe"],
       "author_id": "uuid-admin",
       "author_name": "admin",
@@ -236,9 +252,13 @@ Retrieve a single question by ID.
   "title": "Geography - France Capital",
   "text": "What is the capital of France?",
   "type": "SINGLE",
-  "visibility": "PUBLIC",
-  "options": ["London", "Paris", "Berlin", "Madrid"],
-  "correct_answers": ["Paris"],
+  "visibility": "public",
+  "options": {
+    "0": { "text": "London", "is_correct": false, "explanation": "London is the capital of the UK." },
+    "1": { "text": "Paris", "is_correct": true, "explanation": "Paris has been France's capital since the 10th century." },
+    "2": { "text": "Berlin", "is_correct": false },
+    "3": { "text": "Madrid", "is_correct": false }
+  },
   "tags": ["geography", "europe"],
   "author_id": "uuid-admin",
   "author_name": "admin",
@@ -682,7 +702,7 @@ Create a new assessment instance for a candidate.
 
 **Notes:**
 - `access_slug` is stored with the assessment for continued access
-- Questions returned do not include correct_answers (for security)
+- Questions returned do not include `is_correct` or `explanation` fields (for security)
 
 ### Submit Answer
 
@@ -774,8 +794,11 @@ Get detailed assessment results including all answers.
     {
       "question_id": "uuid",
       "question_text": "What is a closure?",
-      "selected_options": ["A function that returns another function"],
-      "correct_answers": ["A function that returns another function"],
+      "selected_options": [1],
+      "options": {
+        "0": { "text": "A variable", "is_correct": false },
+        "1": { "text": "A function that returns another function", "is_correct": true }
+      },
       "is_correct": true,
       "weight": 1
     }
@@ -850,23 +873,26 @@ Get success rate statistics for each question in a test.
 
 ## Visibility System
 
-Clever Badge implements a two-level visibility system for questions and tests to control access.
+Clever Badge implements a three-level visibility system for questions and tests to control access.
 
 ### Visibility Types
 
-- **PUBLIC**: Accessible to all users
-- **PRIVATE**: Requires additional access credentials
+- **public**: Accessible to all users
+- **private**: Only visible to the author
+- **protected**: Requires specific access credentials
 
 ### Question Visibility
 
 | Visibility | Admin Access | Test Assignment | Candidate View |
 |------------|--------------|-----------------|----------------|
-| PUBLIC     | Yes (read/write) | Can be added to any test | Visible if in test |
-| PRIVATE    | Yes (read/write) | Can be added to tests by author only | Visible if in test |
+| public     | Yes (read/write) | Can be added to any test | Visible if in test |
+| private    | Yes (read/write) | Can be added to tests by author only | Visible if in test |
+| protected  | Yes (read/write) | Can be added to tests by author or with permission | Visible if in test |
 
 **Rules:**
-- PUBLIC questions: Can be added to any test by any admin
-- PRIVATE questions: Can only be added to tests by the question author
+- public questions: Can be added to any test by any admin
+- private questions: Can only be added to tests by the question author
+- protected questions: Can be added to tests by author or admins with permission
 - Question visibility does NOT affect candidate access (test visibility controls that)
 - Admins can filter questions by visibility and author in the UI
 
@@ -874,21 +900,22 @@ Clever Badge implements a two-level visibility system for questions and tests to
 
 | Visibility | Access Requirements | Link Format | Use Case |
 |------------|-------------------|-------------|----------|
-| PUBLIC     | Just the slug | `/t/{slug}` | Public assessments, certifications |
-| PRIVATE    | Slug + access_slug | `/t/{slug}?access={access_slug}` | Private evaluations, controlled access |
+| public     | Just the slug | `/t/{slug}` | Public assessments, certifications |
+| private    | Just the slug (link not listed publicly) | `/t/{slug}` | Internal assessments |
+| protected  | Slug + access_slug | `/t/{slug}?access={access_slug}` | Controlled access evaluations |
 
 **Rules:**
-- PUBLIC tests: Anyone with the link can take the test
-- PRIVATE tests: Requires both slug and access_slug to access
-- access_slug is a 12-character token auto-generated for PRIVATE tests
-- Changing test from PUBLIC to PRIVATE auto-generates access_slug
-- Changing test from PRIVATE to PUBLIC removes access requirement (access_slug persists but is ignored)
+- public tests: Anyone with the link can take the test
+- private tests: Anyone with the link can take the test, but link is not publicly listed
+- protected tests: Requires both slug and access_slug to access
+- access_slug is auto-generated for protected tests
+- Changing test visibility updates access requirements accordingly
 
 ### Access Slug Management
 
 **Generation:**
-- Auto-generated when creating a PRIVATE test
-- Auto-generated when changing test from PUBLIC to PRIVATE
+- Auto-generated when creating a protected test
+- Auto-generated when changing test to protected visibility
 - Can be manually regenerated via `POST /api/tests/:id/regenerate-slug`
 
 **Format:**
@@ -903,7 +930,7 @@ Clever Badge implements a two-level visibility system for questions and tests to
 **Security Notes:**
 - access_slug provides security through obscurity
 - Regenerating slug invalidates all previous links
-- Use PRIVATE visibility for sensitive assessments
+- Use protected visibility for sensitive assessments
 
 ---
 
