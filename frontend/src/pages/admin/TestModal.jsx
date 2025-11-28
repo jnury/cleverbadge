@@ -3,6 +3,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Textarea from '../../components/ui/Textarea';
+import { apiRequest } from '../../utils/api';
 
 const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -18,6 +19,8 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
   const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   // Initialize form data when test prop changes
   useEffect(() => {
@@ -77,7 +80,89 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
   };
 
   const handleSave = async () => {
-    // Will be implemented in Task 3
+    if (!formData.title.trim()) {
+      setError('Title is required');
+      setActiveTab('settings');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (isCreateMode) {
+        // Create new test
+        const newTest = await apiRequest('/api/tests', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            visibility: formData.visibility,
+            is_enabled: formData.is_enabled,
+            pass_threshold: formData.pass_threshold,
+            show_explanations: formData.show_explanations,
+            explanation_scope: formData.explanation_scope
+          })
+        });
+
+        // If questions were selected, add them to the test
+        if (selectedQuestionIds.length > 0) {
+          await apiRequest(`/api/tests/${newTest.id}/questions`, {
+            method: 'POST',
+            body: JSON.stringify({
+              questions: selectedQuestionIds.map(id => ({ question_id: id, weight: 1 }))
+            })
+          });
+        }
+      } else {
+        // Update existing test
+        await apiRequest(`/api/tests/${test.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            visibility: formData.visibility,
+            is_enabled: formData.is_enabled,
+            pass_threshold: formData.pass_threshold,
+            show_explanations: formData.show_explanations,
+            explanation_scope: formData.explanation_scope
+          })
+        });
+
+        // Sync questions - remove all and re-add (simplest approach for now)
+        // Get current questions
+        const currentQuestions = await apiRequest(`/api/tests/${test.id}/questions`);
+        const currentIds = currentQuestions.questions.map(q => q.id);
+
+        // Remove questions not in selectedQuestionIds
+        for (const qId of currentIds) {
+          if (!selectedQuestionIds.includes(qId)) {
+            await apiRequest(`/api/tests/${test.id}/questions/${qId}`, {
+              method: 'DELETE'
+            });
+          }
+        }
+
+        // Add new questions not in currentIds
+        const newQuestionIds = selectedQuestionIds.filter(id => !currentIds.includes(id));
+        if (newQuestionIds.length > 0) {
+          await apiRequest(`/api/tests/${test.id}/questions`, {
+            method: 'POST',
+            body: JSON.stringify({
+              questions: newQuestionIds.map(id => ({ question_id: id, weight: 1 }))
+            })
+          });
+        }
+      }
+
+      setHasChanges(false);
+      onSave();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to save test');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -128,6 +213,13 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
           Preview
         </button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
 
       {/* Tab Content - Placeholder */}
       <div className="min-h-[400px]">
@@ -277,7 +369,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
         <Button variant="secondary" onClick={handleClose}>
           Cancel
         </Button>
-        <Button onClick={handleSave} disabled={!isTitleFilled}>
+        <Button onClick={handleSave} disabled={!isTitleFilled || saving} loading={saving}>
           {isCreateMode ? 'Create Test' : 'Save Changes'}
         </Button>
       </div>
