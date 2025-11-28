@@ -136,7 +136,9 @@ router.get('/slug/:slug',
         description: test.description,
         slug: test.slug,
         visibility: test.visibility,
-        question_count: parseInt(questionCountResult[0].count)
+        question_count: parseInt(questionCountResult[0].count),
+        show_explanations: test.show_explanations,
+        explanation_scope: test.explanation_scope
       });
     } catch (error) {
       console.error('Error fetching test by slug:', error);

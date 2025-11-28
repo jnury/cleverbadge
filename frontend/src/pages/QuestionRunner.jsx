@@ -17,12 +17,17 @@ const QuestionRunner = () => {
     testSlug,
     currentQuestionIndex = 0,
     answers: savedAnswers = {},
-    isResuming = false
+    isResuming = false,
+    showExplanations = 'never',
+    explanationScope = 'all_answers'
   } = location.state || {};
 
   const [currentIndex, setCurrentIndex] = useState(currentQuestionIndex);
   const [answers, setAnswers] = useState(savedAnswers);
   const [submitting, setSubmitting] = useState(false);
+  const [questionFeedback, setQuestionFeedback] = useState({}); // Store feedback per question
+
+  const isAfterEachQuestion = showExplanations === 'after_each_question';
 
   // Redirect if no state
   useEffect(() => {
@@ -54,6 +59,43 @@ const QuestionRunner = () => {
 
   // Get current answer
   const currentAnswer = answers[currentQuestion.id] || [];
+
+  // Check if current question has feedback (meaning it was submitted)
+  const currentFeedback = questionFeedback[currentQuestion.id];
+  const isCurrentQuestionSubmitted = !!currentFeedback;
+  const hasAnswer = currentAnswer.length > 0;
+
+  // Handle submitting answer to see immediate feedback
+  const handleSubmitForFeedback = async () => {
+    const selectedOptions = answers[currentQuestion.id] || [];
+    if (selectedOptions.length === 0) return;
+
+    try {
+      const response = await fetch(`${apiUrl}/api/assessments/${assessmentId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: currentQuestion.id,
+          selected_options: selectedOptions
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to submit answer');
+
+      const data = await response.json();
+
+      // Store feedback if provided
+      if (data.feedback) {
+        setQuestionFeedback(prev => ({
+          ...prev,
+          [currentQuestion.id]: data.feedback
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to submit for feedback:', err);
+      alert('Failed to submit answer: ' + err.message);
+    }
+  };
 
   const handleOptionChange = (optionId) => {
     if (currentQuestion.type === 'SINGLE') {
@@ -195,34 +237,103 @@ const QuestionRunner = () => {
             const isSelected = currentAnswer.includes(optionId);
             const inputType = currentQuestion.type === 'SINGLE' ? 'radio' : 'checkbox';
 
+            // Get feedback for this option if available
+            let optionFeedback = null;
+            let isCorrect = false;
+            let explanation = null;
+
+            if (currentFeedback) {
+              // Check in 'all' array first (if scope is all_answers)
+              if (currentFeedback.all) {
+                optionFeedback = currentFeedback.all.find(f => f.id === String(optionId));
+              }
+              // Fallback to 'selected' array
+              if (!optionFeedback) {
+                optionFeedback = currentFeedback.selected?.find(f => f.id === String(optionId));
+              }
+              if (optionFeedback) {
+                isCorrect = optionFeedback.is_correct;
+                explanation = optionFeedback.explanation;
+              }
+            }
+
+            const hasFeedbackForOption = !!optionFeedback;
+
+            // Determine styling based on feedback state
+            let borderClass = 'border-gray-200 hover:border-gray-300 hover:bg-gray-50';
+            let textClass = 'text-gray-700';
+
+            if (isSelected && !isCurrentQuestionSubmitted) {
+              borderClass = 'border-tech bg-tech/10 shadow-sm';
+              textClass = 'text-gray-900 font-medium';
+            } else if (isCurrentQuestionSubmitted && hasFeedbackForOption) {
+              // Show feedback styling
+              if (isCorrect) {
+                borderClass = 'border-green-500 bg-green-50';
+                textClass = isSelected ? 'text-green-800 font-medium' : 'text-green-700';
+              } else if (isSelected) {
+                borderClass = 'border-red-400 bg-red-50';
+                textClass = 'text-red-800 font-medium';
+              } else {
+                borderClass = 'border-gray-200 bg-gray-50';
+                textClass = 'text-gray-500';
+              }
+            } else if (isCurrentQuestionSubmitted) {
+              // Question submitted but no feedback for this option (scope is selected_only)
+              borderClass = 'border-gray-200 bg-gray-50';
+              textClass = 'text-gray-500';
+            }
+
             return (
               <label
                 key={optionId}
-                className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  isSelected
-                    ? 'border-tech bg-tech/10 shadow-sm'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
+                className={`flex items-start p-4 border-2 rounded-lg transition-all ${
+                  isCurrentQuestionSubmitted ? '' : 'cursor-pointer'
+                } ${borderClass}`}
               >
                 <input
                   type={inputType}
                   name={`question-${currentQuestion.id}`}
                   checked={isSelected}
                   onChange={() => handleOptionChange(optionId)}
-                  className={`mr-3 flex-shrink-0 ${isSelected ? 'accent-tech' : ''}`}
+                  disabled={isCurrentQuestionSubmitted}
+                  className={`mr-3 mt-1 flex-shrink-0 ${isSelected ? 'accent-tech' : ''}`}
                 />
-                <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                <div className={`flex-1 ${textClass}`}>
                   <MarkdownRenderer content={optionText} />
+                  {isCurrentQuestionSubmitted && explanation && (
+                    <p className="mt-2 text-sm text-gray-600 italic border-t pt-2">
+                      {explanation}
+                    </p>
+                  )}
                 </div>
+                {isCurrentQuestionSubmitted && hasFeedbackForOption && (
+                  <span className={`ml-2 flex-shrink-0 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                    {isCorrect ? '✓' : (isSelected ? '✗' : '')}
+                  </span>
+                )}
               </label>
             );
           })}
         </div>
 
-        {currentQuestion.type === 'MULTIPLE' && (
+        {currentQuestion.type === 'MULTIPLE' && !isCurrentQuestionSubmitted && (
           <p className="text-sm text-gray-500 mt-4">
             Select all that apply
           </p>
+        )}
+
+        {/* Submit Answer button for after_each_question mode */}
+        {isAfterEachQuestion && !isCurrentQuestionSubmitted && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={handleSubmitForFeedback}
+              disabled={!hasAnswer}
+              className="px-8 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Submit Answer
+            </button>
+          </div>
         )}
       </div>
 

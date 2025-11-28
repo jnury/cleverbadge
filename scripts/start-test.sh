@@ -4,6 +4,8 @@ set -e
 # Start Test Environment
 # Starts PostgreSQL, backend (port 3001), and frontend (port 5174) for E2E testing
 # This runs in parallel with the dev environment (ports 3000/5173)
+#
+# Automatically cleans up any previous test environment before starting
 
 CONTAINER_NAME="cleverbadge-test-postgres"
 BACKEND_PID_FILE="/tmp/cleverbadge-test-backend.pid"
@@ -31,26 +33,55 @@ cd "$(dirname "$0")/.."
 # Create log directory
 mkdir -p "$LOG_DIR"
 
-# Check if test environment is already running
-if [ -f "$BACKEND_PID_FILE" ] && kill -0 "$(cat $BACKEND_PID_FILE)" 2>/dev/null; then
-  echo "⚠️  Test environment appears to be already running."
-  echo "   Run ./scripts/stop-test.sh first to clean up."
-  exit 1
+# ============================================
+# CLEANUP PREVIOUS INSTANCES
+# ============================================
+echo "🧹 Cleaning up previous instances..."
+
+# Stop frontend from PID file
+if [ -f "$FRONTEND_PID_FILE" ]; then
+  FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+  if kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    kill "$FRONTEND_PID" 2>/dev/null || true
+    sleep 1
+    kill -9 "$FRONTEND_PID" 2>/dev/null || true
+  fi
+  rm -f "$FRONTEND_PID_FILE"
 fi
 
-# Check if ports are available
-check_port() {
-  if lsof -Pi :$1 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "❌ Error: Port $1 is already in use"
-    exit 1
+# Stop backend from PID file
+if [ -f "$BACKEND_PID_FILE" ]; then
+  BACKEND_PID=$(cat "$BACKEND_PID_FILE")
+  if kill -0 "$BACKEND_PID" 2>/dev/null; then
+    kill "$BACKEND_PID" 2>/dev/null || true
+    sleep 1
+    kill -9 "$BACKEND_PID" 2>/dev/null || true
+  fi
+  rm -f "$BACKEND_PID_FILE"
+fi
+
+# Stop PostgreSQL container if exists
+if docker ps -a | grep -q "$CONTAINER_NAME"; then
+  docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
+fi
+
+# Kill any processes still holding the ports (fallback)
+kill_port_process() {
+  local port=$1
+  local pid=$(lsof -ti:$port 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    kill $pid 2>/dev/null || true
+    sleep 1
+    kill -9 $pid 2>/dev/null || true
   fi
 }
 
-echo "📋 Checking port availability..."
-check_port $TEST_POSTGRES_PORT
-check_port $TEST_BACKEND_PORT
-check_port $TEST_FRONTEND_PORT
-echo "  ✓ All ports available"
+kill_port_process $TEST_POSTGRES_PORT
+kill_port_process $TEST_BACKEND_PORT
+kill_port_process $TEST_FRONTEND_PORT
+
+echo "  ✓ Cleanup complete"
 echo ""
 
 # Start PostgreSQL container

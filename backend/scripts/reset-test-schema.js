@@ -36,39 +36,11 @@ async function resetTestSchema() {
     await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON TABLES TO cleverbadge_test`);
     await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON SEQUENCES TO cleverbadge_test`);
 
-    // Run migrations
-    console.log('Running migrations...');
-    const migration1SQL = fs.readFileSync('./db/migrations/001_initial_schema.sql', 'utf8');
-    const testMigration1SQL = migration1SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration1SQL);
-
-    const migration2SQL = fs.readFileSync('./db/migrations/002_add_pass_threshold.sql', 'utf8');
-    const testMigration2SQL = migration2SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration2SQL);
-
-    const migration3SQL = fs.readFileSync('./db/migrations/003_add_visibility_enum.sql', 'utf8');
-    const testMigration3SQL = migration3SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration3SQL);
-
-    const migration4SQL = fs.readFileSync('./db/migrations/004_add_test_visibility_and_update_slug.sql', 'utf8');
-    const testMigration4SQL = migration4SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration4SQL);
-
-    const migration5SQL = fs.readFileSync('./db/migrations/005_add_assessment_access_slug.sql', 'utf8');
-    const testMigration5SQL = migration5SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration5SQL);
-
-    const migration6SQL = fs.readFileSync('./db/migrations/006_add_question_title_author_visibility.sql', 'utf8');
-    const testMigration6SQL = migration6SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration6SQL);
-
-    const migration7SQL = fs.readFileSync('./db/migrations/007_add_question_is_archived.sql', 'utf8');
-    const testMigration7SQL = migration7SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration7SQL);
-
-    const migration8SQL = fs.readFileSync('./db/migrations/008_add_test_is_archived.sql', 'utf8');
-    const testMigration8SQL = migration8SQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testMigration8SQL);
+    // Run init migration (consolidated schema)
+    console.log('Running init migration...');
+    const initSQL = fs.readFileSync('./db/migrations/001_init.sql', 'utf8');
+    const testInitSQL = initSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+    await sql.unsafe(testInitSQL);
 
     // Seed test data
     console.log('Seeding test data...');
@@ -112,19 +84,20 @@ async function seedTestData(sql, schema) {
   const q8Id = '550e8400-e29b-41d4-a716-446655440017';  // Public question
 
   // Insert questions with visibility and title fields
+  // Options use new dict format: { "0": { text, is_correct, explanation? }, ... }
   // q5 and q4 are NOT in any test, so they can be safely deleted
   // Insert them last so they appear first when ordered by created_at DESC
   await sql.unsafe(`
-    INSERT INTO ${schema}.questions (id, title, text, type, options, correct_answers, tags, author_id, visibility, created_at)
+    INSERT INTO ${schema}.questions (id, title, text, type, options, tags, author_id, visibility, created_at)
     VALUES
-      ('${q1Id}', 'Basic Math Question', 'What is 2 + 2?', 'SINGLE', '["3", "4", "5", "6"]', '[1]', '["math", "easy"]', '${adminId}', 'private', NOW() - INTERVAL '8 minutes'),
-      ('${q2Id}', 'Geography Capital', 'What is the capital of France?', 'SINGLE', '["London", "Paris", "Berlin", "Madrid"]', '[1]', '["geography"]', '${adminId}', 'public', NOW() - INTERVAL '7 minutes'),
-      ('${q3Id}', 'Even Numbers', 'Select all even numbers:', 'MULTIPLE', '["1", "2", "3", "4"]', '[1, 3]', '["math"]', '${adminId}', 'public', NOW() - INTERVAL '6 minutes'),
-      ('${q4Id}', 'Primary Colors', 'Select all primary colors:', 'MULTIPLE', '["Red", "Green", "Blue", "Yellow"]', '[0, 2, 3]', '["art"]', '${adminId}', 'private', NOW() - INTERVAL '5 minutes'),
-      ('${q5Id}', 'Sky Color', 'Is the sky blue?', 'SINGLE', '["Yes", "No"]', '[0]', NULL, '${adminId}', 'public', NOW() - INTERVAL '4 minutes'),
-      ('${q6Id}', 'JavaScript Code Analysis', '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '["Multiplies array elements", "Sums array elements using \`reduce()\`", "Filters array using \`map()\`", "Sorts the array"]', '[1]', '["javascript", "markdown"]', '${adminId}', 'public', NOW() - INTERVAL '3 minutes'),
-      ('${q7Id}', 'Protected Question Example', 'This is a protected question. What is 10 / 2?', 'SINGLE', '["3", "4", "5", "6"]', '[2]', '["math"]', '${adminId}', 'protected', NOW() - INTERVAL '2 minutes'),
-      ('${q8Id}', 'Public Question Example', 'What color is the sky?', 'SINGLE', '["Red", "Blue", "Green", "Yellow"]', '[1]', '["general"]', '${adminId}', 'public', NOW() - INTERVAL '1 minute')
+      ('${q1Id}', 'Basic Math Question', 'What is 2 + 2?', 'SINGLE', '{"0": {"text": "3", "is_correct": false}, "1": {"text": "4", "is_correct": true}, "2": {"text": "5", "is_correct": false}, "3": {"text": "6", "is_correct": false}}', '["math", "easy"]', '${adminId}', 'private', NOW() - INTERVAL '8 minutes'),
+      ('${q2Id}', 'Geography Capital', 'What is the capital of France?', 'SINGLE', '{"0": {"text": "London", "is_correct": false, "explanation": "London is the capital of the UK."}, "1": {"text": "Paris", "is_correct": true, "explanation": "Paris has been France''s capital since the 10th century."}, "2": {"text": "Berlin", "is_correct": false, "explanation": "Berlin is the capital of Germany."}, "3": {"text": "Madrid", "is_correct": false, "explanation": "Madrid is the capital of Spain."}}', '["geography"]', '${adminId}', 'public', NOW() - INTERVAL '7 minutes'),
+      ('${q3Id}', 'Even Numbers', 'Select all even numbers:', 'MULTIPLE', '{"0": {"text": "1", "is_correct": false, "explanation": "1 is an odd number."}, "1": {"text": "2", "is_correct": true, "explanation": "2 is the smallest even number."}, "2": {"text": "3", "is_correct": false, "explanation": "3 is an odd number."}, "3": {"text": "4", "is_correct": true, "explanation": "4 is an even number (4 = 2 x 2)."}}', '["math"]', '${adminId}', 'public', NOW() - INTERVAL '6 minutes'),
+      ('${q4Id}', 'Primary Colors', 'Select all primary colors:', 'MULTIPLE', '{"0": {"text": "Red", "is_correct": true}, "1": {"text": "Green", "is_correct": false, "explanation": "Green is a secondary color."}, "2": {"text": "Blue", "is_correct": true}, "3": {"text": "Yellow", "is_correct": true}}', '["art"]', '${adminId}', 'private', NOW() - INTERVAL '5 minutes'),
+      ('${q5Id}', 'Sky Color', 'Is the sky blue?', 'SINGLE', '{"0": {"text": "Yes", "is_correct": true}, "1": {"text": "No", "is_correct": false}}', NULL, '${adminId}', 'public', NOW() - INTERVAL '4 minutes'),
+      ('${q6Id}', 'JavaScript Code Analysis', '**What does this code do?**\n\n\`\`\`javascript\nconst sum = arr => arr.reduce((a, b) => a + b, 0);\n\`\`\`', 'SINGLE', '{"0": {"text": "Multiplies array elements", "is_correct": false}, "1": {"text": "Sums array elements using \`reduce()\`", "is_correct": true, "explanation": "The reduce() method executes a reducer function on each element."}, "2": {"text": "Filters array using \`map()\`", "is_correct": false}, "3": {"text": "Sorts the array", "is_correct": false}}', '["javascript", "markdown"]', '${adminId}', 'public', NOW() - INTERVAL '3 minutes'),
+      ('${q7Id}', 'Protected Question Example', 'This is a protected question. What is 10 / 2?', 'SINGLE', '{"0": {"text": "3", "is_correct": false}, "1": {"text": "4", "is_correct": false}, "2": {"text": "5", "is_correct": true}, "3": {"text": "6", "is_correct": false}}', '["math"]', '${adminId}', 'protected', NOW() - INTERVAL '2 minutes'),
+      ('${q8Id}', 'Public Question Example', 'What color is the sky?', 'SINGLE', '{"0": {"text": "Red", "is_correct": false}, "1": {"text": "Blue", "is_correct": true}, "2": {"text": "Green", "is_correct": false}, "3": {"text": "Yellow", "is_correct": false}}', '["general"]', '${adminId}', 'public', NOW() - INTERVAL '1 minute')
   `);
 
   // Create tests

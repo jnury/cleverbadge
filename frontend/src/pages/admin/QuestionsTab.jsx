@@ -281,17 +281,31 @@ const QuestionsTab = () => {
     if (previewData.type !== editingQuestion.type) return true;
     if (previewData.visibility !== editingQuestion.visibility) return true;
 
-    // Compare options arrays
+    // Compare options - handle both array (form) and dict (API) formats
     const previewOpts = previewData.options || [];
-    const origOpts = editingQuestion.options || [];
-    if (previewOpts.length !== origOpts.length) return true;
-    if (previewOpts.some((opt, i) => opt !== origOpts[i])) return true;
+    const origOpts = editingQuestion.options || {};
 
-    // Compare correct_answers arrays
-    const previewAnswers = previewData.correct_answers || [];
-    const origAnswers = editingQuestion.correct_answers || [];
-    if (previewAnswers.length !== origAnswers.length) return true;
-    if (previewAnswers.some((ans, i) => ans !== origAnswers[i])) return true;
+    // Convert original options from dict to array for comparison
+    const origOptsArray = typeof origOpts === 'object' && !Array.isArray(origOpts)
+      ? Object.entries(origOpts)
+          .sort(([a], [b]) => parseInt(a) - parseInt(b))
+          .map(([_, opt]) => ({
+            text: opt.text || '',
+            is_correct: opt.is_correct || false,
+            explanation: opt.explanation || ''
+          }))
+      : origOpts;
+
+    if (previewOpts.length !== origOptsArray.length) return true;
+
+    // Compare each option's text, is_correct, and explanation
+    for (let i = 0; i < previewOpts.length; i++) {
+      const prev = previewOpts[i];
+      const orig = origOptsArray[i];
+      if (prev.text !== orig.text) return true;
+      if (prev.is_correct !== orig.is_correct) return true;
+      if ((prev.explanation || '') !== (orig.explanation || '')) return true;
+    }
 
     // Compare tags arrays
     const previewTags = previewData.tags || [];
@@ -639,6 +653,7 @@ const QuestionsTab = () => {
           {/* Tab Content */}
           <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
             <QuestionForm
+              key={editingQuestion?.id}
               question={editingQuestion}
               onSubmit={handleEdit}
               onCancel={() => {
@@ -668,46 +683,67 @@ const QuestionsTab = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {(previewData?.options || editingQuestion.options || []).map((option, index) => {
-                    const questionType = previewData?.type || editingQuestion.type;
-                    const isSelected = previewSelections.includes(option);
+                  {(() => {
+                    // Normalize options to array of {text, is_correct} objects
+                    let optionsArray = [];
+                    const opts = previewData?.options || editingQuestion.options || [];
 
-                    const handleOptionClick = () => {
-                      if (questionType === 'SINGLE') {
-                        setPreviewSelections([option]);
-                      } else {
-                        // MULTIPLE: toggle selection
-                        if (isSelected) {
-                          setPreviewSelections(previewSelections.filter(o => o !== option));
+                    if (Array.isArray(opts)) {
+                      // From form: [{text, is_correct, explanation}, ...]
+                      optionsArray = opts;
+                    } else if (typeof opts === 'object') {
+                      // From API: {"0": {text, is_correct}, ...}
+                      optionsArray = Object.entries(opts)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([_, opt]) => ({
+                          text: opt.text || '',
+                          is_correct: opt.is_correct || false,
+                          explanation: opt.explanation || ''
+                        }));
+                    }
+
+                    return optionsArray.map((option, index) => {
+                      const questionType = previewData?.type || editingQuestion.type;
+                      const optionText = typeof option === 'object' ? option.text : option;
+                      const isSelected = previewSelections.includes(optionText);
+
+                      const handleOptionClick = () => {
+                        if (questionType === 'SINGLE') {
+                          setPreviewSelections([optionText]);
                         } else {
-                          setPreviewSelections([...previewSelections, option]);
+                          // MULTIPLE: toggle selection
+                          if (isSelected) {
+                            setPreviewSelections(previewSelections.filter(o => o !== optionText));
+                          } else {
+                            setPreviewSelections([...previewSelections, optionText]);
+                          }
                         }
-                      }
-                    };
+                      };
 
-                    return (
-                      <label
-                        key={index}
-                        className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-tech bg-tech/10 shadow-sm'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                        onClick={handleOptionClick}
-                      >
-                        <input
-                          type={questionType === 'SINGLE' ? 'radio' : 'checkbox'}
-                          name="preview-question"
-                          checked={isSelected}
-                          onChange={() => {}} // Handled by label onClick
-                          className="mr-3 flex-shrink-0"
-                        />
-                        <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-                          <MarkdownRenderer content={option || ''} />
-                        </div>
-                      </label>
-                    );
-                  })}
+                      return (
+                        <label
+                          key={index}
+                          className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-tech bg-tech/10 shadow-sm'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                          onClick={handleOptionClick}
+                        >
+                          <input
+                            type={questionType === 'SINGLE' ? 'radio' : 'checkbox'}
+                            name="preview-question"
+                            checked={isSelected}
+                            onChange={() => {}} // Handled by label onClick
+                            className="mr-3 flex-shrink-0"
+                          />
+                          <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                            <MarkdownRenderer content={optionText || ''} />
+                          </div>
+                        </label>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {(previewData?.type || editingQuestion.type) === 'MULTIPLE' && (

@@ -3,7 +3,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const EXAMPLE_YAML = `# Example YAML format - root array of questions
-# Options use 0-based indexing (first option is index 0)
+# Each option has is_correct: true/false to mark correct answers
 - title: "Basic Addition"
   text: "What is 2+2?"
   type: "SINGLE"
@@ -440,8 +440,7 @@ const YamlUpload = ({ onUploadSuccess }) => {
 
             <div className="bg-amber-50 border border-amber-200 rounded p-3">
               <p className="text-sm text-amber-800">
-                <strong>Important:</strong> Option indices are 0-based. The first option is index 0, second is index 1, etc.
-                For SINGLE type, exactly one option must have <code className="bg-gray-100 px-1 rounded font-mono">is_correct: true</code>.
+                <strong>Important:</strong> For SINGLE type, exactly one option must have <code className="bg-gray-100 px-1 rounded font-mono">is_correct: true</code>.
                 For MULTIPLE type, at least one option must have <code className="bg-gray-100 px-1 rounded font-mono">is_correct: true</code>.
               </p>
             </div>
@@ -463,7 +462,7 @@ const YamlUpload = ({ onUploadSuccess }) => {
               </p>
               <pre className="text-xs text-gray-700 overflow-x-auto bg-gray-50 p-3 rounded border border-gray-200">
 {`# Root-level array of questions
-# Options use 0-based indexing (first option is index 0)
+# Each option has is_correct: true/false to mark correct answers
 - title: "Basic Addition"
   text: "What is 2+2?"
   type: "SINGLE"
