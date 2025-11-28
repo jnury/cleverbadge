@@ -662,7 +662,6 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                     </Button>
                     <Button
                       variant="secondary"
-                      size="sm"
                       onClick={() => {
                         handleToggleQuestion(currentQuestion.id);
                         // Stay on same index or go back if at end
