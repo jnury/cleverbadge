@@ -15,7 +15,10 @@ test.describe('Visibility Features', () => {
       await page.click('text=Tests');
       await page.click('button:has-text("Create Test")');
 
-      // Fill in form
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Create Test")')).toBeVisible();
+
+      // Fill in form (modal is now tabbed - Settings tab is active by default)
       await page.fill('input[name="title"]', 'Test With Default Visibility');
       await page.fill('textarea[name="description"]', 'Testing default visibility');
       await page.check('input[name="is_enabled"]');
@@ -24,16 +27,20 @@ test.describe('Visibility Features', () => {
       const visibilitySelect = page.locator('select[name="visibility"]');
       await expect(visibilitySelect).toHaveValue('private');
 
-      // Submit form
-      await page.locator('form button[type="submit"]').click();
+      // Submit form - use the modal's Create Test button
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Create Test")').last().click();
 
-      // Wait for modal to close and test to appear
-      await expect(page.locator('text=Test With Default Visibility')).toBeVisible();
+      // Wait for modal to close and test to appear in table
+      await expect(page.locator('td:has-text("Test With Default Visibility")')).toBeVisible();
     });
 
     test('should create a test with public visibility', async ({ page }) => {
       await page.click('text=Tests');
       await page.click('button:has-text("Create Test")');
+
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Create Test")')).toBeVisible();
 
       // Fill in form
       await page.fill('input[name="title"]', 'Public Test');
@@ -42,15 +49,19 @@ test.describe('Visibility Features', () => {
       await page.check('input[name="is_enabled"]');
 
       // Submit form
-      await page.locator('form button[type="submit"]').click();
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Create Test")').last().click();
 
       // Wait for test to appear
-      await expect(page.locator('text=Public Test')).toBeVisible();
+      await expect(page.locator('td:has-text("Public Test")')).toBeVisible();
     });
 
     test('should create a test with protected visibility', async ({ page }) => {
       await page.click('text=Tests');
       await page.click('button:has-text("Create Test")');
+
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Create Test")')).toBeVisible();
 
       // Fill in form
       await page.fill('input[name="title"]', 'Protected Test E2E');
@@ -59,10 +70,11 @@ test.describe('Visibility Features', () => {
       await page.check('input[name="is_enabled"]');
 
       // Submit form
-      await page.locator('form button[type="submit"]').click();
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Create Test")').last().click();
 
       // Wait for test to appear
-      await expect(page.locator('text=Protected Test E2E')).toBeVisible();
+      await expect(page.locator('td:has-text("Protected Test E2E")')).toBeVisible();
     });
 
     test('should show visibility dropdown with all three options', async ({ page }) => {
@@ -85,9 +97,12 @@ test.describe('Visibility Features', () => {
     test('should display slug as read-only text when editing', async ({ page }) => {
       await page.click('text=Tests');
 
-      // Wait for tests to load
-      await page.waitForSelector('button:has-text("Edit")');
-      await page.locator('button:has-text("Edit")').first().click();
+      // Wait for tests to load and click edit icon
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
+
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
 
       // Check that slug is displayed as read-only text (code block, not input)
       const slugDisplay = page.locator('code');
@@ -99,14 +114,18 @@ test.describe('Visibility Features', () => {
       await page.click('text=Tests');
 
       // Wait for tests to load
-      await page.waitForSelector('button:has-text("Edit")');
-      await page.locator('button:has-text("Edit")').first().click();
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
+
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
 
       // Grant clipboard permissions
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
-      // Click copy link button
-      const copyButton = page.locator('button:has-text("Copy Link")');
+      // Click copy link button in the modal
+      const modal = page.locator('div[role="dialog"], .z-50');
+      const copyButton = modal.locator('button:has-text("Copy Link")');
       await expect(copyButton).toBeVisible();
       await copyButton.click();
 
@@ -120,10 +139,10 @@ test.describe('Visibility Features', () => {
       await page.click('text=Tests');
 
       // Wait for tests to load
-      await page.waitForSelector('button:has-text("Edit")');
+      await page.waitForSelector('button[title="Regenerate link"]');
 
-      // Check that regenerate button exists in the tests list (not in edit form)
-      const regenerateButton = page.locator('button:has-text("Regenerate Link")').first();
+      // Check that regenerate button exists in the tests list (as icon with tooltip)
+      const regenerateButton = page.locator('button[title="Regenerate link"]').first();
       await expect(regenerateButton).toBeVisible();
     });
 
@@ -131,17 +150,21 @@ test.describe('Visibility Features', () => {
       await page.click('text=Tests');
 
       // Wait for tests to load
-      await page.waitForSelector('button:has-text("Edit")');
-      await page.locator('button:has-text("Edit")').first().click();
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
+
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
 
       // Change visibility
       await page.selectOption('select[name="visibility"]', 'public');
 
-      // Submit form
-      await page.locator('form button[type="submit"]').click();
+      // Submit form - click Save Changes in modal
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Save Changes")').click();
 
       // Modal should close
-      await page.waitForTimeout(500);
+      await expect(page.locator('h3:has-text("Edit Test")')).not.toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -325,43 +348,58 @@ test.describe('Visibility Features', () => {
   });
 
   test.describe('Visibility Matrix in Test Management', () => {
-    test('should show manage questions modal', async ({ page }) => {
+    test('should show questions tab in test modal', async ({ page }) => {
       await page.click('text=Tests');
 
-      // Wait for tests to load
-      await page.waitForSelector('[data-testid="manage-questions-btn"]');
-      await page.locator('[data-testid="manage-questions-btn"]').first().click();
+      // Wait for tests to load and click edit icon
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
 
-      // Modal should open
-      await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
+
+      // Click on Questions tab
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Questions")').click();
+
+      // Should see Questions tab content
+      await expect(page.locator('text=Available Questions')).toBeVisible();
     });
 
     test('should show available questions section', async ({ page }) => {
       await page.click('text=Tests');
 
-      // Wait for tests to load
-      await page.waitForSelector('[data-testid="manage-questions-btn"]');
-      await page.locator('[data-testid="manage-questions-btn"]').first().click();
+      // Wait for tests to load and click edit icon
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
 
-      // Wait for modal
-      await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
+
+      // Click on Questions tab
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Questions")').click();
 
       // Check for Available Questions section
-      await expect(page.locator('h4:has-text("Available Questions")')).toBeVisible();
+      await expect(page.locator('text=Available Questions')).toBeVisible();
     });
 
-    test('should show current questions section', async ({ page }) => {
+    test('should show selected questions section', async ({ page }) => {
       await page.click('text=Tests');
 
-      // Wait for tests to load
-      await page.waitForSelector('[data-testid="manage-questions-btn"]');
-      await page.locator('[data-testid="manage-questions-btn"]').first().click();
+      // Wait for tests to load and click edit icon
+      await page.waitForSelector('button[title="Edit test"]');
+      await page.locator('button[title="Edit test"]').first().click();
 
-      // Wait for modal
-      await expect(page.locator('h3:has-text("Manage Questions")')).toBeVisible();
+      // Wait for modal to open
+      await expect(page.locator('h3:has-text("Edit Test")')).toBeVisible();
 
-      // Check for Current Questions section
-      await expect(page.locator('h4:has-text("Current Questions")')).toBeVisible();
+      // Click on Questions tab
+      const modal = page.locator('div[role="dialog"], .z-50');
+      await modal.locator('button:has-text("Questions")').click();
+
+      // Check for Selected Questions section
+      await expect(page.locator('text=Selected Questions')).toBeVisible();
     });
   });
 
