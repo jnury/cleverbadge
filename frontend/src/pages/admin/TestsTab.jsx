@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
-import TestForm from './TestForm';
-import ManageTestQuestions from './ManageTestQuestions';
-import TestPreviewModal from '../../components/TestPreviewModal';
+import TestModal from './TestModal';
 import { apiRequest } from '../../utils/api';
 
 const TestsTab = () => {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingTest, setEditingTest] = useState(null);
-  const [managingTest, setManagingTest] = useState(null);
+  const [modalTest, setModalTest] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState('settings');
   const [regenerateConfirm, setRegenerateConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [previewTest, setPreviewTest] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
   const [bulkAction, setBulkAction] = useState(null);
@@ -69,23 +66,18 @@ const TestsTab = () => {
     }
   };
 
-  const handleCreateTest = async (formData) => {
-    await apiRequest('/api/tests', {
-      method: 'POST',
-      body: JSON.stringify(formData)
-    });
-
-    setShowCreateModal(false);
-    loadTests();
+  const handleOpenModal = (test, tab = 'settings') => {
+    setModalTest(test);
+    setModalInitialTab(tab);
+    setModalOpen(true);
   };
 
-  const handleUpdateTest = async (formData) => {
-    await apiRequest(`/api/tests/${editingTest.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(formData)
-    });
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setModalTest(null);
+  };
 
-    setEditingTest(null);
+  const handleModalSave = () => {
     loadTests();
   };
 
@@ -311,7 +303,7 @@ const TestsTab = () => {
               </div>
             )}
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={() => handleOpenModal(null, 'settings')}>
             Create Test
           </Button>
         </div>
@@ -321,7 +313,7 @@ const TestsTab = () => {
       {tests.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600 mb-4">No tests yet</p>
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={() => handleOpenModal(null, 'settings')}>
             Create Your First Test
           </Button>
         </div>
@@ -395,7 +387,7 @@ const TestsTab = () => {
                     <div className="flex gap-1">
                       {/* Edit icon */}
                       <button
-                        onClick={() => setEditingTest(test)}
+                        onClick={() => handleOpenModal(test, 'settings')}
                         className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
                         title="Edit test"
                       >
@@ -405,7 +397,7 @@ const TestsTab = () => {
                       </button>
                       {/* Preview icon */}
                       <button
-                        onClick={() => test.question_count > 0 && setPreviewTest(test)}
+                        onClick={() => test.question_count > 0 && handleOpenModal(test, 'preview')}
                         className={`p-1.5 rounded ${
                           test.question_count > 0
                             ? 'text-gray-500 hover:text-tech hover:bg-gray-100'
@@ -476,42 +468,14 @@ const TestsTab = () => {
         </div>
       )}
 
-      {/* Create Test Modal */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create New Test"
-      >
-        <TestForm
-          onSubmit={handleCreateTest}
-          onCancel={() => setShowCreateModal(false)}
-        />
-      </Modal>
-
-      {/* Edit Test Modal */}
-      {editingTest && (
-        <Modal
-          isOpen={!!editingTest}
-          onClose={() => setEditingTest(null)}
-          title="Edit Test"
-        >
-          <TestForm
-            test={editingTest}
-            onSubmit={handleUpdateTest}
-            onCancel={() => setEditingTest(null)}
-          />
-        </Modal>
-      )}
-
-      {/* Manage Test Questions Modal */}
-      {managingTest && (
-        <ManageTestQuestions
-          test={managingTest}
-          isOpen={!!managingTest}
-          onClose={() => setManagingTest(null)}
-          onUpdate={loadTests}
-        />
-      )}
+      {/* Test Modal (Create/Edit) */}
+      <TestModal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        test={modalTest}
+        initialTab={modalInitialTab}
+        onSave={handleModalSave}
+      />
 
       {/* Regenerate Slug Confirmation Modal */}
       {regenerateConfirm && (
@@ -540,14 +504,6 @@ const TestsTab = () => {
           </div>
         </Modal>
       )}
-
-      {/* Test Preview Modal */}
-      <TestPreviewModal
-        isOpen={!!previewTest}
-        onClose={() => setPreviewTest(null)}
-        testId={previewTest?.id}
-        testTitle={previewTest?.title}
-      />
 
       {/* Bulk Enable/Disable Modal */}
       {(bulkAction === 'enable' || bulkAction === 'disable') && (
