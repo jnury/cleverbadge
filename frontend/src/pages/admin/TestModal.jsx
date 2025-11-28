@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 
 const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -130,7 +132,137 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
       {/* Tab Content - Placeholder */}
       <div className="min-h-[400px]">
         {activeTab === 'settings' && (
-          <div>Settings tab content (Task 2)</div>
+          <div className="space-y-4">
+            <Input
+              label="Title"
+              name="title"
+              value={formData.title}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, title: e.target.value }));
+                setHasChanges(true);
+              }}
+              required
+              placeholder="e.g., JavaScript Fundamentals"
+            />
+
+            <Textarea
+              label="Description"
+              name="description"
+              value={formData.description}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, description: e.target.value }));
+                setHasChanges(true);
+              }}
+              rows={3}
+              placeholder="Brief description of the test..."
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+              <select
+                name="visibility"
+                value={formData.visibility}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, visibility: e.target.value }));
+                  setHasChanges(true);
+                }}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="private">Private - Requires direct link</option>
+                <option value="public">Public - Listed on home page (v2)</option>
+                <option value="protected">Protected - Access restricted (v2)</option>
+              </select>
+              <p className="text-sm text-gray-500 mt-1">
+                Private tests require the direct link. Public/protected features coming in v2.
+              </p>
+            </div>
+
+            {test && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Test Link</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-gray-100 px-3 py-2 rounded-md text-sm">
+                    /t/{test.slug}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/t/${test.slug}`)}
+                  >
+                    Copy Link
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <Input
+              label="Pass Threshold (%)"
+              name="pass_threshold"
+              type="number"
+              min="0"
+              max="100"
+              value={formData.pass_threshold}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, pass_threshold: parseInt(e.target.value) || 0 }));
+                setHasChanges(true);
+              }}
+              placeholder="0"
+              help="Set to 0 for neutral scoring (no pass/fail). Set to 1-100 to show pass/fail based on score."
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Show Explanations</label>
+              <select
+                name="show_explanations"
+                value={formData.show_explanations}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, show_explanations: e.target.value }));
+                  setHasChanges(true);
+                }}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="never">Never - Candidates see score only</option>
+                <option value="after_each_question">After Each Question</option>
+                <option value="after_submit">After Test Submission</option>
+              </select>
+            </div>
+
+            {formData.show_explanations !== 'never' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Explanation Scope</label>
+                <select
+                  name="explanation_scope"
+                  value={formData.explanation_scope}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, explanation_scope: e.target.value }));
+                    setHasChanges(true);
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="selected_only">Selected Answers Only</option>
+                  <option value="all_answers">All Answer Options</option>
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="is_enabled"
+                name="is_enabled"
+                checked={formData.is_enabled}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, is_enabled: e.target.checked }));
+                  setHasChanges(true);
+                }}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label htmlFor="is_enabled" className="ml-2 block text-sm text-gray-700">
+                Enable test (allow candidates to take it)
+              </label>
+            </div>
+          </div>
         )}
         {activeTab === 'questions' && (
           <div>Questions tab content (Task 4)</div>
