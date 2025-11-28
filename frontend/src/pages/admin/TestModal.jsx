@@ -651,8 +651,15 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                     })}
                   </div>
 
-                  {/* Remove from test button */}
-                  <div className="flex justify-center pt-2">
+                  {/* Navigation with Remove button */}
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPreviewIndex(i => Math.max(0, i - 1))}
+                      disabled={previewIndex === 0}
+                    >
+                      Previous
+                    </Button>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -665,17 +672,6 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                       }}
                     >
                       Remove from Test
-                    </Button>
-                  </div>
-
-                  {/* Navigation */}
-                  <div className="flex justify-between pt-4 border-t">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPreviewIndex(i => Math.max(0, i - 1))}
-                      disabled={previewIndex === 0}
-                    >
-                      Previous
                     </Button>
                     <Button
                       variant="secondary"
