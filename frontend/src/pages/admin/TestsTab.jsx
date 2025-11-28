@@ -16,9 +16,16 @@ const TestsTab = () => {
   const [regenerateConfirm, setRegenerateConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [previewTest, setPreviewTest] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState(null);
+  const [bulkVisibility, setBulkVisibility] = useState('');
+  const [bulkAuthor, setBulkAuthor] = useState('');
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     loadTests();
+    fetchUsers();
   }, []);
 
   const loadTests = async () => {
@@ -50,6 +57,15 @@ const TestsTab = () => {
       setError(err.message || 'Failed to load tests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const data = await apiRequest('/api/questions/users');
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
     }
   };
 
@@ -129,6 +145,24 @@ const TestsTab = () => {
     }
   };
 
+  const handleSelectAll = () => {
+    if (selectedIds.size === tests.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tests.map(t => t.id)));
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
   const getVisibilityBadge = (visibility) => {
     const badges = {
       public: { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' },
@@ -182,7 +216,7 @@ const TestsTab = () => {
         </Button>
       </div>
 
-      {/* Tests List */}
+      {/* Tests Table */}
       {tests.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600 mb-4">No tests yet</p>
@@ -191,113 +225,153 @@ const TestsTab = () => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {tests.map((test) => (
-            <div
-              key={test.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {test.title}
-                    </h3>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === tests.length && tests.length > 0}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Visibility
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Questions
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Threshold
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {tests.map((test) => (
+                <tr key={test.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(test.id)}
+                      onChange={() => handleSelectOne(test.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm font-medium text-gray-900">{test.title}</div>
+                    <div className="text-xs text-gray-500">/t/{test.slug}</div>
+                  </td>
+                  <td className="px-4 py-3">
                     {getVisibilityBadge(test.visibility)}
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded ${
-                        test.is_enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {test.question_count}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {test.pass_threshold ?? 0}%
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      test.is_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
                       {test.is_enabled ? 'Enabled' : 'Disabled'}
                     </span>
-                  </div>
-
-                  {test.description && (
-                    <p className="text-sm text-gray-600 mb-2">
-                      {test.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                    <span>Link: /t/{test.slug}</span>
-                    <button
-                      onClick={() => handleCopySlug(test.slug)}
-                      className="text-tech hover:text-tech-dark"
-                      title="Copy link"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>
-                      Questions: <span className="font-medium text-gray-700">{test.question_count}</span>
-                    </span>
-                    <span>
-                      Pass Threshold: <span className="font-medium text-gray-700">{test.pass_threshold ?? 0}%</span>
-                      {(test.pass_threshold ?? 0) === 0 && <span className="text-gray-500 ml-1">(neutral)</span>}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 ml-4">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setEditingTest(test)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setManagingTest(test)}
-                      data-testid="manage-questions-btn"
-                    >
-                      Questions
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setPreviewTest(test)}
-                      title="Preview test"
-                    >
-                      Preview
-                    </Button>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setRegenerateConfirm(test)}
-                    >
-                      Regenerate Link
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={test.is_enabled ? 'secondary' : 'success'}
-                      onClick={() => handleToggleEnabled(test)}
-                    >
-                      {test.is_enabled ? 'Disable' : 'Enable'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => handleDeleteTest(test)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      {/* Edit icon */}
+                      <button
+                        onClick={() => setEditingTest(test)}
+                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        title="Edit test"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      {/* Preview icon */}
+                      <button
+                        onClick={() => test.question_count > 0 && setPreviewTest(test)}
+                        className={`p-1.5 rounded ${
+                          test.question_count > 0
+                            ? 'text-gray-500 hover:text-tech hover:bg-gray-100'
+                            : 'text-gray-300 cursor-not-allowed'
+                        }`}
+                        title={test.question_count > 0 ? 'Preview test' : 'Add questions first'}
+                        disabled={test.question_count === 0}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      {/* Copy link icon */}
+                      <button
+                        onClick={() => handleCopySlug(test.slug)}
+                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        title="Copy link"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      {/* Regenerate link icon */}
+                      <button
+                        onClick={() => setRegenerateConfirm(test)}
+                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        title="Regenerate link"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                      {/* Toggle enabled icon */}
+                      <button
+                        onClick={() => handleToggleEnabled(test)}
+                        className={`p-1.5 rounded ${
+                          test.is_enabled
+                            ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                            : 'text-gray-500 hover:text-green-600 hover:bg-gray-100'
+                        }`}
+                        title={test.is_enabled ? 'Disable test' : 'Enable test'}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {test.is_enabled ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          )}
+                        </svg>
+                      </button>
+                      {/* Delete icon */}
+                      <button
+                        onClick={() => handleDeleteTest(test)}
+                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Delete test"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
