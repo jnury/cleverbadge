@@ -3,6 +3,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Textarea from '../../components/ui/Textarea';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 import { apiRequest } from '../../utils/api';
 
 const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) => {
@@ -24,6 +25,8 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
   const [allQuestions, setAllQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [questionWeights, setQuestionWeights] = useState({});
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [showAnswers, setShowAnswers] = useState(false);
 
   // Initialize form data when test prop changes
   useEffect(() => {
@@ -73,6 +76,13 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
       loadTestQuestions();
     }
   }, [test, isOpen]);
+
+  // Reset preview index when selected questions change
+  useEffect(() => {
+    if (previewIndex >= selectedQuestionIds.length) {
+      setPreviewIndex(Math.max(0, selectedQuestionIds.length - 1));
+    }
+  }, [selectedQuestionIds.length]);
 
   const isCreateMode = !test;
   const isTitleFilled = formData.title.trim().length > 0;
@@ -147,6 +157,18 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
       }
     });
     setHasChanges(true);
+  };
+
+  const parseOptions = (options) => {
+    if (!options) return {};
+    if (typeof options === 'string') {
+      try {
+        return JSON.parse(options);
+      } catch (e) {
+        return {};
+      }
+    }
+    return options;
   };
 
   const handleClose = () => {
@@ -549,7 +571,124 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
           </div>
         )}
         {activeTab === 'preview' && (
-          <div>Preview tab content (Task 5)</div>
+          <div className="space-y-4">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between pb-4 border-b">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAnswers}
+                  onChange={(e) => setShowAnswers(e.target.checked)}
+                  className="rounded border-gray-300 text-tech focus:ring-tech"
+                />
+                <span className="text-sm font-medium text-gray-700">Show Answers</span>
+              </label>
+              <span className="text-sm text-gray-500">
+                Question {previewIndex + 1} of {selectedQuestionIds.length}
+              </span>
+            </div>
+
+            {selectedQuestionIds.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No questions selected. Add questions in the Questions tab.
+              </div>
+            ) : (() => {
+              const currentQuestion = allQuestions.find(q => q.id === selectedQuestionIds[previewIndex]);
+              if (!currentQuestion) return <div>Question not found</div>;
+
+              const options = parseOptions(currentQuestion.options);
+              const optionsArray = Object.entries(options)
+                .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                .map(([id, opt]) => ({ id, ...opt }));
+
+              return (
+                <div className="space-y-4">
+                  {/* Question */}
+                  <div>
+                    {currentQuestion.title && (
+                      <h3 className="font-semibold text-gray-800 mb-2">{currentQuestion.title}</h3>
+                    )}
+                    <div className="prose prose-sm max-w-none">
+                      <MarkdownRenderer content={currentQuestion.text} />
+                    </div>
+                  </div>
+
+                  {/* Options */}
+                  <div className="space-y-2">
+                    {optionsArray.map((option) => {
+                      const isCorrect = option.is_correct;
+                      const borderClass = showAnswers
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-300 bg-red-50'
+                        : 'border-gray-200';
+                      const indicatorClass = showAnswers
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-500'
+                          : 'border-red-300 bg-red-300'
+                        : 'border-gray-300';
+
+                      return (
+                        <div
+                          key={option.id}
+                          className={`p-3 rounded-lg border-2 ${borderClass}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className={`w-5 h-5 flex-shrink-0 mt-0.5 border-2 ${indicatorClass} ${
+                              currentQuestion.type === 'SINGLE' ? 'rounded-full' : 'rounded'
+                            }`} />
+                            <div className="flex-1 prose prose-sm max-w-none">
+                              <MarkdownRenderer content={option.text} />
+                              {showAnswers && option.explanation && (
+                                <p className="mt-1 text-sm text-gray-600 italic">
+                                  {option.explanation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Remove from test button */}
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        handleToggleQuestion(currentQuestion.id);
+                        // Stay on same index or go back if at end
+                        if (previewIndex >= selectedQuestionIds.length - 1 && previewIndex > 0) {
+                          setPreviewIndex(previewIndex - 1);
+                        }
+                      }}
+                    >
+                      Remove from Test
+                    </Button>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex justify-between pt-4 border-t">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPreviewIndex(i => Math.max(0, i - 1))}
+                      disabled={previewIndex === 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPreviewIndex(i => Math.min(selectedQuestionIds.length - 1, i + 1))}
+                      disabled={previewIndex === selectedQuestionIds.length - 1}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         )}
       </div>
 
