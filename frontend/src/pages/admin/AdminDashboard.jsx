@@ -10,7 +10,7 @@ import AnalyticsTab from './AnalyticsTab';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
-  const [activeTab, setActiveTab] = useState('tests');
+  const [activeTab, setActiveTab] = useState('questions');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -38,8 +38,8 @@ const AdminDashboard = () => {
   };
 
   const tabs = [
-    { id: 'tests', label: 'Tests' },
     { id: 'questions', label: 'Questions' },
+    { id: 'tests', label: 'Tests' },
     { id: 'assessments', label: 'Assessments' },
     { id: 'analytics', label: 'Analytics' }
   ];
