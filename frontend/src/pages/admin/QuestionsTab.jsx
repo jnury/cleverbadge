@@ -3,7 +3,6 @@ import { apiRequest } from '../../utils/api';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui/Toast';
 import Button from '../../components/ui/Button';
-import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import QuestionForm from './QuestionForm';
 import Modal from '../../components/ui/Modal';
@@ -27,13 +26,14 @@ const QuestionsTab = () => {
   const [previewSelections, setPreviewSelections] = useState([]); // Preview selected options
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sortOrder, setSortOrder] = useState(null); // null | 'asc' | 'desc'
-  const [bulkAction, setBulkAction] = useState(null); // null | 'delete' | 'changeAuthor' | 'addToTest'
+  const [bulkAction, setBulkAction] = useState(null); // null | 'delete' | 'changeAuthor' | 'addToTest' | 'changeVisibility'
   const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
   const [tests, setTests] = useState([]);
   const [users, setUsers] = useState([]);
   const [forceRemoveFromTests, setForceRemoveFromTests] = useState(false);
   const [selectedAuthorId, setSelectedAuthorId] = useState('');
   const [selectedTestId, setSelectedTestId] = useState('');
+  const [selectedVisibility, setSelectedVisibility] = useState('');
   const [successRates, setSuccessRates] = useState({});
 
   const { toasts, removeToast, showSuccess, showError } = useToast();
@@ -248,6 +248,31 @@ const QuestionsTab = () => {
     }
   };
 
+  const handleBulkChangeVisibility = async () => {
+    if (!selectedVisibility) {
+      showError('Please select a visibility');
+      return;
+    }
+
+    try {
+      const data = await apiRequest('/api/questions/bulk-change-visibility', {
+        method: 'POST',
+        body: JSON.stringify({
+          question_ids: Array.from(selectedIds),
+          visibility: selectedVisibility
+        })
+      });
+
+      showSuccess(`Updated visibility for ${data.updated} questions`);
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setSelectedVisibility('');
+      fetchQuestions();
+    } catch (error) {
+      showError(error.message || 'Failed to change visibility');
+    }
+  };
+
   const getSuccessRateBadge = (questionId) => {
     const rateData = successRates[questionId];
     if (!rateData || rateData.success_rate === null) {
@@ -349,12 +374,22 @@ const QuestionsTab = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Questions</h2>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Questions</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage your question bank
+            {selectedIds.size > 0 && (
+              <span className="ml-2 font-medium text-tech">
+                ({selectedIds.size} selected)
+              </span>
+            )}
+          </p>
+        </div>
         <div className="flex gap-3">
           {/* Bulk Actions Dropdown */}
           <div className="relative">
@@ -363,7 +398,7 @@ const QuestionsTab = () => {
               disabled={selectedIds.size === 0}
               onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
             >
-              Bulk Actions ▼
+              Bulk Actions
             </Button>
             {bulkDropdownOpen && selectedIds.size > 0 && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
@@ -378,6 +413,12 @@ const QuestionsTab = () => {
                   onClick={() => { setBulkAction('changeAuthor'); setBulkDropdownOpen(false); }}
                 >
                   Change author
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setBulkAction('changeVisibility'); setBulkDropdownOpen(false); }}
+                >
+                  Change visibility
                 </button>
                 <button
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -401,70 +442,63 @@ const QuestionsTab = () => {
       </div>
 
       {/* Filters */}
-      <Card>
-        <div className="flex gap-4 flex-wrap">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="ALL">All Types</option>
-              <option value="SINGLE">Single Choice</option>
-              <option value="MULTIPLE">Multiple Choice</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
-            <select
-              value={filterVisibility}
-              onChange={(e) => setFilterVisibility(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="ALL">All Visibility</option>
-              <option value="public">Public</option>
-              <option value="private">Private</option>
-              <option value="protected">Protected</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-            <select
-              value={filterAuthor}
-              onChange={(e) => setFilterAuthor(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="ALL">All Authors</option>
-              {authors.map(author => (
-                <option key={author.id} value={author.id}>{author.username}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search Tags</label>
-            <input
-              type="text"
-              value={searchTag}
-              onChange={(e) => setSearchTag(e.target.value)}
-              placeholder="Filter by tag..."
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            />
-          </div>
+      <div className="flex gap-4 items-end mb-4">
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="ALL">All Types</option>
+            <option value="SINGLE">Single Choice</option>
+            <option value="MULTIPLE">Multiple Choice</option>
+          </select>
         </div>
 
-        <div className="mt-2 text-sm text-gray-600">
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+          <select
+            value={filterVisibility}
+            onChange={(e) => setFilterVisibility(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="ALL">All Visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+            <option value="protected">Protected</option>
+          </select>
+        </div>
+
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+          <select
+            value={filterAuthor}
+            onChange={(e) => setFilterAuthor(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="ALL">All Authors</option>
+            {authors.map(author => (
+              <option key={author.id} value={author.id}>{author.username}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Search Tags</label>
+          <input
+            type="text"
+            value={searchTag}
+            onChange={(e) => setSearchTag(e.target.value)}
+            placeholder="Filter by tag..."
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          />
+        </div>
+
+        <div className="text-sm text-gray-600 ml-auto">
           Showing {sortedQuestions.length} of {questions.length} questions
-          {selectedIds.size > 0 && (
-            <span className="ml-2 font-medium text-tech">
-              ({selectedIds.size} selected)
-            </span>
-          )}
         </div>
-      </Card>
+      </div>
 
       {/* Questions Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -964,6 +998,49 @@ const QuestionsTab = () => {
                 disabled={!selectedTestId}
               >
                 Add to Test
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Change Visibility Modal */}
+      {bulkAction === 'changeVisibility' && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setBulkAction(null); setSelectedVisibility(''); }}
+          title={`Change Visibility for ${selectedIds.size} Questions`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Visibility
+              </label>
+              <select
+                value={selectedVisibility}
+                onChange={(e) => setSelectedVisibility(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">Select visibility...</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+                <option value="protected">Protected</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setBulkAction(null); setSelectedVisibility(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkChangeVisibility}
+                disabled={!selectedVisibility}
+              >
+                Change Visibility
               </Button>
             </div>
           </div>

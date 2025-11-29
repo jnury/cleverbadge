@@ -19,6 +19,9 @@ const TestsTab = () => {
   const [bulkVisibility, setBulkVisibility] = useState('');
   const [bulkAuthor, setBulkAuthor] = useState('');
   const [users, setUsers] = useState([]);
+  const [filterVisibility, setFilterVisibility] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [searchTitle, setSearchTitle] = useState('');
 
   useEffect(() => {
     loadTests();
@@ -231,6 +234,17 @@ const TestsTab = () => {
     );
   };
 
+  // Filter tests
+  const filteredTests = tests.filter(test => {
+    if (filterVisibility !== 'ALL' && test.visibility !== filterVisibility) return false;
+    if (filterStatus !== 'ALL') {
+      if (filterStatus === 'enabled' && !test.is_enabled) return false;
+      if (filterStatus === 'disabled' && test.is_enabled) return false;
+    }
+    if (searchTitle && !test.title.toLowerCase().includes(searchTitle.toLowerCase())) return false;
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -309,8 +323,53 @@ const TestsTab = () => {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex gap-4 items-end mb-4">
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+          <select
+            value={filterVisibility}
+            onChange={(e) => setFilterVisibility(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="ALL">All Visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+            <option value="protected">Protected</option>
+          </select>
+        </div>
+
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="ALL">All Status</option>
+            <option value="enabled">Enabled</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </div>
+
+        <div className="w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Search Title</label>
+          <input
+            type="text"
+            value={searchTitle}
+            onChange={(e) => setSearchTitle(e.target.value)}
+            placeholder="Filter by title..."
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          />
+        </div>
+
+        <div className="text-sm text-gray-600 ml-auto">
+          Showing {filteredTests.length} of {tests.length} tests
+        </div>
+      </div>
+
       {/* Tests Table */}
-      {tests.length === 0 ? (
+      {filteredTests.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600 mb-4">No tests yet</p>
           <Button onClick={() => handleOpenModal(null, 'settings')}>
@@ -325,8 +384,14 @@ const TestsTab = () => {
                 <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === tests.length && tests.length > 0}
-                    onChange={handleSelectAll}
+                    checked={selectedIds.size === filteredTests.length && filteredTests.length > 0}
+                    onChange={() => {
+                      if (selectedIds.size === filteredTests.length) {
+                        setSelectedIds(new Set());
+                      } else {
+                        setSelectedIds(new Set(filteredTests.map(t => t.id)));
+                      }
+                    }}
                     className="rounded border-gray-300"
                   />
                 </th>
@@ -351,7 +416,7 @@ const TestsTab = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {tests.map((test) => (
+              {filteredTests.map((test) => (
                 <tr key={test.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <input
@@ -363,7 +428,6 @@ const TestsTab = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{test.title}</div>
-                    <div className="text-xs text-gray-500">/t/{test.slug}</div>
                   </td>
                   <td className="px-4 py-3">
                     {getVisibilityBadge(test.visibility)}
@@ -424,7 +488,7 @@ const TestsTab = () => {
                       {/* Regenerate link icon */}
                       <button
                         onClick={() => setRegenerateConfirm(test)}
-                        className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                        className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded"
                         title="Regenerate link"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,10 +498,10 @@ const TestsTab = () => {
                       {/* Toggle enabled icon */}
                       <button
                         onClick={() => handleToggleEnabled(test)}
-                        className={`p-1.5 rounded ${
+                        className={`p-1.5 text-gray-500 rounded ${
                           test.is_enabled
-                            ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                            : 'text-gray-500 hover:text-green-600 hover:bg-gray-100'
+                            ? 'hover:text-red-600 hover:bg-red-50'
+                            : 'hover:text-green-600 hover:bg-green-50'
                         }`}
                         title={test.is_enabled ? 'Disable test' : 'Enable test'}
                       >

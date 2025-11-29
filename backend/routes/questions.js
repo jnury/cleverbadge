@@ -505,4 +505,31 @@ router.post('/bulk-change-author',
   }
 );
 
+// POST bulk change visibility
+router.post('/bulk-change-visibility',
+  authenticateToken,
+  body('question_ids').isArray({ min: 1 }).withMessage('question_ids must be a non-empty array'),
+  body('question_ids.*').isUUID().withMessage('Each question_id must be a valid UUID'),
+  body('visibility').isIn(['public', 'private', 'protected']).withMessage('visibility must be public, private, or protected'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { question_ids, visibility } = req.body;
+
+      // Update all questions
+      const result = await sql`
+        UPDATE ${sql(dbSchema)}.questions
+        SET visibility = ${visibility}, updated_at = NOW()
+        WHERE id = ANY(${question_ids}) AND is_archived = false
+        RETURNING id
+      `;
+
+      res.json({ updated: result.length });
+    } catch (error) {
+      console.error('Error bulk changing visibility:', error);
+      res.status(500).json({ error: 'Failed to bulk change visibility' });
+    }
+  }
+);
+
 export default router;

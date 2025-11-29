@@ -12,7 +12,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
     title: '',
     description: '',
     visibility: 'private',
-    is_enabled: false,
+    is_enabled: true,
     pass_threshold: 0,
     show_explanations: 'never',
     explanation_scope: 'selected_only'
@@ -46,7 +46,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
         title: '',
         description: '',
         visibility: 'private',
-        is_enabled: false,
+        is_enabled: true,
         pass_threshold: 0,
         show_explanations: 'never',
         explanation_scope: 'selected_only'
@@ -63,9 +63,9 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
     }
   }, [isOpen, initialTab]);
 
-  // Load all questions when Questions tab is activated
+  // Load all questions when Questions or Preview tab is activated
   useEffect(() => {
-    if (activeTab === 'questions' && allQuestions.length === 0) {
+    if ((activeTab === 'questions' || activeTab === 'preview') && allQuestions.length === 0) {
       loadQuestions();
     }
   }, [activeTab]);
@@ -588,13 +588,18 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
               </span>
             </div>
 
-            {selectedQuestionIds.length === 0 ? (
+            {questionsLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-gray-600">Loading questions...</p>
+              </div>
+            ) : selectedQuestionIds.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 No questions selected. Add questions in the Questions tab.
               </div>
             ) : (() => {
               const currentQuestion = allQuestions.find(q => q.id === selectedQuestionIds[previewIndex]);
-              if (!currentQuestion) return <div>Question not found</div>;
+              if (!currentQuestion) return <div className="text-center py-8 text-gray-500">Question not found</div>;
 
               const options = parseOptions(currentQuestion.options);
               const optionsArray = Object.entries(options)
@@ -633,8 +638,8 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                           key={option.id}
                           className={`p-3 rounded-lg border-2 ${borderClass}`}
                         >
-                          <div className="flex items-start gap-3">
-                            <span className={`w-5 h-5 flex-shrink-0 mt-0.5 border-2 ${indicatorClass} ${
+                          <div className="flex items-center gap-3">
+                            <span className={`w-5 h-5 flex-shrink-0 border-2 ${indicatorClass} ${
                               currentQuestion.type === 'SINGLE' ? 'rounded-full' : 'rounded'
                             }`} />
                             <div className="flex-1 prose prose-sm max-w-none">
@@ -652,33 +657,39 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                   </div>
 
                   {/* Navigation with Remove button */}
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPreviewIndex(i => Math.max(0, i - 1))}
-                      disabled={previewIndex === 0}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        handleToggleQuestion(currentQuestion.id);
-                        // Stay on same index or go back if at end
-                        if (previewIndex >= selectedQuestionIds.length - 1 && previewIndex > 0) {
-                          setPreviewIndex(previewIndex - 1);
-                        }
-                      }}
-                    >
-                      Remove from Test
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPreviewIndex(i => Math.min(selectedQuestionIds.length - 1, i + 1))}
-                      disabled={previewIndex === selectedQuestionIds.length - 1}
-                    >
-                      Next
-                    </Button>
+                  <div className="grid grid-cols-3 items-center py-2 border-t">
+                    <div className="justify-self-start">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setPreviewIndex(i => Math.max(0, i - 1))}
+                        disabled={previewIndex === 0}
+                      >
+                        Previous
+                      </Button>
+                    </div>
+                    <div className="justify-self-center">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          handleToggleQuestion(currentQuestion.id);
+                          // Stay on same index or go back if at end
+                          if (previewIndex >= selectedQuestionIds.length - 1 && previewIndex > 0) {
+                            setPreviewIndex(previewIndex - 1);
+                          }
+                        }}
+                      >
+                        Remove from Test
+                      </Button>
+                    </div>
+                    <div className="justify-self-end">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setPreviewIndex(i => Math.min(selectedQuestionIds.length - 1, i + 1))}
+                        disabled={previewIndex === selectedQuestionIds.length - 1}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
