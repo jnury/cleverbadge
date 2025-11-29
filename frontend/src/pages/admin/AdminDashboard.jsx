@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUrlParams } from '../../hooks/useUrlParams';
 import { logout, getCurrentUser } from '../../utils/api';
 import TestsTab from './TestsTab';
 import QuestionsTab from './QuestionsTab';
@@ -10,7 +11,16 @@ import AnalyticsTab from './AnalyticsTab';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
-  const [activeTab, setActiveTab] = useState('questions');
+
+  // All URL param keys for all tabs - used to clear on tab switch
+  const ALL_TAB_PARAMS = ['type', 'visibility', 'author', 'tag', 'sort', 'status', 'search', 'test'];
+  const VALID_TABS = ['questions', 'tests', 'assessments', 'analytics'];
+
+  const [urlParams, setParam, clearParams] = useUrlParams({ tab: 'questions' });
+
+  // Validate tab value
+  const activeTab = VALID_TABS.includes(urlParams.tab) ? urlParams.tab : 'questions';
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -112,7 +122,10 @@ const AdminDashboard = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  clearParams(ALL_TAB_PARAMS);
+                  setParam('tab', tab.id);
+                }}
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 aria-controls={`${tab.id}-panel`}
