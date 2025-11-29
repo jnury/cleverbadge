@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUrlParams } from '../../hooks/useUrlParams';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import TestModal from './TestModal';
@@ -19,9 +20,17 @@ const TestsTab = () => {
   const [bulkVisibility, setBulkVisibility] = useState('');
   const [bulkAuthor, setBulkAuthor] = useState('');
   const [users, setUsers] = useState([]);
-  const [filterVisibility, setFilterVisibility] = useState('ALL');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [searchTitle, setSearchTitle] = useState('');
+
+  // URL-synced filters
+  const [urlParams, setParam] = useUrlParams({
+    visibility: null,
+    status: null,
+    search: null
+  });
+
+  const filterVisibility = urlParams.visibility || 'ALL';
+  const filterStatus = urlParams.status || 'ALL';
+  const searchTitle = urlParams.search || '';
 
   useEffect(() => {
     loadTests();
@@ -329,7 +338,7 @@ const TestsTab = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
           <select
             value={filterVisibility}
-            onChange={(e) => setFilterVisibility(e.target.value)}
+            onChange={(e) => setParam('visibility', e.target.value === 'ALL' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="ALL">All Visibility</option>
@@ -343,7 +352,7 @@ const TestsTab = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => setParam('status', e.target.value === 'ALL' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="ALL">All Status</option>
@@ -357,7 +366,7 @@ const TestsTab = () => {
           <input
             type="text"
             value={searchTitle}
-            onChange={(e) => setSearchTitle(e.target.value)}
+            onChange={(e) => setParam('search', e.target.value || null)}
             placeholder="Filter by title..."
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           />
