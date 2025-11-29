@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUrlParams } from '../../hooks/useUrlParams';
 import { apiRequest } from '../../utils/api';
 import { useToast } from '../../hooks/useToast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -14,11 +15,21 @@ const AssessmentsTab = () => {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterTest, setFilterTest] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [sortBy, setSortBy] = useState('date-desc');
+
+  // URL-synced filters
+  const [urlParams, setParam] = useUrlParams({
+    test: null,
+    status: null,
+    sort: null
+  });
+
+  const filterTest = urlParams.test || '';
+  const filterStatus = urlParams.status || '';
+  const sortBy = urlParams.sort || 'date-desc';
+
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -58,6 +69,21 @@ const AssessmentsTab = () => {
   const formatScore = (score) => {
     if (score === null || score === undefined) return 'N/A';
     return `${Math.round(parseFloat(score))}%`;
+  };
+
+  const formatDuration = (startedAt, completedAt) => {
+    if (!completedAt) return 'N/A';
+    const start = new Date(startedAt);
+    const end = new Date(completedAt);
+    const diffMs = end - start;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+    if (diffMins >= 60) {
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return `${hours}h ${mins}m`;
+    }
+    return `${diffMins}m ${diffSecs}s`;
   };
 
   // Filter and sort assessments
@@ -108,7 +134,7 @@ const AssessmentsTab = () => {
       });
       showSuccess(`Deleted ${data.archived} assessment(s)`);
       setSelectedIds(new Set());
-      setShowBulkDeleteModal(false);
+      setBulkAction(null);
       loadData();
     } catch (error) {
       showError(error.message || 'Failed to delete assessments');
@@ -128,25 +154,47 @@ const AssessmentsTab = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Assessments</h2>
-          <p className="text-sm text-gray-500">
-            View all candidate assessment results
-          </p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Assessments</h2>
+            <p className="text-sm text-gray-500">
+              View all candidate assessment results
+            </p>
+          </div>
+          <div className="flex gap-3">
+            {/* Bulk Actions Dropdown */}
+            <div className="relative">
+              <Button
+                variant="secondary"
+                disabled={selectedIds.size === 0}
+                onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
+              >
+                Bulk Actions
+              </Button>
+              {bulkDropdownOpen && selectedIds.size > 0 && (
+                <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                  <button
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => { setBulkAction('delete'); setBulkDropdownOpen(false); }}
+                  >
+                    Delete selected
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">
           <select
             value={filterTest}
-            onChange={(e) => setFilterTest(e.target.value)}
+            onChange={(e) => setParam('test', e.target.value || null)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="">All Tests</option>
@@ -161,7 +209,7 @@ const AssessmentsTab = () => {
         <div className="w-44">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => setParam('status', e.target.value || null)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="">All Statuses</option>
@@ -173,7 +221,7 @@ const AssessmentsTab = () => {
         <div className="w-44">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => setParam('sort', e.target.value === 'date-desc' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="date-desc">Newest First</option>
@@ -184,24 +232,6 @@ const AssessmentsTab = () => {
             <option value="name-desc">Name (Z-A)</option>
           </select>
         </div>
-
-        {selectedIds.size > 0 && (
-          <div className="w-44">
-            <select
-              onChange={(e) => {
-                if (e.target.value === 'delete') {
-                  setShowBulkDeleteModal(true);
-                }
-                e.target.value = '';
-              }}
-              className="w-full h-10 border border-gray-300 rounded-md px-3"
-              defaultValue=""
-            >
-              <option value="" disabled>Bulk Actions ({selectedIds.size})</option>
-              <option value="delete">Delete</option>
-            </select>
-          </div>
-        )}
 
         <div className="text-sm text-gray-500">
           {filteredAndSortedAssessments.length} of {assessments.length} assessments
@@ -253,7 +283,7 @@ const AssessmentsTab = () => {
                     Started
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Completed
+                    Duration
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -286,13 +316,13 @@ const AssessmentsTab = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        className={`px-2 py-1 text-xs font-medium rounded ${
                           assessment.status === 'COMPLETED'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {assessment.status}
+                        {assessment.status === 'COMPLETED' ? 'Completed' : 'In Progress'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -310,7 +340,7 @@ const AssessmentsTab = () => {
                       {formatDate(assessment.started_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(assessment.completed_at)}
+                      {formatDuration(assessment.started_at, assessment.completed_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <Button
@@ -329,31 +359,31 @@ const AssessmentsTab = () => {
       </div>
 
       {/* Bulk Delete Confirmation Modal */}
-      <Modal
-        isOpen={showBulkDeleteModal}
-        onClose={() => setShowBulkDeleteModal(false)}
-        title="Delete Assessments"
-      >
-        <p className="text-gray-600 mb-6">
-          Are you sure you want to delete {selectedIds.size} assessment(s)?
-          This will remove them from the list but data will be preserved.
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => setShowBulkDeleteModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleBulkDelete}
-          >
-            Delete
-          </Button>
-        </div>
-      </Modal>
-    </div>
+      {bulkAction === 'delete' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setBulkAction(null)}
+          title={`Delete ${selectedIds.size} Assessment${selectedIds.size > 1 ? 's' : ''}`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you sure you want to delete {selectedIds.size} assessment{selectedIds.size > 1 ? 's' : ''}?
+              This will remove them from the list but data will be preserved.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setBulkAction(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleBulkDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      </div>
+    </>
   );
 };
 
