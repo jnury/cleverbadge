@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getTests, getQuestionAnalytics } from '../../utils/api';
 import { useUrlParams } from '../../hooks/useUrlParams';
+import SortableHeader from '../../components/ui/SortableHeader';
 
 const AnalyticsTab = () => {
   const [tests, setTests] = useState([]);
-  // URL-synced test selection
-  const [urlParams, setParam] = useUrlParams({ test: null });
+  // URL-synced test selection and sorting
+  const [urlParams, setParam] = useUrlParams({ test: null, sort: null });
   const selectedTestId = urlParams.test || '';
+  const sortOrder = urlParams.sort || 'success-asc'; // Default: hardest first
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [testsLoading, setTestsLoading] = useState(true);
@@ -68,6 +70,29 @@ const AnalyticsTab = () => {
     return 'Very Easy';
   };
 
+  // Sort question stats
+  const sortedQuestionStats = analytics?.question_stats ? [...analytics.question_stats].sort((a, b) => {
+    if (!sortOrder) return 0;
+    const [sortKey, sortDir] = sortOrder.split('-');
+    let comparison = 0;
+
+    switch (sortKey) {
+      case 'question':
+        comparison = (a.question_text || '').localeCompare(b.question_text || '');
+        break;
+      case 'success':
+        comparison = (a.success_rate || 0) - (b.success_rate || 0);
+        break;
+      case 'attempts':
+        comparison = (a.total_attempts || 0) - (b.total_attempts || 0);
+        break;
+      default:
+        return 0;
+    }
+
+    return sortDir === 'asc' ? comparison : -comparison;
+  }) : [];
+
   if (testsLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -81,9 +106,9 @@ const AnalyticsTab = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Analytics</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Question Analytics</h2>
           <p className="text-sm text-gray-500">
-            View success rates for each question. Questions are sorted by difficulty (hardest first).
+            View success rates for each question. Click column headers to sort.
           </p>
         </div>
       </div>
@@ -91,6 +116,9 @@ const AnalyticsTab = () => {
       {/* Test Selector */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-64">
+          <label htmlFor="test-select" className="block text-sm font-medium text-gray-700 mb-1">
+            Select a Test
+          </label>
           <select
             id="test-select"
             value={selectedTestId}
@@ -192,31 +220,42 @@ const AnalyticsTab = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Question
-                    </th>
+                    <SortableHeader
+                      label="Question"
+                      sortKey="question"
+                      currentSort={sortOrder}
+                      onSort={(value) => setParam('sort', value)}
+                    />
                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Type
                     </th>
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Weight
                     </th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Attempts
-                    </th>
+                    <SortableHeader
+                      label="Attempts"
+                      sortKey="attempts"
+                      currentSort={sortOrder}
+                      onSort={(value) => setParam('sort', value)}
+                      className="text-center"
+                    />
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Correct
                     </th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Success Rate
-                    </th>
+                    <SortableHeader
+                      label="Success Rate"
+                      sortKey="success"
+                      currentSort={sortOrder}
+                      onSort={(value) => setParam('sort', value)}
+                      className="text-center"
+                    />
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Difficulty
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {analytics.question_stats.map((stat, index) => (
+                  {sortedQuestionStats.map((stat, index) => (
                     <tr key={stat.question_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-4 py-4 text-sm text-gray-900">
                         <div className="max-w-md truncate" title={stat.question_text}>

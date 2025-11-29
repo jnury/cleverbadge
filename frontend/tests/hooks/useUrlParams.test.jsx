@@ -89,4 +89,21 @@ describe('useUrlParams Hook', () => {
     expect(result.current[0].type).toBe(null);
     expect(result.current[0].visibility).toBe(null);
   });
+
+  it('clearParams can set new params while clearing others', () => {
+    const { result } = renderHook(
+      () => useUrlParams({ tab: 'questions', type: null, visibility: null, tag: null }),
+      { wrapper: createWrapper(['/?tab=questions&type=SINGLE&visibility=public&tag=math']) }
+    );
+
+    // Clear filters and switch tab atomically
+    act(() => {
+      result.current[2](['type', 'visibility', 'tag'], { tab: 'tests' });
+    });
+
+    expect(result.current[0].tab).toBe('tests');
+    expect(result.current[0].type).toBe(null);
+    expect(result.current[0].visibility).toBe(null);
+    expect(result.current[0].tag).toBe(null);
+  });
 });

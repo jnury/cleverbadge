@@ -47,16 +47,24 @@ export const useUrlParams = (defaults) => {
     }, { replace: true });
   }, [setSearchParams, defaults]);
 
-  // Clear multiple params at once
-  const clearParams = useCallback((keys) => {
+  // Clear multiple params at once, optionally setting new values
+  const clearParams = useCallback((keys, newParams = {}) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       for (const key of keys) {
         next.delete(key);
       }
+      // Set any new params after clearing
+      for (const [key, value] of Object.entries(newParams)) {
+        if (value === null || value === '' || value === defaults[key]) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, defaults]);
 
   return [params, setParam, clearParams];
 };

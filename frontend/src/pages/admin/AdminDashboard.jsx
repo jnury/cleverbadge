@@ -123,8 +123,7 @@ const AdminDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => {
-                  clearParams(ALL_TAB_PARAMS);
-                  setParam('tab', tab.id);
+                  clearParams(ALL_TAB_PARAMS, { tab: tab.id });
                 }}
                 role="tab"
                 aria-selected={activeTab === tab.id}

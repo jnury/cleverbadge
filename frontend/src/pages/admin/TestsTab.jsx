@@ -3,6 +3,7 @@ import { useUrlParams } from '../../hooks/useUrlParams';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import TestModal from './TestModal';
+import SortableHeader from '../../components/ui/SortableHeader';
 import { apiRequest } from '../../utils/api';
 
 const TestsTab = () => {
@@ -25,12 +26,14 @@ const TestsTab = () => {
   const [urlParams, setParam] = useUrlParams({
     visibility: null,
     status: null,
-    search: null
+    search: null,
+    sort: null
   });
 
   const filterVisibility = urlParams.visibility || 'ALL';
   const filterStatus = urlParams.status || 'ALL';
   const searchTitle = urlParams.search || '';
+  const sortOrder = urlParams.sort || null;
 
   useEffect(() => {
     loadTests();
@@ -254,6 +257,30 @@ const TestsTab = () => {
     return true;
   });
 
+  // Sort tests
+  const sortedTests = [...filteredTests].sort((a, b) => {
+    if (!sortOrder) return 0;
+
+    const [sortKey, sortDir] = sortOrder.split('-');
+    let comparison = 0;
+
+    switch (sortKey) {
+      case 'title':
+        comparison = (a.title || '').localeCompare(b.title || '');
+        break;
+      case 'questions':
+        comparison = (a.question_count || 0) - (b.question_count || 0);
+        break;
+      case 'threshold':
+        comparison = (a.pass_threshold || 0) - (b.pass_threshold || 0);
+        break;
+      default:
+        return 0;
+    }
+
+    return sortDir === 'asc' ? comparison : -comparison;
+  });
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -373,12 +400,12 @@ const TestsTab = () => {
         </div>
 
         <div className="text-sm text-gray-600 ml-auto">
-          Showing {filteredTests.length} of {tests.length} tests
+          Showing {sortedTests.length} of {tests.length} tests
         </div>
       </div>
 
       {/* Tests Table */}
-      {filteredTests.length === 0 ? (
+      {sortedTests.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600 mb-4">No tests yet</p>
           <Button onClick={() => handleOpenModal(null, 'settings')}>
@@ -393,29 +420,38 @@ const TestsTab = () => {
                 <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === filteredTests.length && filteredTests.length > 0}
+                    checked={selectedIds.size === sortedTests.length && sortedTests.length > 0}
                     onChange={() => {
-                      if (selectedIds.size === filteredTests.length) {
+                      if (selectedIds.size === sortedTests.length) {
                         setSelectedIds(new Set());
                       } else {
-                        setSelectedIds(new Set(filteredTests.map(t => t.id)));
+                        setSelectedIds(new Set(sortedTests.map(t => t.id)));
                       }
                     }}
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
+                <SortableHeader
+                  label="Title"
+                  sortKey="title"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Visibility
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Questions
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Threshold
-                </th>
+                <SortableHeader
+                  label="Questions"
+                  sortKey="questions"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
+                <SortableHeader
+                  label="Threshold"
+                  sortKey="threshold"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -425,7 +461,7 @@ const TestsTab = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTests.map((test) => (
+              {sortedTests.map((test) => (
                 <tr key={test.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <input

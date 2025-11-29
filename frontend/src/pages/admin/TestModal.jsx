@@ -443,23 +443,6 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                 </select>
               </div>
             )}
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_enabled"
-                name="is_enabled"
-                checked={formData.is_enabled}
-                onChange={(e) => {
-                  setFormData(prev => ({ ...prev, is_enabled: e.target.checked }));
-                  setHasChanges(true);
-                }}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <label htmlFor="is_enabled" className="ml-2 block text-sm text-gray-700">
-                Enable test (allow candidates to take it)
-              </label>
-            </div>
           </div>
         )}
         {activeTab === 'questions' && (

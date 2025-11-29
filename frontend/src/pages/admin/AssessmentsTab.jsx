@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUrlParams } from '../../hooks/useUrlParams';
 import { apiRequest } from '../../utils/api';
 import { useToast } from '../../hooks/useToast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import SortableHeader from '../../components/ui/SortableHeader';
 import { ToastContainer } from '../../components/ui/Toast';
 
 const AssessmentsTab = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toasts, removeToast, showSuccess, showError } = useToast();
   const [assessments, setAssessments] = useState([]);
   const [tests, setTests] = useState([]);
@@ -25,7 +27,7 @@ const AssessmentsTab = () => {
 
   const filterTest = urlParams.test || '';
   const filterStatus = urlParams.status || '';
-  const sortBy = urlParams.sort || 'date-desc';
+  const sortBy = urlParams.sort || 'started-desc';
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
@@ -94,22 +96,34 @@ const AssessmentsTab = () => {
       return true;
     })
     .sort((a, b) => {
-      switch (sortBy) {
-        case 'date-desc':
-          return new Date(b.started_at) - new Date(a.started_at);
-        case 'date-asc':
-          return new Date(a.started_at) - new Date(b.started_at);
-        case 'score-desc':
-          return (b.score_percentage || 0) - (a.score_percentage || 0);
-        case 'score-asc':
-          return (a.score_percentage || 0) - (b.score_percentage || 0);
-        case 'name-asc':
-          return a.candidate_name.localeCompare(b.candidate_name);
-        case 'name-desc':
-          return b.candidate_name.localeCompare(a.candidate_name);
+      if (!sortBy) return 0;
+
+      const [sortKey, sortDir] = sortBy.split('-');
+      let comparison = 0;
+
+      switch (sortKey) {
+        case 'candidate':
+          comparison = (a.candidate_name || '').localeCompare(b.candidate_name || '');
+          break;
+        case 'score':
+          comparison = (a.score_percentage || 0) - (b.score_percentage || 0);
+          break;
+        case 'started':
+          comparison = new Date(a.started_at) - new Date(b.started_at);
+          break;
+        case 'duration': {
+          const getDuration = (assessment) => {
+            if (!assessment.completed_at) return -1;
+            return new Date(assessment.completed_at) - new Date(assessment.started_at);
+          };
+          comparison = getDuration(a) - getDuration(b);
+          break;
+        }
         default:
           return 0;
       }
+
+      return sortDir === 'asc' ? comparison : -comparison;
     });
 
   const toggleSelection = (id) => {
@@ -192,7 +206,11 @@ const AssessmentsTab = () => {
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">
+          <label htmlFor="filter-test" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Test
+          </label>
           <select
+            id="filter-test"
             value={filterTest}
             onChange={(e) => setParam('test', e.target.value || null)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
@@ -207,7 +225,11 @@ const AssessmentsTab = () => {
         </div>
 
         <div className="w-44">
+          <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Status
+          </label>
           <select
+            id="filter-status"
             value={filterStatus}
             onChange={(e) => setParam('status', e.target.value || null)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
@@ -218,23 +240,8 @@ const AssessmentsTab = () => {
           </select>
         </div>
 
-        <div className="w-44">
-          <select
-            value={sortBy}
-            onChange={(e) => setParam('sort', e.target.value === 'date-desc' ? null : e.target.value)}
-            className="w-full h-10 border border-gray-300 rounded-md px-3"
-          >
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="score-desc">Highest Score</option>
-            <option value="score-asc">Lowest Score</option>
-            <option value="name-asc">Name (A-Z)</option>
-            <option value="name-desc">Name (Z-A)</option>
-          </select>
-        </div>
-
-        <div className="text-sm text-gray-500">
-          {filteredAndSortedAssessments.length} of {assessments.length} assessments
+        <div className="text-sm text-gray-500 self-end pb-2">
+          Showing {filteredAndSortedAssessments.length} of {assessments.length} assessments
         </div>
       </div>
 
@@ -267,24 +274,40 @@ const AssessmentsTab = () => {
                       className="rounded border-gray-300"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Candidate
-                  </th>
+                  <SortableHeader
+                    label="Candidate"
+                    sortKey="candidate"
+                    currentSort={sortBy}
+                    onSort={(value) => setParam('sort', value)}
+                    className="px-6"
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Test
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Score
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Started
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duration
-                  </th>
+                  <SortableHeader
+                    label="Score"
+                    sortKey="score"
+                    currentSort={sortBy}
+                    onSort={(value) => setParam('sort', value)}
+                    className="px-6"
+                  />
+                  <SortableHeader
+                    label="Started"
+                    sortKey="started"
+                    currentSort={sortBy}
+                    onSort={(value) => setParam('sort', value)}
+                    className="px-6"
+                  />
+                  <SortableHeader
+                    label="Duration"
+                    sortKey="duration"
+                    currentSort={sortBy}
+                    onSort={(value) => setParam('sort', value)}
+                    className="px-6"
+                  />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -345,7 +368,9 @@ const AssessmentsTab = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <Button
                         size="sm"
-                        onClick={() => navigate(`/admin/assessment/${assessment.id}`)}
+                        onClick={() => navigate(`/admin/assessment/${assessment.id}`, {
+                          state: { from: `/admin${location.search}` }
+                        })}
                       >
                         View Details
                       </Button>
