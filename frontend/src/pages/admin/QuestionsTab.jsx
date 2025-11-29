@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUrlParams } from '../../hooks/useUrlParams';
 import { apiRequest } from '../../utils/api';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui/Toast';
@@ -12,11 +13,24 @@ import MarkdownRenderer from '../../components/MarkdownRenderer';
 const QuestionsTab = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('ALL');
-  const [filterVisibility, setFilterVisibility] = useState('ALL');
-  const [filterAuthor, setFilterAuthor] = useState('ALL');
+
+  // URL-synced filters
+  const [urlParams, setParam] = useUrlParams({
+    type: null,
+    visibility: null,
+    author: null,
+    tag: null,
+    sort: null
+  });
+
+  // Map URL params to filter values (null -> 'ALL' for dropdowns)
+  const filterType = urlParams.type || 'ALL';
+  const filterVisibility = urlParams.visibility || 'ALL';
+  const filterAuthor = urlParams.author || 'ALL';
+  const searchTag = urlParams.tag || '';
+  const sortOrder = urlParams.sort || null;
+
   const [authors, setAuthors] = useState([]);
-  const [searchTag, setSearchTag] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
@@ -25,7 +39,6 @@ const QuestionsTab = () => {
   const [previewData, setPreviewData] = useState(null); // Live preview data
   const [previewSelections, setPreviewSelections] = useState([]); // Preview selected options
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [sortOrder, setSortOrder] = useState(null); // null | 'asc' | 'desc'
   const [bulkAction, setBulkAction] = useState(null); // null | 'delete' | 'changeAuthor' | 'addToTest' | 'changeVisibility'
   const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
   const [tests, setTests] = useState([]);
@@ -161,11 +174,8 @@ const QuestionsTab = () => {
   };
 
   const handleSortToggle = () => {
-    setSortOrder(current => {
-      if (current === null) return 'asc';
-      if (current === 'asc') return 'desc';
-      return null;
-    });
+    const next = sortOrder === null ? 'asc' : sortOrder === 'asc' ? 'desc' : null;
+    setParam('sort', next);
   };
 
   const handleBulkDelete = async () => {
@@ -447,7 +457,7 @@ const QuestionsTab = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => setParam('type', e.target.value === 'ALL' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="ALL">All Types</option>
@@ -460,7 +470,7 @@ const QuestionsTab = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
           <select
             value={filterVisibility}
-            onChange={(e) => setFilterVisibility(e.target.value)}
+            onChange={(e) => setParam('visibility', e.target.value === 'ALL' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="ALL">All Visibility</option>
@@ -474,7 +484,7 @@ const QuestionsTab = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
           <select
             value={filterAuthor}
-            onChange={(e) => setFilterAuthor(e.target.value)}
+            onChange={(e) => setParam('author', e.target.value === 'ALL' ? null : e.target.value)}
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           >
             <option value="ALL">All Authors</option>
@@ -489,7 +499,7 @@ const QuestionsTab = () => {
           <input
             type="text"
             value={searchTag}
-            onChange={(e) => setSearchTag(e.target.value)}
+            onChange={(e) => setParam('tag', e.target.value || null)}
             placeholder="Filter by tag..."
             className="w-full h-10 border border-gray-300 rounded-md px-3"
           />
