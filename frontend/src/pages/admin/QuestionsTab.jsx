@@ -9,6 +9,7 @@ import QuestionForm from './QuestionForm';
 import Modal from '../../components/ui/Modal';
 import YamlUpload from '../../components/YamlUpload';
 import MarkdownRenderer from '../../components/MarkdownRenderer';
+import SortableHeader from '../../components/ui/SortableHeader';
 
 const QuestionsTab = () => {
   const [questions, setQuestions] = useState([]);
@@ -171,11 +172,6 @@ const QuestionsTab = () => {
       newSelected.add(id);
     }
     setSelectedIds(newSelected);
-  };
-
-  const handleSortToggle = () => {
-    const next = sortOrder === null ? 'asc' : sortOrder === 'asc' ? 'desc' : null;
-    setParam('sort', next);
   };
 
   const handleBulkDelete = async () => {
@@ -375,8 +371,28 @@ const QuestionsTab = () => {
 
   const sortedQuestions = [...filteredQuestions].sort((a, b) => {
     if (!sortOrder) return 0;
-    const comparison = (a.title || '').localeCompare(b.title || '');
-    return sortOrder === 'asc' ? comparison : -comparison;
+
+    const [sortKey, sortDir] = sortOrder.split('-');
+    let comparison = 0;
+
+    switch (sortKey) {
+      case 'title':
+        comparison = (a.title || '').localeCompare(b.title || '');
+        break;
+      case 'author':
+        comparison = (a.author_username || '').localeCompare(b.author_username || '');
+        break;
+      case 'success': {
+        const rateA = successRates[a.id]?.success_rate ?? -1;
+        const rateB = successRates[b.id]?.success_rate ?? -1;
+        comparison = rateA - rateB;
+        break;
+      }
+      default:
+        return 0;
+    }
+
+    return sortDir === 'asc' ? comparison : -comparison;
   });
 
   if (loading) {
@@ -528,27 +544,33 @@ const QuestionsTab = () => {
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={handleSortToggle}
-                >
-                  Title {sortOrder === 'asc' ? '▲' : sortOrder === 'desc' ? '▼' : ''}
-                </th>
+                <SortableHeader
+                  label="Title"
+                  sortKey="title"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Visibility
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Author
-                </th>
+                <SortableHeader
+                  label="Author"
+                  sortKey="author"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tags
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Success
-                </th>
+                <SortableHeader
+                  label="Success"
+                  sortKey="success"
+                  currentSort={sortOrder}
+                  onSort={(value) => setParam('sort', value)}
+                />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>

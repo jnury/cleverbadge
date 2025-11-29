@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { apiRequest } from '../../utils/api';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 
 const AssessmentDetail = () => {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Store the referrer URL from location state, or default to assessments tab
+  const backUrl = location.state?.from || '/admin?tab=assessments';
   const [assessment, setAssessment] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +48,21 @@ const AssessmentDetail = () => {
     });
   };
 
+  const formatDuration = (startedAt, completedAt) => {
+    if (!startedAt || !completedAt) return null;
+    const start = new Date(startedAt);
+    const end = new Date(completedAt);
+    const diffMs = end - start;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+    if (diffMins >= 60) {
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return `${hours}h ${mins}m`;
+    }
+    return `${diffMins}m ${diffSecs}s`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -57,8 +77,8 @@ const AssessmentDetail = () => {
         <Card className="bg-red-50 border border-red-200">
           <h2 className="text-xl font-bold text-red-800 mb-2">Error</h2>
           <p className="text-red-700 mb-4">{error}</p>
-          <Button variant="secondary" onClick={() => navigate('/admin')}>
-            Back to Dashboard
+          <Button variant="secondary" onClick={() => navigate(backUrl)}>
+            Back to Assessments
           </Button>
         </Card>
       </div>
@@ -71,7 +91,7 @@ const AssessmentDetail = () => {
         <Card>
           <p className="text-center text-gray-500 py-8">Assessment not found</p>
           <div className="text-center">
-            <Button variant="secondary" onClick={() => navigate('/admin')}>
+            <Button variant="secondary" onClick={() => navigate(backUrl)}>
               Back to Dashboard
             </Button>
           </div>
@@ -86,7 +106,7 @@ const AssessmentDetail = () => {
       <div className="mb-6">
         <Button
           variant="secondary"
-          onClick={() => navigate('/admin')}
+          onClick={() => navigate(backUrl)}
           className="mb-4"
         >
           <span className="mr-2">←</span> Back to Assessments
@@ -122,7 +142,7 @@ const AssessmentDetail = () => {
             </div>
             <div>
               <span className="block text-sm font-medium text-gray-600 mb-1">Status</span>
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+              <span className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
                 assessment.status === 'COMPLETED'
                   ? 'bg-green-100 text-green-800'
                   : 'bg-yellow-100 text-yellow-800'
@@ -131,8 +151,15 @@ const AssessmentDetail = () => {
               </span>
             </div>
             <div>
-              <span className="block text-sm font-medium text-gray-600 mb-1">Completed</span>
-              <p className="text-sm text-gray-900">{formatDate(assessment.completed_at)}</p>
+              <span className="block text-sm font-medium text-gray-600 mb-1">Date</span>
+              <p className="text-lg text-gray-900">
+                {formatDate(assessment.started_at)}
+                {assessment.completed_at && (
+                  <span className="text-gray-500 ml-1">
+                    ({formatDuration(assessment.started_at, assessment.completed_at)})
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </Card>
@@ -162,7 +189,7 @@ const AssessmentDetail = () => {
                   <span className="text-sm font-semibold text-gray-500">
                     Question {index + 1}
                   </span>
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded text-sm font-semibold ${
                     answer.is_correct
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
@@ -173,61 +200,79 @@ const AssessmentDetail = () => {
                     Weight: {answer.weight}
                   </span>
                 </div>
-                <p className="text-gray-900 font-medium text-lg">
-                  {answer.question_text}
-                </p>
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownRenderer content={answer.question_text} />
+                </div>
               </div>
 
               {/* Answer options */}
               <div className="space-y-2">
-                {answer.options.map((option, optIndex) => {
-                  const isSelected = answer.selected_options.includes(option);
-                  const isCorrect = answer.correct_answers.includes(option);
+                {(() => {
+                  // Convert options object to array format
+                  const optionsArray = Object.entries(answer.options || {})
+                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                    .map(([id, opt]) => ({
+                      id,
+                      text: opt.text,
+                      is_correct: opt.is_correct
+                    }));
 
-                  let borderColor = 'border-gray-200';
-                  let bgColor = 'bg-white';
-                  let textColor = 'text-gray-800';
+                  // Get selected option IDs as strings
+                  const selectedIds = (answer.selected_options || []).map(String);
+                  // Use correct_option_ids from backend
+                  const correctIds = (answer.correct_option_ids || []).map(String);
 
-                  if (isSelected && isCorrect) {
-                    // Correctly selected
-                    borderColor = 'border-green-500';
-                    bgColor = 'bg-green-50';
-                    textColor = 'text-green-900';
-                  } else if (isSelected && !isCorrect) {
-                    // Incorrectly selected
-                    borderColor = 'border-red-500';
-                    bgColor = 'bg-red-50';
-                    textColor = 'text-red-900';
-                  } else if (!isSelected && isCorrect) {
-                    // Correct but not selected (missed)
-                    borderColor = 'border-green-300';
-                    bgColor = 'bg-green-50';
-                    textColor = 'text-green-800';
-                  }
+                  return optionsArray.map((option) => {
+                    const isSelected = selectedIds.includes(option.id);
+                    const isCorrect = correctIds.includes(option.id);
 
-                  return (
-                    <div
-                      key={optIndex}
-                      className={`p-3 border-2 rounded-md ${borderColor} ${bgColor}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`${textColor} font-medium`}>{option}</span>
-                        <div className="flex gap-2">
-                          {isSelected && (
-                            <span className="text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                              Selected
-                            </span>
-                          )}
-                          {isCorrect && (
-                            <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-800 rounded">
-                              Correct Answer
-                            </span>
-                          )}
+                    let borderColor = 'border-gray-200';
+                    let bgColor = 'bg-white';
+                    let textColor = 'text-gray-800';
+
+                    if (isSelected && isCorrect) {
+                      // Correctly selected
+                      borderColor = 'border-green-500';
+                      bgColor = 'bg-green-50';
+                      textColor = 'text-green-900';
+                    } else if (isSelected && !isCorrect) {
+                      // Incorrectly selected
+                      borderColor = 'border-red-500';
+                      bgColor = 'bg-red-50';
+                      textColor = 'text-red-900';
+                    } else if (!isSelected && isCorrect) {
+                      // Correct but not selected (missed)
+                      borderColor = 'border-green-300';
+                      bgColor = 'bg-green-50';
+                      textColor = 'text-green-800';
+                    }
+
+                    return (
+                      <div
+                        key={option.id}
+                        className={`p-3 border-2 rounded-md ${borderColor} ${bgColor}`}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className={`flex-1 ${textColor} font-medium prose prose-sm max-w-none`}>
+                            <MarkdownRenderer content={option.text} />
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {isSelected && (
+                              <span className="text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                Selected
+                              </span>
+                            )}
+                            {isCorrect && (
+                              <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-800 rounded">
+                                Correct Answer
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
 
               {/* Question type indicator */}

@@ -40,12 +40,10 @@ test.describe('Assessments List', () => {
     // Check filter controls exist
     await expect(page.locator('label:has-text("Filter by Test")')).toBeVisible();
     await expect(page.locator('label:has-text("Filter by Status")')).toBeVisible();
-    await expect(page.locator('label:has-text("Sort by")')).toBeVisible();
 
-    // Check dropdowns exist
-    await expect(page.locator('select').nth(0)).toBeVisible(); // Test filter
-    await expect(page.locator('select').nth(1)).toBeVisible(); // Status filter
-    await expect(page.locator('select').nth(2)).toBeVisible(); // Sort
+    // Check filter dropdowns exist (Sort is now via column headers)
+    await expect(page.locator('select#filter-test')).toBeVisible();
+    await expect(page.locator('select#filter-status')).toBeVisible();
   });
 
   test('should filter by status', async ({ page }) => {
@@ -55,8 +53,8 @@ test.describe('Assessments List', () => {
     // Wait for data to load
     await page.waitForTimeout(500);
 
-    // Select COMPLETED status
-    const statusFilter = page.locator('select').nth(1);
+    // Select COMPLETED status using the id
+    const statusFilter = page.locator('select#filter-status');
     await statusFilter.selectOption('COMPLETED');
 
     // Filter should be applied (value should be set)
@@ -72,7 +70,7 @@ test.describe('Assessments List', () => {
     await page.waitForTimeout(500);
 
     // Check if test filter dropdown has options
-    const testFilter = page.locator('select').nth(0);
+    const testFilter = page.locator('select#filter-test');
     await expect(testFilter).toBeVisible();
 
     // Check for "All Tests" option
@@ -80,25 +78,38 @@ test.describe('Assessments List', () => {
     expect(options).toContain('All Tests');
   });
 
-  test('should change sort order', async ({ page }) => {
+  test('should change sort order by clicking column headers', async ({ page }) => {
     await login(page);
     await page.click('button:has-text("Assessments")');
 
     // Wait for data to load
     await page.waitForTimeout(500);
 
-    // Select sort option
-    const sortSelect = page.locator('select').nth(2);
-    await sortSelect.selectOption('score-desc');
+    // Check if there are assessments (sorting headers visible in table)
+    const pageContent = await page.textContent('body');
+    if (pageContent.includes('Showing') && !pageContent.includes('Showing 0 of 0')) {
+      // Click Score header to sort - first click should show ▲ (asc)
+      const scoreHeader = page.locator('th:has-text("Score")');
+      await scoreHeader.click();
+      await page.waitForTimeout(100);
 
-    // Verify selection
-    const selectedValue = await sortSelect.inputValue();
-    expect(selectedValue).toBe('score-desc');
+      // Check that sort indicator appears
+      const headerText = await scoreHeader.textContent();
+      expect(headerText).toContain('▲');
 
-    // Try another sort option
-    await sortSelect.selectOption('name-asc');
-    const newValue = await sortSelect.inputValue();
-    expect(newValue).toBe('name-asc');
+      // Click again for descending
+      await scoreHeader.click();
+      await page.waitForTimeout(100);
+      const headerText2 = await scoreHeader.textContent();
+      expect(headerText2).toContain('▼');
+
+      // Click a third time to clear sort
+      await scoreHeader.click();
+      await page.waitForTimeout(100);
+      const headerText3 = await scoreHeader.textContent();
+      expect(headerText3).not.toContain('▲');
+      expect(headerText3).not.toContain('▼');
+    }
   });
 
   test('should display table headers when assessments exist', async ({ page }) => {
@@ -117,7 +128,7 @@ test.describe('Assessments List', () => {
       await expect(page.locator('th:has-text("Status")')).toBeVisible();
       await expect(page.locator('th:has-text("Score")')).toBeVisible();
       await expect(page.locator('th:has-text("Started")')).toBeVisible();
-      await expect(page.locator('th:has-text("Completed")')).toBeVisible();
+      await expect(page.locator('th:has-text("Duration")')).toBeVisible();
     }
   });
 

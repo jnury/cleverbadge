@@ -26,10 +26,9 @@ test.describe('Tests Management', () => {
     // Modal should open - wait for modal content to be visible
     await page.waitForSelector('h3:has-text("Create Test")');
 
-    // Fill in form (slug is auto-generated now)
+    // Fill in form (slug is auto-generated now, is_enabled defaults to true)
     await page.fill('input[name="title"]', 'E2E Test Assessment');
     await page.fill('textarea[name="description"]', 'Test description for E2E');
-    await page.check('input[name="is_enabled"]');
 
     // Click the Save button in modal footer (more specific selector)
     await page.locator('button:has-text("Create Test")').last().click();

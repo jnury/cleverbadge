@@ -27,8 +27,7 @@ router.get('/',
       const { test_id, status } = req.query;
 
       // Build dynamic query with filters
-      // Always filter out archived assessments
-      let conditions = [sql`a.is_archived = false`];
+      let conditions = [sql`1=1`]; // Always true - placeholder for dynamic conditions
 
       if (test_id) {
         conditions.push(sql`a.test_id = ${test_id}`);
