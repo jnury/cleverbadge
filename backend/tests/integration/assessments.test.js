@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getTestDb, getTestSchema } from '../setup.js';
+import { getCorrectOptionIds } from '../../utils/options.js';
 
 describe('Assessments Integration Tests', () => {
   const sql = getTestDb();
@@ -83,13 +84,13 @@ describe('Assessments Integration Tests', () => {
         (${assessmentId}, '550e8400-e29b-41d4-a716-446655440012', '[1,3]')
     `;
 
-    // Get all answers with correct answers and weights
+    // Get all answers with options and weights
     const answers = await sql`
       SELECT
         aa.id,
         aa.question_id,
         aa.selected_options,
-        q.correct_answers,
+        q.options,
         q.type,
         tq.weight
       FROM ${sql(schema)}.assessment_answers aa
@@ -104,9 +105,11 @@ describe('Assessments Integration Tests', () => {
 
     for (const answer of answers) {
       maxScore += answer.weight;
+      // Get correct answers from options using utility function
+      const correctAnswers = getCorrectOptionIds(answer.options).map(Number);
       // Simple correctness check
       const correct = JSON.stringify(answer.selected_options.sort()) ===
-                      JSON.stringify(answer.correct_answers.sort());
+                      JSON.stringify(correctAnswers.sort());
       if (correct) {
         totalScore += answer.weight;
       }

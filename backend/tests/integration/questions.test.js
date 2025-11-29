@@ -20,15 +20,19 @@ describe('Questions Integration Tests', () => {
     const title = 'Addition Test Question';
     const text = 'What is 3 + 3?';
     const type = 'SINGLE';
-    const options = JSON.stringify(['5', '6', '7', '8']);
-    const correctAnswers = JSON.stringify([1]);
+    const options = JSON.stringify({
+      "0": { text: "5", is_correct: false },
+      "1": { text: "6", is_correct: true },
+      "2": { text: "7", is_correct: false },
+      "3": { text: "8", is_correct: false }
+    });
     const tags = JSON.stringify(['math', 'test']);
     const authorId = '550e8400-e29b-41d4-a716-446655440001'; // testadmin
     const visibility = 'private';
 
     const result = await sql`
-      INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
-      VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
+      INSERT INTO ${sql(schema)}.questions (title, text, type, options, tags, author_id, visibility)
+      VALUES (${title}, ${text}, ${type}, ${options}, ${tags}, ${authorId}, ${visibility})
       RETURNING *
     `;
 
@@ -43,15 +47,11 @@ describe('Questions Integration Tests', () => {
     const storedOptions = typeof result[0].options === 'string'
       ? JSON.parse(result[0].options)
       : result[0].options;
-    const storedCorrectAnswers = typeof result[0].correct_answers === 'string'
-      ? JSON.parse(result[0].correct_answers)
-      : result[0].correct_answers;
     const storedTags = typeof result[0].tags === 'string'
       ? JSON.parse(result[0].tags)
       : result[0].tags;
 
     expect(storedOptions).toEqual(JSON.parse(options));
-    expect(storedCorrectAnswers).toEqual(JSON.parse(correctAnswers));
     expect(storedTags).toEqual(JSON.parse(tags));
   });
 
@@ -121,13 +121,15 @@ describe('Questions Integration Tests', () => {
       const title = 'JavaScript Question';
       const text = '**What is** `JavaScript`?';
       const type = 'SINGLE';
-      const options = JSON.stringify(['A language', 'A framework']);
-      const correctAnswers = JSON.stringify([0]);
+      const options = JSON.stringify({
+        "0": { text: "A language", is_correct: true },
+        "1": { text: "A framework", is_correct: false }
+      });
       const tags = JSON.stringify(['programming']);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
-        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -139,13 +141,15 @@ describe('Questions Integration Tests', () => {
       const title = 'Code Block Question';
       const text = 'What does this do?\n```javascript\nconst x = 1;\n```';
       const type = 'SINGLE';
-      const options = JSON.stringify(['Declares variable', 'Prints output']);
-      const correctAnswers = JSON.stringify([0]);
+      const options = JSON.stringify({
+        "0": { text: "Declares variable", is_correct: true },
+        "1": { text: "Prints output", is_correct: false }
+      });
       const tags = JSON.stringify([]);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
-        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -157,16 +161,18 @@ describe('Questions Integration Tests', () => {
       const title = 'Bad Code Block Question';
       const text = 'Bad code block\n```javascript\nconst x = 1;';
       const type = 'SINGLE';
-      const options = JSON.stringify(['A', 'B']);
-      const correctAnswers = JSON.stringify([0]);
+      const options = JSON.stringify({
+        "0": { text: "A", is_correct: true },
+        "1": { text: "B", is_correct: false }
+      });
       const tags = JSON.stringify([]);
 
       // This test expects validation to happen at the API level
       // For now, we're testing that the database layer accepts the data
       // API validation will be added in the next step
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
-        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 
@@ -178,13 +184,15 @@ describe('Questions Integration Tests', () => {
       const title = 'Markdown Options Question';
       const text = 'Select the correct code';
       const type = 'SINGLE';
-      const options = JSON.stringify(['`const x = 1`', '`let y = 2`']);
-      const correctAnswers = JSON.stringify([0]);
+      const options = JSON.stringify({
+        "0": { text: "`const x = 1`", is_correct: true },
+        "1": { text: "`let y = 2`", is_correct: false }
+      });
       const tags = JSON.stringify([]);
 
       const result = await sql`
-        INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, tags, author_id, visibility)
-        VALUES (${title}, ${text}, ${type}, ${options}, ${correctAnswers}, ${tags}, ${authorId}, ${visibility})
+        INSERT INTO ${sql(schema)}.questions (title, text, type, options, tags, author_id, visibility)
+        VALUES (${title}, ${text}, ${type}, ${options}, ${tags}, ${authorId}, ${visibility})
         RETURNING *
       `;
 

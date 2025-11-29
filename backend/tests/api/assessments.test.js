@@ -4,6 +4,7 @@ import express from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { getTestDb, getTestSchema } from '../setup.js';
 import { isAnswerCorrect } from '../../utils/scoring.js';
+import { getCorrectOptionIds } from '../../utils/options.js';
 
 // Create test-specific routes that use the test database
 const createAssessmentsRouter = (sql, schema) => {
@@ -189,7 +190,7 @@ const createAssessmentsRouter = (sql, schema) => {
             aa.id,
             aa.question_id,
             aa.selected_options,
-            q.correct_answers,
+            q.options,
             q.type,
             tq.weight
           FROM ${sql(schema)}.assessment_answers aa
@@ -204,10 +205,11 @@ const createAssessmentsRouter = (sql, schema) => {
         for (const answer of answers) {
           maxScore += answer.weight;
 
+          const correctAnswers = getCorrectOptionIds(answer.options);
           const correct = isAnswerCorrect(
             answer.type,
             answer.selected_options,
-            answer.correct_answers
+            correctAnswers
           );
 
           if (correct) {

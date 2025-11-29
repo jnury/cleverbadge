@@ -68,8 +68,7 @@ test.describe('Questions Management', () => {
     await expect(page.locator('text=/Showing \\d+ of \\d+ questions/')).toBeVisible();
   });
 
-  // TODO: Fix test isolation issue - test works alone but fails when run with other tests
-  test.skip('should edit a question text', async ({ page }) => {
+  test('should edit a question text', async ({ page }) => {
     // Wait for questions table to load
     await page.waitForSelector('table', { timeout: 5000 });
 
@@ -101,8 +100,7 @@ test.describe('Questions Management', () => {
     await expect(page.locator('textarea[placeholder*="question"]')).toHaveValue('Edited E2E question text', { timeout: 5000 });
   });
 
-  // TODO: Fix test isolation issue - test works alone but fails when run with other tests
-  test.skip('should edit a question and preserve correct answers', async ({ page }) => {
+  test('should edit a question and preserve correct answers', async ({ page }) => {
     // This test verifies the fix for sending correct_answers as strings (not indices)
     // Wait for table to load
     await page.waitForSelector('table', { timeout: 5000 });

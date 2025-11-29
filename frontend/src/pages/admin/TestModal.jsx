@@ -394,6 +394,26 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
               </div>
             )}
 
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_enabled"
+                name="is_enabled"
+                checked={formData.is_enabled}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, is_enabled: e.target.checked }));
+                  setHasChanges(true);
+                }}
+                className="rounded border-gray-300 text-tech focus:ring-tech"
+              />
+              <label htmlFor="is_enabled" className="text-sm font-medium text-gray-700">
+                Test Enabled
+              </label>
+              <span className="text-sm text-gray-500">
+                (Disabled tests cannot be started by candidates)
+              </span>
+            </div>
+
             <Input
               label="Pass Threshold (%)"
               name="pass_threshold"
