@@ -27,8 +27,8 @@ router.get('/',
       const { test_id, status } = req.query;
 
       // Build dynamic query with filters
-      let conditions = [];
-      let params = {};
+      // Always filter out archived assessments
+      let conditions = [sql`a.is_archived = false`];
 
       if (test_id) {
         conditions.push(sql`a.test_id = ${test_id}`);
@@ -37,10 +37,6 @@ router.get('/',
       if (status) {
         conditions.push(sql`a.status = ${status}`);
       }
-
-      const whereClause = conditions.length > 0
-        ? sql`WHERE ${sql.unsafe(conditions.map((_, i) => `(${i})`).join(' AND '))}`.append(...conditions)
-        : sql``;
 
       const assessments = await sql`
         SELECT
@@ -55,7 +51,7 @@ router.get('/',
           t.slug as test_slug
         FROM ${sql(dbSchema)}.assessments a
         INNER JOIN ${sql(dbSchema)}.tests t ON a.test_id = t.id
-        ${whereClause}
+        WHERE ${conditions.reduce((acc, cond, i) => i === 0 ? cond : sql`${acc} AND ${cond}`)}
         ORDER BY a.started_at DESC
       `;
 
@@ -415,6 +411,34 @@ router.post('/:assessmentId/submit',
     } catch (error) {
       console.error('Error submitting assessment:', error);
       res.status(500).json({ error: 'Failed to submit assessment' });
+    }
+  }
+);
+
+// POST bulk archive assessments (soft delete)
+router.post('/bulk-archive',
+  authenticateToken,
+  body('assessment_ids').isArray({ min: 1 }).withMessage('assessment_ids must be a non-empty array'),
+  body('assessment_ids.*').isUUID().withMessage('Each assessment_id must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { assessment_ids } = req.body;
+
+      const result = await sql`
+        UPDATE ${sql(dbSchema)}.assessments
+        SET is_archived = true
+        WHERE id = ANY(${assessment_ids}) AND is_archived = false
+        RETURNING id
+      `;
+
+      res.json({
+        archived: result.length,
+        message: `${result.length} assessment(s) archived successfully`
+      });
+    } catch (error) {
+      console.error('Error archiving assessments:', error);
+      res.status(500).json({ error: 'Failed to archive assessments' });
     }
   }
 );

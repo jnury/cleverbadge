@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../utils/api';
-import Card from '../../components/ui/Card';
+import { useToast } from '../../hooks/useToast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import Select from '../../components/ui/Select';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
+import { ToastContainer } from '../../components/ui/Toast';
 
 const AssessmentsTab = () => {
   const navigate = useNavigate();
+  const { toasts, removeToast, showSuccess, showError } = useToast();
   const [assessments, setAssessments] = useState([]);
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +17,8 @@ const AssessmentsTab = () => {
   const [filterTest, setFilterTest] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -82,6 +86,35 @@ const AssessmentsTab = () => {
       }
     });
 
+  const toggleSelection = (id) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const data = await apiRequest('/api/assessments/bulk-archive', {
+        method: 'POST',
+        body: JSON.stringify({
+          assessment_ids: Array.from(selectedIds)
+        })
+      });
+      showSuccess(`Deleted ${data.archived} assessment(s)`);
+      setSelectedIds(new Set());
+      setShowBulkDeleteModal(false);
+      loadData();
+    } catch (error) {
+      showError(error.message || 'Failed to delete assessments');
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -96,91 +129,114 @@ const AssessmentsTab = () => {
 
   return (
     <div className="space-y-6">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Assessments</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-xl font-semibold text-gray-900">Assessments</h2>
+          <p className="text-sm text-gray-500">
             View all candidate assessment results
           </p>
         </div>
       </div>
 
-      {/* Filters and Sort */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Test
-            </label>
-            <select
-              value={filterTest}
-              onChange={(e) => setFilterTest(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="">All Tests</option>
-              {tests.map(test => (
-                <option key={test.id} value={test.id}>
-                  {test.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Status
-            </label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="">All Statuses</option>
-              <option value="STARTED">Started</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sort by
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="date-desc">Date (Newest First)</option>
-              <option value="date-asc">Date (Oldest First)</option>
-              <option value="score-desc">Score (Highest First)</option>
-              <option value="score-asc">Score (Lowest First)</option>
-              <option value="name-asc">Name (A-Z)</option>
-              <option value="name-desc">Name (Z-A)</option>
-            </select>
-          </div>
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="w-44">
+          <select
+            value={filterTest}
+            onChange={(e) => setFilterTest(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="">All Tests</option>
+            {tests.map(test => (
+              <option key={test.id} value={test.id}>
+                {test.title}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {filteredAndSortedAssessments.length} of {assessments.length} assessments
+        <div className="w-44">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="">All Statuses</option>
+            <option value="STARTED">Started</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
         </div>
-      </Card>
+
+        <div className="w-44">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
+          >
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="score-desc">Highest Score</option>
+            <option value="score-asc">Lowest Score</option>
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+          </select>
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="w-44">
+            <select
+              onChange={(e) => {
+                if (e.target.value === 'delete') {
+                  setShowBulkDeleteModal(true);
+                }
+                e.target.value = '';
+              }}
+              className="w-full h-10 border border-gray-300 rounded-md px-3"
+              defaultValue=""
+            >
+              <option value="" disabled>Bulk Actions ({selectedIds.size})</option>
+              <option value="delete">Delete</option>
+            </select>
+          </div>
+        )}
+
+        <div className="text-sm text-gray-500">
+          {filteredAndSortedAssessments.length} of {assessments.length} assessments
+        </div>
+      </div>
 
       {/* Assessments List */}
       <div className="space-y-4">
         {filteredAndSortedAssessments.length === 0 ? (
-          <Card>
+          <div className="bg-white border border-gray-200 rounded-lg">
             <p className="text-center text-gray-500 py-8">
               {assessments.length === 0
                 ? 'No assessments yet. Candidates will appear here after taking tests.'
                 : 'No assessments match your filters.'}
             </p>
-          </Card>
+          </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === filteredAndSortedAssessments.length && filteredAndSortedAssessments.length > 0}
+                      onChange={() => {
+                        if (selectedIds.size === filteredAndSortedAssessments.length) {
+                          setSelectedIds(new Set());
+                        } else {
+                          setSelectedIds(new Set(filteredAndSortedAssessments.map(a => a.id)));
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Candidate
                   </th>
@@ -207,6 +263,14 @@ const AssessmentsTab = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedAssessments.map((assessment) => (
                   <tr key={assessment.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(assessment.id)}
+                        onChange={() => toggleSelection(assessment.id)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {assessment.candidate_name}
@@ -263,6 +327,32 @@ const AssessmentsTab = () => {
           </div>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <Modal
+        isOpen={showBulkDeleteModal}
+        onClose={() => setShowBulkDeleteModal(false)}
+        title="Delete Assessments"
+      >
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete {selectedIds.size} assessment(s)?
+          This will remove them from the list but data will be preserved.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowBulkDeleteModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleBulkDelete}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

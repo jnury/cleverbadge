@@ -23,11 +23,11 @@ test.describe('Admin Dashboard', () => {
     await expect(page.locator('h1')).toContainText('Admin Dashboard');
     await expect(page.locator('text=/Welcome.*admin/i')).toBeVisible();
 
-    // Check tabs
-    await expect(page.locator('button:has-text("Tests")')).toBeVisible();
-    await expect(page.locator('button:has-text("Questions")')).toBeVisible();
-    await expect(page.locator('button:has-text("Assessments")')).toBeVisible();
-    await expect(page.locator('button:has-text("Analytics")')).toBeVisible();
+    // Check tabs (use role="tab" to avoid matching other buttons)
+    await expect(page.getByRole('tab', { name: 'Questions' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Tests' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Assessments' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Analytics' })).toBeVisible();
   });
 
   test('should switch between tabs', async ({ page }) => {
@@ -38,12 +38,12 @@ test.describe('Admin Dashboard', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/admin');
 
-    // Click Questions tab and wait for content to load
-    await page.locator('button:has-text("Questions")').click();
-    await expect(page.locator('h2:has-text("Questions")')).toBeVisible({ timeout: 10000 });
+    // Click Tests tab and wait for content to load
+    await page.getByRole('tab', { name: 'Tests' }).click();
+    await expect(page.locator('h2:has-text("Tests")')).toBeVisible({ timeout: 10000 });
 
     // Click Assessments tab and wait for content to load
-    await page.locator('button:has-text("Assessments")').click();
+    await page.getByRole('tab', { name: 'Assessments' }).click();
     await expect(page.locator('h2:has-text("Assessments")')).toBeVisible({ timeout: 10000 });
   });
 
