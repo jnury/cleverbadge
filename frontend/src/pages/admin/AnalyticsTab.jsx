@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { getTests, getQuestionAnalytics } from '../../utils/api';
+import { useUrlParams } from '../../hooks/useUrlParams';
 
 const AnalyticsTab = () => {
   const [tests, setTests] = useState([]);
-  const [selectedTestId, setSelectedTestId] = useState('');
+  // URL-synced test selection
+  const [urlParams, setParam] = useUrlParams({ test: null });
+  const selectedTestId = urlParams.test || '';
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [testsLoading, setTestsLoading] = useState(true);
@@ -74,26 +77,28 @@ const AnalyticsTab = () => {
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Question Analytics</h2>
-        <p className="text-gray-600 mb-4">
-          View success rates for each question in a test. Questions are sorted by difficulty (hardest first).
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Analytics</h2>
+          <p className="text-sm text-gray-500">
+            View success rates for each question. Questions are sorted by difficulty (hardest first).
+          </p>
+        </div>
+      </div>
 
-        {/* Test Selector */}
-        <div className="max-w-md">
-          <label htmlFor="test-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Select a Test
-          </label>
+      {/* Test Selector */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="w-64">
           <select
             id="test-select"
             value={selectedTestId}
-            onChange={(e) => setSelectedTestId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-tech focus:border-tech"
+            onChange={(e) => setParam('test', e.target.value || null)}
+            className="w-full h-10 border border-gray-300 rounded-md px-3"
             aria-label="Select a test to view analytics"
           >
-            <option value="">Choose a test...</option>
+            <option value="">Select a test...</option>
             {tests.map((test) => (
               <option key={test.id} value={test.id}>
                 {test.title} {!test.is_enabled && '(disabled)'}
@@ -105,7 +110,7 @@ const AnalyticsTab = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4" role="alert">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md" role="alert">
           {error}
         </div>
       )}
