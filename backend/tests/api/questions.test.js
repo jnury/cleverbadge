@@ -7,6 +7,7 @@ import { hashPassword } from '../../utils/password.js';
 import { signToken } from '../../utils/jwt.js';
 import { verifyToken } from '../../utils/jwt.js';
 import { validateMarkdown } from '../../utils/markdown-validator.js';
+import { validateOptionsFormat } from '../../utils/options.js';
 
 // Create test-specific questions router that uses test database
 const createTestQuestionsRouter = (sql, schema) => {
@@ -44,16 +45,21 @@ const createTestQuestionsRouter = (sql, schema) => {
     body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
     body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
     body('visibility').optional().isIn(['public', 'private', 'protected']).withMessage('Invalid visibility value'),
-    body('options').isArray({ min: 1 }).withMessage('Options must be a non-empty array'),
-    body('options.*').isString().withMessage('Each option must be a string'),
-    body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
-    body('correct_answers.*').isInt({ min: 0 }).withMessage('Each correct answer must be a non-negative integer'),
+    body('options').isObject().withMessage('Options must be an object'),
     body('tags').optional().isArray().withMessage('Tags must be an array'),
     body('tags.*').optional().isString().withMessage('Each tag must be a string'),
     handleValidationErrors,
     async (req, res) => {
       try {
-        const { title, text, type, visibility = 'private', options, correct_answers, tags } = req.body;
+        const { title, text, type, visibility = 'private', options, tags } = req.body;
+
+        // Validate options format
+        const optionsValidation = validateOptionsFormat(options, type);
+        if (!optionsValidation.valid) {
+          return res.status(400).json({
+            error: `Invalid options format: ${optionsValidation.errors.join(', ')}`
+          });
+        }
 
         // Validate markdown in question text
         const textValidation = validateMarkdown(text);
@@ -64,11 +70,11 @@ const createTestQuestionsRouter = (sql, schema) => {
         }
 
         // Validate markdown in each option
-        for (let i = 0; i < options.length; i++) {
-          const optionValidation = validateMarkdown(options[i]);
+        for (const [key, opt] of Object.entries(options)) {
+          const optionValidation = validateMarkdown(opt.text);
           if (!optionValidation.isValid) {
             return res.status(400).json({
-              error: `Invalid markdown in option ${i + 1}: ${optionValidation.errors.join(', ')}`
+              error: `Invalid markdown in option ${parseInt(key) + 1}: ${optionValidation.errors.join(', ')}`
             });
           }
         }
@@ -77,8 +83,8 @@ const createTestQuestionsRouter = (sql, schema) => {
         const author_id = req.user.id;
 
         const newQuestions = await sql`
-          INSERT INTO ${sql(schema)}.questions (title, text, type, visibility, options, correct_answers, tags, author_id)
-          VALUES (${title}, ${text}, ${type}, ${visibility}, ${options}, ${correct_answers}, ${tags || []}, ${author_id})
+          INSERT INTO ${sql(schema)}.questions (title, text, type, visibility, options, tags, author_id)
+          VALUES (${title}, ${text}, ${type}, ${visibility}, ${sql.json(options)}, ${tags || []}, ${author_id})
           RETURNING *
         `;
 
@@ -98,16 +104,21 @@ const createTestQuestionsRouter = (sql, schema) => {
     body('text').notEmpty().withMessage('Text is required').isString().withMessage('Text must be a string'),
     body('type').isIn(['SINGLE', 'MULTIPLE']).withMessage('Type must be SINGLE or MULTIPLE'),
     body('visibility').optional().isIn(['public', 'private', 'protected']).withMessage('Invalid visibility value'),
-    body('options').isArray({ min: 1 }).withMessage('Options must be a non-empty array'),
-    body('options.*').isString().withMessage('Each option must be a string'),
-    body('correct_answers').isArray({ min: 1 }).withMessage('Correct answers must be a non-empty array'),
-    body('correct_answers.*').isInt({ min: 0 }).withMessage('Each correct answer must be a non-negative integer'),
+    body('options').isObject().withMessage('Options must be an object'),
     body('tags').optional().isArray().withMessage('Tags must be an array'),
     body('tags.*').optional().isString().withMessage('Each tag must be a string'),
     handleValidationErrors,
     async (req, res) => {
       try {
-        const { title, text, type, visibility, options, correct_answers, tags } = req.body;
+        const { title, text, type, visibility, options, tags } = req.body;
+
+        // Validate options format
+        const optionsValidation = validateOptionsFormat(options, type);
+        if (!optionsValidation.valid) {
+          return res.status(400).json({
+            error: `Invalid options format: ${optionsValidation.errors.join(', ')}`
+          });
+        }
 
         // Validate markdown in question text
         const textValidation = validateMarkdown(text);
@@ -118,11 +129,11 @@ const createTestQuestionsRouter = (sql, schema) => {
         }
 
         // Validate markdown in each option
-        for (let i = 0; i < options.length; i++) {
-          const optionValidation = validateMarkdown(options[i]);
+        for (const [key, opt] of Object.entries(options)) {
+          const optionValidation = validateMarkdown(opt.text);
           if (!optionValidation.isValid) {
             return res.status(400).json({
-              error: `Invalid markdown in option ${i + 1}: ${optionValidation.errors.join(', ')}`
+              error: `Invalid markdown in option ${parseInt(key) + 1}: ${optionValidation.errors.join(', ')}`
             });
           }
         }
@@ -134,8 +145,7 @@ const createTestQuestionsRouter = (sql, schema) => {
             text = ${text},
             type = ${type},
             visibility = ${visibility},
-            options = ${options},
-            correct_answers = ${correct_answers},
+            options = ${sql.json(options)},
             tags = ${tags},
             updated_at = NOW()
           WHERE id = ${req.params.id}
@@ -192,8 +202,10 @@ describe('POST /api/questions - Markdown Validation', () => {
         title: 'JavaScript Question',
         text: '**What is** `JavaScript`?',
         type: 'SINGLE',
-        options: ['A language', 'A framework'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A language", is_correct: true },
+          "1": { text: "A framework", is_correct: false }
+        },
         tags: ['programming']
       });
 
@@ -209,8 +221,10 @@ describe('POST /api/questions - Markdown Validation', () => {
         title: 'Code Block Question',
         text: 'What does this do?\n```javascript\nconst x = 1;\n```',
         type: 'SINGLE',
-        options: ['Declares variable', 'Prints output'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "Declares variable", is_correct: true },
+          "1": { text: "Prints output", is_correct: false }
+        },
         tags: []
       });
 
@@ -225,8 +239,10 @@ describe('POST /api/questions - Markdown Validation', () => {
         title: 'Bad Code Block Question',
         text: 'Bad code block\n```javascript\nconst x = 1;',
         type: 'SINGLE',
-        options: ['A', 'B'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A", is_correct: true },
+          "1": { text: "B", is_correct: false }
+        },
         tags: []
       });
 
@@ -243,8 +259,10 @@ describe('POST /api/questions - Markdown Validation', () => {
         title: 'Markdown Options Question',
         text: 'Select the correct code',
         type: 'SINGLE',
-        options: ['`const x = 1`', '`let y = 2`'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "`const x = 1`", is_correct: true },
+          "1": { text: "`let y = 2`", is_correct: false }
+        },
         tags: []
       });
 
@@ -259,8 +277,10 @@ describe('POST /api/questions - Markdown Validation', () => {
         title: 'Invalid Markdown Question',
         text: 'Question',
         type: 'SINGLE',
-        options: ['```unclosed', 'Option 2'],
-        correct_answers: [1],
+        options: {
+          "0": { text: "```unclosed", is_correct: false },
+          "1": { text: "Option 2", is_correct: true }
+        },
         tags: []
       });
 
@@ -280,8 +300,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
         title: 'Original Question',
         text: 'Original question',
         type: 'SINGLE',
-        options: ['A', 'B'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A", is_correct: true },
+          "1": { text: "B", is_correct: false }
+        },
         tags: []
       });
 
@@ -296,8 +318,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
         text: '**Updated with** `markdown`',
         type: 'SINGLE',
         visibility: 'private',
-        options: ['A', 'B'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A", is_correct: true },
+          "1": { text: "B", is_correct: false }
+        },
         tags: []
       });
 
@@ -314,8 +338,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
         title: 'Another Original Question',
         text: 'Original question',
         type: 'SINGLE',
-        options: ['A', 'B'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A", is_correct: true },
+          "1": { text: "B", is_correct: false }
+        },
         tags: []
       });
 
@@ -330,8 +356,10 @@ describe('PUT /api/questions/:id - Markdown Validation', () => {
         text: 'Question with ```unclosed code',
         type: 'SINGLE',
         visibility: 'private',
-        options: ['A', 'B'],
-        correct_answers: [0],
+        options: {
+          "0": { text: "A", is_correct: true },
+          "1": { text: "B", is_correct: false }
+        },
         tags: []
       });
 

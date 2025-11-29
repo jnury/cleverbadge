@@ -108,13 +108,6 @@ router.get('/slug/:slug',
 
       const test = tests[0];
 
-      // Check if test is enabled
-      if (!test.is_enabled) {
-        return res.status(403).json({
-          error: 'This test is currently disabled and not available.'
-        });
-      }
-
       // Check visibility - protected tests require login (v2)
       if (test.visibility === 'protected') {
         return res.status(403).json({
@@ -130,12 +123,14 @@ router.get('/slug/:slug',
         WHERE test_id = ${test.id}
       `;
 
+      // Return test data including is_enabled so frontend can show appropriate UI
       res.json({
         id: test.id,
         title: test.title,
         description: test.description,
         slug: test.slug,
         visibility: test.visibility,
+        is_enabled: test.is_enabled,
         question_count: parseInt(questionCountResult[0].count),
         show_explanations: test.show_explanations,
         explanation_scope: test.explanation_scope

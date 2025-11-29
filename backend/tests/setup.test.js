@@ -63,10 +63,14 @@ describe('Test Infrastructure', () => {
     const db = getTestDb();
     const schema = getTestSchema();
 
-    // Insert a new question
+    // Insert a new question with new options format
+    const options = JSON.stringify({
+      "0": { text: "A", is_correct: true },
+      "1": { text: "B", is_correct: false }
+    });
     await db.unsafe(`
-      INSERT INTO ${schema}.questions (title, text, type, options, correct_answers, author_id, visibility)
-      VALUES ('Rollback Test', 'Rollback test question?', 'SINGLE', '["A", "B"]', '[0]', '550e8400-e29b-41d4-a716-446655440001', 'private')
+      INSERT INTO ${schema}.questions (title, text, type, options, author_id, visibility)
+      VALUES ('Rollback Test', 'Rollback test question?', 'SINGLE', '${options}', '550e8400-e29b-41d4-a716-446655440001', 'private')
     `);
 
     // Verify it was inserted

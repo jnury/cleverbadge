@@ -9,14 +9,17 @@ describe('Visibility Matrix Integration Tests', () => {
 
   // Helper to create a question with specific visibility
   async function createQuestion(visibility, title = `Question ${visibility}`) {
+    const options = JSON.stringify({
+      "0": { text: "Option 1", is_correct: true },
+      "1": { text: "Option 2", is_correct: false }
+    });
     const result = await sql`
-      INSERT INTO ${sql(schema)}.questions (title, text, type, options, correct_answers, visibility, author_id)
+      INSERT INTO ${sql(schema)}.questions (title, text, type, options, visibility, author_id)
       VALUES (
         ${title},
         'Test question text',
         'SINGLE',
-        '["Option 1", "Option 2"]',
-        '[0]',
+        ${options},
         ${visibility},
         (SELECT id FROM ${sql(schema)}.users LIMIT 1)
       )
