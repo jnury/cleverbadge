@@ -63,6 +63,7 @@ projects:
           - type: cron
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
             name: cleverbadge-migrate-staging
+            branch: staging
             region: frankfurt
             runtime: node
             rootDir: backend
@@ -82,10 +83,10 @@ projects:
           # Production Backend Service
           - type: web
             name: cleverbadge-backend-production
-            region: frankfurt
             branch: main
+            region: frankfurt
             runtime: node
-            plan: free
+            plan: starter
             rootDir: backend
             buildCommand: npm install
             startCommand: node index.js
@@ -137,6 +138,7 @@ projects:
           - type: cron
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
             name: cleverbadge-migrate-production
+            branch: main
             region: frankfurt
             runtime: node
             rootDir: backend
@@ -174,4 +176,4 @@ projects:
             region: frankfurt
             databaseName: cleverbadge
             user: cleverbadge_superuser
-            plan: free
+            plan: starter
