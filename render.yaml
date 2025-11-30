@@ -176,4 +176,4 @@ projects:
             region: frankfurt
             databaseName: cleverbadge
             user: cleverbadge_superuser
-            plan: starter
+            plan: basic-256mb
