@@ -4,6 +4,7 @@
  */
 
 const STORAGE_PREFIX = 'cleverbadge_assessment_';
+const ASSESSMENT_TIMEOUT_HOURS = 2;
 
 /**
  * Get the storage key for a test
@@ -40,12 +41,12 @@ export function loadAssessment(testSlug) {
   try {
     const parsed = JSON.parse(data);
 
-    // Check if expired (24 hours)
+    // Check if expired (2 hours timeout)
     const savedAt = new Date(parsed.savedAt);
     const now = new Date();
     const hoursDiff = (now - savedAt) / (1000 * 60 * 60);
 
-    if (hoursDiff > 24) {
+    if (hoursDiff > ASSESSMENT_TIMEOUT_HOURS) {
       clearAssessment(testSlug);
       return null;
     }

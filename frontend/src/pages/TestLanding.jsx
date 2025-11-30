@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { loadAssessment, clearAssessment } from '../utils/assessmentStorage';
+import { verifyAssessment } from '../utils/api';
 
 const TestLanding = () => {
   const { slug } = useParams();
@@ -96,21 +97,38 @@ const TestLanding = () => {
     }
   };
 
-  const handleResume = () => {
-    // Navigate to question runner with saved state
-    navigate(`/t/${slug}/run`, {
-      state: {
-        assessmentId: existingAssessment.assessmentId,
-        questions: existingAssessment.questions,
-        candidateName: existingAssessment.candidateName,
-        currentQuestionIndex: existingAssessment.currentQuestionIndex,
-        answers: existingAssessment.answers,
-        testSlug: slug,
-        isResuming: true,
-        showExplanations: test.show_explanations,
-        explanationScope: test.explanation_scope
+  const handleResume = async () => {
+    try {
+      // Verify assessment is still valid (not expired or abandoned)
+      await verifyAssessment(existingAssessment.assessmentId);
+
+      // Navigate to question runner with saved state
+      navigate(`/t/${slug}/run`, {
+        state: {
+          assessmentId: existingAssessment.assessmentId,
+          questions: existingAssessment.questions,
+          candidateName: existingAssessment.candidateName,
+          currentQuestionIndex: existingAssessment.currentQuestionIndex,
+          answers: existingAssessment.answers,
+          testSlug: slug,
+          isResuming: true,
+          showExplanations: test.show_explanations,
+          explanationScope: test.explanation_scope
+        }
+      });
+    } catch (err) {
+      // Assessment has expired or is invalid - clear it and show message
+      clearAssessment(slug);
+      setExistingAssessment(null);
+
+      if (err.code === 'ASSESSMENT_EXPIRED') {
+        alert('Your previous assessment has expired (2-hour time limit). Please start a new test.');
+      } else if (err.code === 'ASSESSMENT_ABANDONED') {
+        alert('Your previous assessment is no longer available. Please start a new test.');
+      } else {
+        alert('Unable to resume assessment. Please start a new test.');
       }
-    });
+    }
   };
 
   const handleStartFresh = () => {

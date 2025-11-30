@@ -233,7 +233,7 @@ const QuestionForm = ({ question, onSubmit, onCancel, onFormChange, hideButtons 
           name="visibility"
           value={formData.visibility}
           onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value }))}
-          className="w-full border border-gray-300 rounded-md px-3 py-2"
+          className="w-full h-10 border border-gray-300 rounded-md px-3"
         >
           <option value="private">Private - Only in private/protected tests</option>
           <option value="public">Public - Can be used in any test</option>

@@ -282,7 +282,7 @@ test.describe('Visibility Features', () => {
       await page.click('text=Questions');
 
       // Wait for questions to load
-      await page.waitForSelector('h2:has-text("Questions")');
+      await page.waitForSelector('h2:has-text("Manage your question bank")');
 
       // Questions should display their titles (the seeded questions have titles)
       const questionCards = page.locator('.hover\\:shadow-lg');
@@ -298,7 +298,7 @@ test.describe('Visibility Features', () => {
       await page.click('text=Questions');
 
       // Wait for questions to load
-      await page.waitForSelector('h2:has-text("Questions")');
+      await page.waitForSelector('h2:has-text("Manage your question bank")');
 
       // Find visibility filter dropdown
       const visibilityFilter = page.locator('select').filter({ hasText: /All Visibility/i });
@@ -309,7 +309,7 @@ test.describe('Visibility Features', () => {
       await page.click('text=Questions');
 
       // Wait for questions to load
-      await page.waitForSelector('h2:has-text("Questions")');
+      await page.waitForSelector('h2:has-text("Manage your question bank")');
 
       // Find author filter dropdown
       const authorFilter = page.locator('select').filter({ hasText: /All Authors/i });
@@ -427,7 +427,7 @@ test.describe('Visibility Features', () => {
       await page.click('text=Questions');
 
       // Wait for questions to load
-      await page.waitForSelector('h2:has-text("Questions")');
+      await page.waitForSelector('h2:has-text("Manage your question bank")');
 
       // Look for visibility badges
       const privateBadge = page.locator('.bg-gray-100:has-text("Private")');

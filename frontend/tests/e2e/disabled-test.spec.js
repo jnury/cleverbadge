@@ -6,6 +6,7 @@ test.describe('Disabled Test Access', () => {
     await page.goto('/t/disabled-test');
 
     // Should show that test is disabled (the page shows "This test is disabled" message in red)
+    // Use class selector since description also contains "This test is disabled"
     await expect(page.locator('p.text-red-600:has-text("This test is disabled")')).toBeVisible();
 
     // Should not show start button

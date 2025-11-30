@@ -104,36 +104,30 @@ const AnalyticsTab = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Question Analytics</h2>
-          <p className="text-sm text-gray-500">
-            View success rates for each question. Click column headers to sort.
-          </p>
-        </div>
-      </div>
+      <h2 className="text-xl text-gray-900">View success rates for each question</h2>
 
       {/* Test Selector */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="w-64">
-          <label htmlFor="test-select" className="block text-sm font-medium text-gray-700 mb-1">
-            Select a Test
-          </label>
-          <select
-            id="test-select"
-            value={selectedTestId}
-            onChange={(e) => setParam('test', e.target.value || null)}
-            className="w-full h-10 border border-gray-300 rounded-md px-3"
-            aria-label="Select a test to view analytics"
-          >
-            <option value="">Select a test...</option>
-            {tests.map((test) => (
-              <option key={test.id} value={test.id}>
-                {test.title} {!test.is_enabled && '(disabled)'}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex items-center gap-4">
+        <select
+          id="test-select"
+          value={selectedTestId}
+          onChange={(e) => setParam('test', e.target.value || null)}
+          className="w-64 h-10 border border-gray-300 rounded-md px-3"
+          aria-label="Select a test to view analytics"
+        >
+          <option value="">Select a test...</option>
+          {tests.map((test) => (
+            <option key={test.id} value={test.id}>
+              {test.title} {!test.is_enabled && '(disabled)'}
+            </option>
+          ))}
+        </select>
+        {analytics && !loading && (
+          <div className="flex gap-4 text-sm text-gray-600 ml-auto">
+            <span><span className="font-medium">{analytics.question_stats.length}</span> questions</span>
+            <span><span className="font-medium">{analytics.total_assessments}</span> assessments</span>
+          </div>
+        )}
       </div>
 
       {/* Error Message */}
@@ -177,19 +171,6 @@ const AnalyticsTab = () => {
       {/* Analytics Results */}
       {analytics && !loading && (
         <div>
-          {/* Summary Card */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">{analytics.test_title}</h3>
-            <div className="flex gap-6 text-sm text-gray-600">
-              <div>
-                <span className="font-medium">{analytics.total_assessments}</span> completed assessments
-              </div>
-              <div>
-                <span className="font-medium">{analytics.question_stats.length}</span> questions
-              </div>
-            </div>
-          </div>
-
           {/* No Data State */}
           {analytics.total_assessments === 0 && (
             <div className="text-center py-8 bg-yellow-50 border border-yellow-200 rounded-lg">

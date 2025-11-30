@@ -32,6 +32,7 @@ const AssessmentsTab = () => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
   const [bulkAction, setBulkAction] = useState(null);
+  const [deleteAssessmentId, setDeleteAssessmentId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -59,12 +60,13 @@ const AssessmentsTab = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleString(navigator.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -140,18 +142,35 @@ const AssessmentsTab = () => {
 
   const handleBulkDelete = async () => {
     try {
-      const data = await apiRequest('/api/assessments/bulk-archive', {
+      const data = await apiRequest('/api/assessments/bulk-delete', {
         method: 'POST',
         body: JSON.stringify({
           assessment_ids: Array.from(selectedIds)
         })
       });
-      showSuccess(`Deleted ${data.archived} assessment(s)`);
+      showSuccess(`Permanently deleted ${data.deleted} assessment(s)`);
       setSelectedIds(new Set());
       setBulkAction(null);
       loadData();
     } catch (error) {
       showError(error.message || 'Failed to delete assessments');
+    }
+  };
+
+  const handleSingleDelete = async () => {
+    if (!deleteAssessmentId) return;
+    try {
+      await apiRequest('/api/assessments/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({
+          assessment_ids: [deleteAssessmentId]
+        })
+      });
+      showSuccess('Assessment permanently deleted');
+      setDeleteAssessmentId(null);
+      loadData();
+    } catch (error) {
+      showError(error.message || 'Failed to delete assessment');
     }
   };
 
@@ -173,12 +192,7 @@ const AssessmentsTab = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Assessments</h2>
-            <p className="text-sm text-gray-500">
-              View all candidate assessment results
-            </p>
-          </div>
+          <h2 className="text-xl text-gray-900">View all candidate assessment results</h2>
           <div className="flex gap-3">
             {/* Bulk Actions Dropdown */}
             <div className="relative">
@@ -237,6 +251,7 @@ const AssessmentsTab = () => {
             <option value="">All Statuses</option>
             <option value="STARTED">Started</option>
             <option value="COMPLETED">Completed</option>
+            <option value="ABANDONED">Abandoned</option>
           </select>
         </div>
 
@@ -342,10 +357,12 @@ const AssessmentsTab = () => {
                         className={`px-2 py-1 text-xs font-medium rounded ${
                           assessment.status === 'COMPLETED'
                             ? 'bg-green-100 text-green-800'
+                            : assessment.status === 'ABANDONED'
+                            ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {assessment.status === 'COMPLETED' ? 'Completed' : 'In Progress'}
+                        {assessment.status === 'COMPLETED' ? 'Completed' : assessment.status === 'ABANDONED' ? 'Abandoned' : 'In Progress'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -366,14 +383,29 @@ const AssessmentsTab = () => {
                       {formatDuration(assessment.started_at, assessment.completed_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(`/admin/assessment/${assessment.id}`, {
-                          state: { from: `/admin${location.search}` }
-                        })}
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => navigate(`/admin/assessment/${assessment.id}`, {
+                            state: { from: `/admin${location.search}` }
+                          })}
+                          className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
+                          title="View Details"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setDeleteAssessmentId(assessment.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -393,14 +425,39 @@ const AssessmentsTab = () => {
         >
           <div className="space-y-4">
             <p className="text-gray-700">
-              Are you sure you want to delete {selectedIds.size} assessment{selectedIds.size > 1 ? 's' : ''}?
-              This will remove them from the list but data will be preserved.
+              Are you sure you want to permanently delete {selectedIds.size} assessment{selectedIds.size > 1 ? 's' : ''}?
+              This action cannot be undone and will affect analytics.
             </p>
             <div className="flex gap-3 justify-end">
               <Button variant="secondary" onClick={() => setBulkAction(null)}>
                 Cancel
               </Button>
               <Button variant="danger" onClick={handleBulkDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Single Delete Confirmation Modal */}
+      {deleteAssessmentId && (
+        <Modal
+          isOpen={true}
+          onClose={() => setDeleteAssessmentId(null)}
+          title="Delete Assessment"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you sure you want to permanently delete this assessment?
+              This action cannot be undone and will affect analytics.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setDeleteAssessmentId(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleSingleDelete}>
                 Delete
               </Button>
             </div>

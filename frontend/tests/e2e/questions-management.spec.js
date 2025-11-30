@@ -15,8 +15,8 @@ test.describe('Questions Management', () => {
 
   test('should display questions list', async ({ page }) => {
     // Wait for the tab content to load
-    await page.waitForSelector('h2:has-text("Questions")');
-    await expect(page.locator('h2:has-text("Questions")')).toBeVisible();
+    await page.waitForSelector('h2:has-text("Manage your question bank")');
+    await expect(page.locator('h2:has-text("Manage your question bank")')).toBeVisible();
   });
 
   test('should create a new question', async ({ page }) => {

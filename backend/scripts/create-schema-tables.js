@@ -36,7 +36,15 @@ try {
 
   await sql.unsafe(`
     DO $$ BEGIN
-      CREATE TYPE ${schema}.assessment_status AS ENUM ('STARTED', 'COMPLETED');
+      CREATE TYPE ${schema}.assessment_status AS ENUM ('STARTED', 'COMPLETED', 'ABANDONED');
+    EXCEPTION
+      WHEN duplicate_object THEN null;
+    END $$;
+  `);
+  // Add ABANDONED to existing enum if it doesn't have it
+  await sql.unsafe(`
+    DO $$ BEGIN
+      ALTER TYPE ${schema}.assessment_status ADD VALUE IF NOT EXISTS 'ABANDONED';
     EXCEPTION
       WHEN duplicate_object THEN null;
     END $$;

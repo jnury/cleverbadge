@@ -60,7 +60,8 @@ test.describe('Markdown Rendering in Questions', () => {
   test('renders inline code in options', async ({ page }) => {
     await navigateToMarkdownQuestion(page);
     // The markdown question has options with inline code like `reduce()`
-    const option = page.locator('label').filter({ hasText: 'reduce()' }).first();
+    // Options are now rendered as div.p-4.border-2.rounded-lg elements
+    const option = page.locator('div.p-4.border-2.rounded-lg').filter({ hasText: 'reduce()' }).first();
     const code = option.locator('code').first();
     await expect(code).toBeVisible();
     await expect(code).toHaveText('reduce()');

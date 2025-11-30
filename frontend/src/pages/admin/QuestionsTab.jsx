@@ -405,16 +405,13 @@ const QuestionsTab = () => {
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Questions</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage your question bank
-            {selectedIds.size > 0 && (
-              <span className="ml-2 font-medium text-tech">
-                ({selectedIds.size} selected)
-              </span>
-            )}
-          </p>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl text-gray-900">Manage your question bank</h2>
+          {selectedIds.size > 0 && (
+            <span className="text-sm font-medium text-tech">
+              ({selectedIds.size} selected)
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           {/* Bulk Actions Dropdown */}
@@ -510,7 +507,7 @@ const QuestionsTab = () => {
           </select>
         </div>
 
-        <div className="w-44">
+        <div className="w-72">
           <label className="block text-sm font-medium text-gray-700 mb-1">Search Tags</label>
           <input
             type="text"
@@ -551,9 +548,6 @@ const QuestionsTab = () => {
                   onSort={(value) => setParam('sort', value)}
                 />
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Visibility
                 </th>
                 <SortableHeader
@@ -593,20 +587,13 @@ const QuestionsTab = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      {question.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
                     {getVisibilityBadge(question.visibility)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {question.author_username || '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-600 truncate max-w-[150px]" title={question.tags?.join(', ')}>
+                    <div className="text-sm text-gray-600 truncate max-w-[250px]" title={question.tags?.join(', ')}>
                       {question.tags?.join(', ') || '-'}
                     </div>
                   </td>
@@ -786,27 +773,29 @@ const QuestionsTab = () => {
                         }
                       };
 
+                      const indicatorClass = isSelected
+                        ? 'border-tech bg-tech'
+                        : 'border-gray-300';
+
                       return (
-                        <label
+                        <div
                           key={index}
-                          className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                             isSelected
                               ? 'border-tech bg-tech/10 shadow-sm'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
                           onClick={handleOptionClick}
                         >
-                          <input
-                            type={questionType === 'SINGLE' ? 'radio' : 'checkbox'}
-                            name="preview-question"
-                            checked={isSelected}
-                            onChange={() => {}} // Handled by label onClick
-                            className="mr-3 flex-shrink-0"
-                          />
-                          <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-                            <MarkdownRenderer content={optionText || ''} />
+                          <div className="flex items-center gap-3">
+                            <span className={`w-5 h-5 flex-shrink-0 border-2 ${indicatorClass} ${
+                              questionType === 'SINGLE' ? 'rounded-full' : 'rounded'
+                            }`} />
+                            <div className={`flex-1 ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                              <MarkdownRenderer content={optionText || ''} />
+                            </div>
                           </div>
-                        </label>
+                        </div>
                       );
                     });
                   })()}
@@ -962,7 +951,7 @@ const QuestionsTab = () => {
               <select
                 value={selectedAuthorId}
                 onChange={(e) => setSelectedAuthorId(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="">Select author...</option>
                 {users.map(user => (
@@ -1005,7 +994,7 @@ const QuestionsTab = () => {
               <select
                 value={selectedTestId}
                 onChange={(e) => setSelectedTestId(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="">Select test...</option>
                 {tests.map(test => (
@@ -1052,7 +1041,7 @@ const QuestionsTab = () => {
               <select
                 value={selectedVisibility}
                 onChange={(e) => setSelectedVisibility(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="">Select visibility...</option>
                 <option value="public">Public</option>

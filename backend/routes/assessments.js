@@ -7,6 +7,21 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Assessment timeout in hours
+const ASSESSMENT_TIMEOUT_HOURS = 2;
+
+/**
+ * Check if an assessment has expired (exceeded timeout)
+ * @param {Date} startedAt - When the assessment was started
+ * @returns {boolean} - True if expired
+ */
+function isAssessmentExpired(startedAt) {
+  const started = new Date(startedAt);
+  const now = new Date();
+  const hoursDiff = (now - started) / (1000 * 60 * 60);
+  return hoursDiff > ASSESSMENT_TIMEOUT_HOURS;
+}
+
 // Validation middleware helper
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -20,7 +35,7 @@ const handleValidationErrors = (req, res, next) => {
 router.get('/',
   authenticateToken,
   query('test_id').optional().isUUID().withMessage('test_id must be a valid UUID'),
-  query('status').optional().isIn(['STARTED', 'COMPLETED']).withMessage('status must be STARTED or COMPLETED'),
+  query('status').optional().isIn(['STARTED', 'COMPLETED', 'ABANDONED']).withMessage('status must be STARTED, COMPLETED, or ABANDONED'),
   handleValidationErrors,
   async (req, res) => {
     try {
@@ -180,6 +195,24 @@ router.post('/:assessmentId/answer',
         return res.status(400).json({ error: 'Assessment already completed' });
       }
 
+      if (assessment.status === 'ABANDONED') {
+        return res.status(400).json({ error: 'Assessment has been abandoned', code: 'ASSESSMENT_ABANDONED' });
+      }
+
+      // Check if assessment has expired (2 hour timeout)
+      if (isAssessmentExpired(assessment.started_at)) {
+        // Mark assessment as ABANDONED
+        await sql`
+          UPDATE ${sql(dbSchema)}.assessments
+          SET status = 'ABANDONED'
+          WHERE id = ${assessmentId}
+        `;
+        return res.status(400).json({
+          error: 'Assessment has expired. The 2-hour time limit has been exceeded.',
+          code: 'ASSESSMENT_EXPIRED'
+        });
+      }
+
       // Check if answer already exists (for upsert)
       const existingAnswers = await sql`
         SELECT * FROM ${sql(dbSchema)}.assessment_answers
@@ -292,6 +325,24 @@ router.post('/:assessmentId/submit',
 
       if (assessment.status === 'COMPLETED') {
         return res.status(400).json({ error: 'Assessment already completed' });
+      }
+
+      if (assessment.status === 'ABANDONED') {
+        return res.status(400).json({ error: 'Assessment has been abandoned', code: 'ASSESSMENT_ABANDONED' });
+      }
+
+      // Check if assessment has expired (2 hour timeout)
+      if (isAssessmentExpired(assessment.started_at)) {
+        // Mark assessment as ABANDONED
+        await sql`
+          UPDATE ${sql(dbSchema)}.assessments
+          SET status = 'ABANDONED'
+          WHERE id = ${assessmentId}
+        `;
+        return res.status(400).json({
+          error: 'Assessment has expired. The 2-hour time limit has been exceeded.',
+          code: 'ASSESSMENT_EXPIRED'
+        });
       }
 
       // Get all answers with options and weights
@@ -414,6 +465,55 @@ router.post('/:assessmentId/submit',
   }
 );
 
+// GET verify assessment status (for resume)
+router.get('/:assessmentId/verify',
+  param('assessmentId').isUUID().withMessage('assessmentId must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { assessmentId } = req.params;
+
+      const assessments = await sql`
+        SELECT id, status, started_at FROM ${sql(dbSchema)}.assessments
+        WHERE id = ${assessmentId}
+      `;
+
+      if (assessments.length === 0) {
+        return res.status(404).json({ error: 'Assessment not found', code: 'ASSESSMENT_NOT_FOUND' });
+      }
+
+      const assessment = assessments[0];
+
+      if (assessment.status === 'COMPLETED') {
+        return res.status(400).json({ error: 'Assessment already completed', code: 'ASSESSMENT_COMPLETED' });
+      }
+
+      if (assessment.status === 'ABANDONED') {
+        return res.status(400).json({ error: 'Assessment has been abandoned', code: 'ASSESSMENT_ABANDONED' });
+      }
+
+      // Check if assessment has expired (2 hour timeout)
+      if (isAssessmentExpired(assessment.started_at)) {
+        // Mark assessment as ABANDONED
+        await sql`
+          UPDATE ${sql(dbSchema)}.assessments
+          SET status = 'ABANDONED'
+          WHERE id = ${assessmentId}
+        `;
+        return res.status(400).json({
+          error: 'Assessment has expired. The 2-hour time limit has been exceeded.',
+          code: 'ASSESSMENT_EXPIRED'
+        });
+      }
+
+      res.json({ valid: true, status: assessment.status });
+    } catch (error) {
+      console.error('Error verifying assessment:', error);
+      res.status(500).json({ error: 'Failed to verify assessment' });
+    }
+  }
+);
+
 // POST bulk archive assessments (soft delete)
 router.post('/bulk-archive',
   authenticateToken,
@@ -438,6 +538,34 @@ router.post('/bulk-archive',
     } catch (error) {
       console.error('Error archiving assessments:', error);
       res.status(500).json({ error: 'Failed to archive assessments' });
+    }
+  }
+);
+
+// POST bulk delete assessments (permanent delete)
+router.post('/bulk-delete',
+  authenticateToken,
+  body('assessment_ids').isArray({ min: 1 }).withMessage('assessment_ids must be a non-empty array'),
+  body('assessment_ids.*').isUUID().withMessage('Each assessment_id must be a valid UUID'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { assessment_ids } = req.body;
+
+      // Delete assessments - assessment_answers will be deleted via CASCADE
+      const result = await sql`
+        DELETE FROM ${sql(dbSchema)}.assessments
+        WHERE id = ANY(${assessment_ids})
+        RETURNING id
+      `;
+
+      res.json({
+        deleted: result.length,
+        message: `${result.length} assessment(s) permanently deleted`
+      });
+    } catch (error) {
+      console.error('Error deleting assessments:', error);
+      res.status(500).json({ error: 'Failed to delete assessments' });
     }
   }
 );

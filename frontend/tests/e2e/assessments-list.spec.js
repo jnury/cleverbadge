@@ -17,8 +17,7 @@ test.describe('Assessments List', () => {
     await page.click('button:has-text("Assessments")');
 
     // Check header
-    await expect(page.locator('h2')).toContainText('Assessments');
-    await expect(page.locator('text=/View all candidate assessment results/i')).toBeVisible();
+    await expect(page.locator('h2:has-text("View all candidate assessment results")')).toBeVisible();
   });
 
   test('should show empty state when no assessments', async ({ page }) => {
@@ -154,6 +153,6 @@ test.describe('Assessments List', () => {
     await page.waitForTimeout(1000);
 
     // Page should be stable
-    await expect(page.locator('h2:has-text("Assessments")')).toBeVisible();
+    await expect(page.locator('h2:has-text("View all candidate assessment results")')).toBeVisible();
   });
 });

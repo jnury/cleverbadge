@@ -18,7 +18,7 @@ const Select = ({
       )}
       <select
         className={`
-          w-full px-3 py-2 border rounded-md shadow-sm
+          w-full h-10 px-3 border rounded-md shadow-sm
           focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
           ${error ? 'border-red-500' : 'border-gray-300'}
           ${className}

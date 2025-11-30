@@ -80,7 +80,17 @@ const QuestionRunner = () => {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to submit answer');
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Check for expired/abandoned assessment
+        if (errorData.code === 'ASSESSMENT_EXPIRED' || errorData.code === 'ASSESSMENT_ABANDONED') {
+          clearAssessment(testSlug);
+          alert('Your assessment has expired (2-hour time limit). You will be redirected to start a new test.');
+          navigate(`/t/${slug}`);
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to submit answer');
+      }
 
       const data = await response.json();
 
@@ -129,7 +139,7 @@ const QuestionRunner = () => {
     }
 
     try {
-      await fetch(`${apiUrl}/api/assessments/${assessmentId}/answer`, {
+      const response = await fetch(`${apiUrl}/api/assessments/${assessmentId}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,6 +147,17 @@ const QuestionRunner = () => {
           selected_options: selectedOptions
         })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Check for expired/abandoned assessment
+        if (errorData.code === 'ASSESSMENT_EXPIRED' || errorData.code === 'ASSESSMENT_ABANDONED') {
+          clearAssessment(testSlug);
+          alert('Your assessment has expired (2-hour time limit). You will be redirected to start a new test.');
+          navigate(`/t/${slug}`);
+          return;
+        }
+      }
     } catch (err) {
       console.error('Failed to save answer:', err);
     }
@@ -172,7 +193,17 @@ const QuestionRunner = () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) throw new Error('Failed to submit assessment');
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Check for expired/abandoned assessment
+        if (errorData.code === 'ASSESSMENT_EXPIRED' || errorData.code === 'ASSESSMENT_ABANDONED') {
+          clearAssessment(testSlug);
+          alert('Your assessment has expired (2-hour time limit). You will be redirected to start a new test.');
+          navigate(`/t/${slug}`);
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to submit assessment');
+      }
 
       const data = await response.json();
 
@@ -284,35 +315,49 @@ const QuestionRunner = () => {
               textClass = 'text-gray-500';
             }
 
+            // Determine indicator styling based on state
+            let indicatorClass = 'border-gray-300';
+            if (isSelected && !isCurrentQuestionSubmitted) {
+              indicatorClass = 'border-tech bg-tech';
+            } else if (isCurrentQuestionSubmitted && hasFeedbackForOption) {
+              if (isCorrect) {
+                indicatorClass = isSelected ? 'border-green-500 bg-green-500' : 'border-green-500 bg-green-500';
+              } else if (isSelected) {
+                indicatorClass = 'border-red-400 bg-red-400';
+              } else {
+                indicatorClass = 'border-gray-300';
+              }
+            } else if (isCurrentQuestionSubmitted) {
+              indicatorClass = 'border-gray-300';
+            }
+
             return (
-              <label
+              <div
                 key={optionId}
-                className={`flex items-start p-4 border-2 rounded-lg transition-all ${
+                onClick={() => !isCurrentQuestionSubmitted && handleOptionChange(optionId)}
+                className={`p-4 border-2 rounded-lg transition-all ${
                   isCurrentQuestionSubmitted ? '' : 'cursor-pointer'
                 } ${borderClass}`}
               >
-                <input
-                  type={inputType}
-                  name={`question-${currentQuestion.id}`}
-                  checked={isSelected}
-                  onChange={() => handleOptionChange(optionId)}
-                  disabled={isCurrentQuestionSubmitted}
-                  className={`mr-3 mt-1 flex-shrink-0 ${isSelected ? 'accent-tech' : ''}`}
-                />
-                <div className={`flex-1 ${textClass}`}>
-                  <MarkdownRenderer content={optionText} />
-                  {isCurrentQuestionSubmitted && explanation && (
-                    <p className="mt-2 text-sm text-gray-600 italic border-t pt-2">
-                      {explanation}
-                    </p>
+                <div className="flex items-center gap-3">
+                  <span className={`w-5 h-5 flex-shrink-0 border-2 ${indicatorClass} ${
+                    currentQuestion.type === 'SINGLE' ? 'rounded-full' : 'rounded'
+                  }`} />
+                  <div className={`flex-1 ${textClass}`}>
+                    <MarkdownRenderer content={optionText} />
+                    {isCurrentQuestionSubmitted && explanation && (
+                      <p className="mt-2 text-sm text-gray-600 italic border-t pt-2">
+                        {explanation}
+                      </p>
+                    )}
+                  </div>
+                  {isCurrentQuestionSubmitted && hasFeedbackForOption && (
+                    <span className={`ml-2 flex-shrink-0 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                      {isCorrect ? '✓' : (isSelected ? '✗' : '')}
+                    </span>
                   )}
                 </div>
-                {isCurrentQuestionSubmitted && hasFeedbackForOption && (
-                  <span className={`ml-2 flex-shrink-0 ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                    {isCorrect ? '✓' : (isSelected ? '✗' : '')}
-                  </span>
-                )}
-              </label>
+              </div>
             );
           })}
         </div>

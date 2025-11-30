@@ -17,10 +17,8 @@ test.describe('Analytics Tab', () => {
     await page.click('button:has-text("Analytics")');
 
     // Verify tab content
-    await expect(page.locator('h2:has-text("Question Analytics")')).toBeVisible();
-    await expect(page.locator('text=/View success rates for each question/i')).toBeVisible();
+    await expect(page.locator('h2:has-text("View success rates for each question")')).toBeVisible();
     await expect(page.locator('select#test-select')).toBeVisible();
-    await expect(page.locator('label:has-text("Select a Test")')).toBeVisible();
   });
 
   test('should show empty state when no test selected', async ({ page }) => {
@@ -60,7 +58,7 @@ test.describe('Analytics Tab', () => {
 
     // Should display test summary or no data message
     const pageContent = await page.textContent('body');
-    const hasData = pageContent.includes('completed assessments') ||
+    const hasData = pageContent.includes('assessments') ||
                     pageContent.includes('No completed assessments yet');
     expect(hasData).toBe(true);
   });
@@ -85,7 +83,7 @@ test.describe('Analytics Tab', () => {
     await page.waitForTimeout(1000);
 
     // Should show test title and assessment count
-    await expect(page.locator('text=/\\d+ completed assessments/i')).toBeVisible();
+    await expect(page.locator('text=/\\d+ assessments/i')).toBeVisible();
     await expect(page.locator('text=/\\d+ questions/i')).toBeVisible();
   });
 
@@ -110,7 +108,7 @@ test.describe('Analytics Tab', () => {
     const pageContent = await page.textContent('body');
 
     // If there are no completed assessments, verify no data state is shown
-    if (pageContent.includes('0 completed assessments') ||
+    if (pageContent.includes('0 assessments') ||
         pageContent.includes('No completed assessments yet')) {
       await expect(page.locator('text=/No completed assessments yet/i')).toBeVisible();
       await expect(page.locator('text=/Analytics will appear once candidates complete this test/i')).toBeVisible();
@@ -138,7 +136,7 @@ test.describe('Analytics Tab', () => {
     const pageContent = await page.textContent('body');
 
     // If there are completed assessments, check for table
-    if (!pageContent.includes('0 completed assessments') &&
+    if (!pageContent.includes('0 assessments') &&
         !pageContent.includes('No completed assessments yet')) {
       // Check table headers
       await expect(page.locator('th:has-text("Question")')).toBeVisible();
@@ -172,7 +170,7 @@ test.describe('Analytics Tab', () => {
     const pageContent = await page.textContent('body');
 
     // Legend should only appear when there are completed assessments
-    if (!pageContent.includes('0 completed assessments') &&
+    if (!pageContent.includes('0 assessments') &&
         !pageContent.includes('No completed assessments yet')) {
       await expect(page.locator('text=Difficulty Legend')).toBeVisible();
       await expect(page.locator('text=/Very Hard.*<30%/i')).toBeVisible();
@@ -202,7 +200,7 @@ test.describe('Analytics Tab', () => {
 
     // Verify content loaded
     let pageContent = await page.textContent('body');
-    expect(pageContent).toMatch(/completed assessments/i);
+    expect(pageContent).toMatch(/\d+ assessments/i);
 
     // Select second test
     await select.selectOption({ index: 2 });
@@ -210,7 +208,7 @@ test.describe('Analytics Tab', () => {
 
     // Verify new content loaded
     pageContent = await page.textContent('body');
-    expect(pageContent).toMatch(/completed assessments/i);
+    expect(pageContent).toMatch(/\d+ assessments/i);
   });
 
   test('should handle loading states gracefully', async ({ page }) => {
@@ -222,7 +220,7 @@ test.describe('Analytics Tab', () => {
     await page.waitForTimeout(1000);
 
     // Analytics tab should be visible
-    await expect(page.locator('h2:has-text("Question Analytics")')).toBeVisible();
+    await expect(page.locator('h2:has-text("View success rates for each question")')).toBeVisible();
   });
 
   test('should display color-coded success rates', async ({ page }) => {
@@ -246,7 +244,7 @@ test.describe('Analytics Tab', () => {
     const pageContent = await page.textContent('body');
 
     // If table is visible, check that success rate badges exist
-    if (!pageContent.includes('0 completed assessments') &&
+    if (!pageContent.includes('0 assessments') &&
         !pageContent.includes('No completed assessments yet')) {
       const table = page.locator('table');
       if (await table.isVisible()) {

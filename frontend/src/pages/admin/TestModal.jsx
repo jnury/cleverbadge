@@ -364,7 +364,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                   setFormData(prev => ({ ...prev, visibility: e.target.value }));
                   setHasChanges(true);
                 }}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="private">Private - Requires direct link</option>
                 <option value="public">Public - Listed on home page (v2)</option>
@@ -438,7 +438,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                   setFormData(prev => ({ ...prev, show_explanations: e.target.value }));
                   setHasChanges(true);
                 }}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="never">Never - Candidates see score only</option>
                 <option value="after_each_question">After Each Question</option>
@@ -456,7 +456,7 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                     setFormData(prev => ({ ...prev, explanation_scope: e.target.value }));
                     setHasChanges(true);
                   }}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full h-10 border border-gray-300 rounded-md px-3"
                 >
                   <option value="selected_only">Selected Answers Only</option>
                   <option value="all_answers">All Answer Options</option>
@@ -467,12 +467,6 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
         )}
         {activeTab === 'questions' && (
           <div className="space-y-4">
-            {/* Test Visibility Display */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm font-medium text-gray-700">Test Visibility:</span>
-              {getVisibilityBadge(formData.visibility)}
-            </div>
-
             {questionsLoading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -483,51 +477,48 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                 {/* Available Questions */}
                 <div>
                   <h4 className="font-medium text-gray-900 mb-3">
-                    Available Questions ({allQuestions.length})
+                    Available Questions ({allQuestions.filter(q => !selectedQuestionIds.includes(q.id)).length})
                   </h4>
                   <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {allQuestions.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">No questions available</p>
+                    {allQuestions.filter(q => !selectedQuestionIds.includes(q.id)).length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">
+                        {allQuestions.length === 0 ? 'No questions available' : 'All questions selected'}
+                      </p>
                     ) : (
-                      allQuestions.map(question => {
-                        const isSelected = selectedQuestionIds.includes(question.id);
-                        const isCompatible = canQuestionBeInTest(question.visibility, formData.visibility);
+                      allQuestions
+                        .filter(question => !selectedQuestionIds.includes(question.id))
+                        .map(question => {
+                          const isCompatible = canQuestionBeInTest(question.visibility, formData.visibility);
 
-                        return (
-                          <div
-                            key={question.id}
-                            className={`p-3 border rounded flex items-start gap-3 ${
-                              isSelected ? 'bg-tech/10 border-tech' :
-                              isCompatible ? 'hover:bg-gray-50' : 'opacity-50 bg-gray-100'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => isCompatible && handleToggleQuestion(question.id)}
-                              disabled={!isCompatible}
-                              className="mt-1 rounded border-gray-300"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">{question.title}</div>
-                              <div className="text-xs text-gray-600">{truncateText(question.text)}</div>
-                              <div className="flex gap-2 mt-1">
-                                <span className={`text-xs px-2 py-0.5 rounded ${
-                                  question.type === 'SINGLE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                  {question.type}
-                                </span>
-                                {getVisibilityBadge(question.visibility)}
+                          return (
+                            <div
+                              key={question.id}
+                              className={`p-2 border rounded flex items-center gap-2 ${
+                                isCompatible ? 'hover:bg-gray-50' : 'opacity-50 bg-gray-100'
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm">{question.title}</div>
+                                <div className="text-xs text-gray-600 truncate">{truncateText(question.text)}</div>
+                                {!isCompatible && (
+                                  <p className="text-xs text-red-600">
+                                    Incompatible visibility
+                                  </p>
+                                )}
                               </div>
-                              {!isCompatible && (
-                                <p className="text-xs text-red-600 mt-1">
-                                  Incompatible visibility
-                                </p>
-                              )}
+                              <button
+                                onClick={() => isCompatible && handleToggleQuestion(question.id)}
+                                disabled={!isCompatible}
+                                className="text-green-600 hover:text-green-800 p-1 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                title="Add question"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })
                     )}
                   </div>
                 </div>
@@ -548,18 +539,18 @@ const TestModal = ({ isOpen, onClose, test, initialTab = 'settings', onSave }) =
                         return (
                           <div
                             key={qId}
-                            className="p-3 border border-tech bg-tech/10 rounded flex items-start justify-between"
+                            className="p-2 border border-tech bg-tech/10 rounded flex items-center gap-2"
                           >
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm">{question.title}</div>
-                              <div className="text-xs text-gray-600">{truncateText(question.text)}</div>
+                              <div className="text-xs text-gray-600 truncate">{truncateText(question.text)}</div>
                             </div>
                             <button
                               onClick={() => handleToggleQuestion(qId)}
-                              className="text-red-600 hover:text-red-800 p-1"
+                              className="text-red-600 hover:text-red-800 p-1 flex-shrink-0"
                               title="Remove question"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>

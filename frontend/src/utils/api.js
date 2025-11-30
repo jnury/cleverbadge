@@ -131,3 +131,24 @@ export async function getTests() {
 export async function getQuestionAnalytics(testId) {
   return apiRequest(`/api/tests/${testId}/analytics/questions`);
 }
+
+// ============ Assessments API ============
+
+/**
+ * Verify if an assessment can be resumed
+ * @param {string} assessmentId - Assessment UUID
+ * @returns {Promise<object>} Verification result
+ */
+export async function verifyAssessment(assessmentId) {
+  const response = await fetch(`${API_URL}/api/assessments/${assessmentId}/verify`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data.error || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.code = data.code;
+    throw error;
+  }
+
+  return data;
+}

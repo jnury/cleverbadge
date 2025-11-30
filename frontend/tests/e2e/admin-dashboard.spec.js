@@ -44,7 +44,7 @@ test.describe('Admin Dashboard', () => {
 
     // Click Assessments tab and wait for content to load
     await page.getByRole('tab', { name: 'Assessments' }).click();
-    await expect(page.locator('h2:has-text("Assessments")')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2:has-text("View all candidate assessment results")')).toBeVisible({ timeout: 10000 });
   });
 
   test('should logout and redirect to login', async ({ page }) => {

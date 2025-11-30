@@ -13,7 +13,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['routes/**', 'middleware/**', 'utils/**', 'db/**'],
-      exclude: ['**/*.test.js', '**/node_modules/**']
+      exclude: ['**/*.test.js', '**/node_modules/**', '**/*.sql']
     },
     testTimeout: 10000,
     // Run test files sequentially to avoid schema creation conflicts

@@ -55,7 +55,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 flex flex-col bg-gray-50">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -143,7 +143,7 @@ const AdminDashboard = () => {
       </nav>
 
       {/* Content Area */}
-      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="bg-white rounded-lg shadow p-6">
           <div
             role="tabpanel"

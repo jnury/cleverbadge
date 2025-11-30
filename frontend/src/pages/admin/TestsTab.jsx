@@ -309,16 +309,13 @@ const TestsTab = () => {
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Tests</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage your assessment tests
-            {selectedIds.size > 0 && (
-              <span className="ml-2 font-medium text-tech">
-                ({selectedIds.size} selected)
-              </span>
-            )}
-          </p>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl text-gray-900">Manage your assessment tests</h2>
+          {selectedIds.size > 0 && (
+            <span className="text-sm font-medium text-tech">
+              ({selectedIds.size} selected)
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           {/* Bulk Actions Dropdown */}
@@ -654,7 +651,7 @@ const TestsTab = () => {
               <select
                 value={bulkVisibility}
                 onChange={(e) => setBulkVisibility(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full h-10 border border-gray-300 rounded-md px-3"
               >
                 <option value="">Select visibility...</option>
                 <option value="private">Private</option>

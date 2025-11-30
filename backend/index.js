@@ -18,6 +18,7 @@ import testsRouter from './routes/tests.js';
 import assessmentsRouter from './routes/assessments.js';
 import importRouter from './routes/import.js';
 import analyticsRouter from './routes/analytics.js';
+import { startAssessmentCleanupJob } from './jobs/assessmentCleanup.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,9 @@ app.listen(PORT, async () => {
 
     // Ensure default admin user exists
     await ensureDefaultAdmin();
+
+    // Start scheduled jobs
+    startAssessmentCleanupJob();
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
   }
