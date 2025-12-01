@@ -36,11 +36,13 @@ A minimalist, single-page scrolling homepage for CleverBadge that showcases the 
 
 **Layout:**
 - Left: Logo (`media/logo.png`) + "Clever Badge" text
-- Right: "Features" (anchor) | "Try Demo" (button) | "Login" (button)
+- Right (not logged in): "Features" (anchor) | "Try Demo" (button) | "Login" (button)
+- Right (logged in with dashboard access): "Features" (anchor) | "Try Demo" (button) | "Dashboard" (link to `/dashboard`)
 
 **Mobile:** Hamburger menu containing same items.
 
 **Login button:** Opens login modal (not a separate page).
+**Dashboard link:** Direct link to `/dashboard` (only shown when authenticated with appropriate role).
 
 ## Hero Section
 
@@ -83,9 +85,12 @@ A minimalist, single-page scrolling homepage for CleverBadge that showcases the 
 **Content:**
 - Headline: "Ready to get started?"
 - Subtext: "Try a sample test to see how it works, or log in to create your own."
-- Two buttons:
+- Two buttons (not logged in):
   - "Try Sample Test" (white with teal text)
   - "Login" (outlined white, opens modal)
+- Two buttons (logged in with dashboard access):
+  - "Try Sample Test" (white with teal text)
+  - "Go to Dashboard" (outlined white, links to `/dashboard`)
 
 ## Login Modal
 
@@ -93,8 +98,8 @@ A minimalist, single-page scrolling homepage for CleverBadge that showcases the 
 - Replaces `/admin/login` page entirely
 - Triggered by any "Login" button
 - Reuses existing login form logic from `AdminLogin.jsx`
-- Successful login redirects to `/admin` dashboard
-- Direct visits to `/admin` when unauthenticated redirect to homepage with modal auto-opened
+- Successful login redirects to `/dashboard`
+- Direct visits to `/dashboard` when unauthenticated redirect to homepage with modal auto-opened
 
 **Future-proofing:** Structure allows adding "Register" tab when user registration is implemented.
 
@@ -135,16 +140,23 @@ Keep existing `Footer.jsx` component unchanged (version info, copyright, dark gr
 | Route | Before | After |
 |-------|--------|-------|
 | `/` | Simple centered text + login link | New homepage |
-| `/admin/login` | Login page | Remove - redirect to `/` |
-| `/admin` (unauthenticated) | Redirect to `/admin/login` | Redirect to `/` with modal open |
+| `/admin/login` | Login page | Remove entirely |
+| `/admin` | Admin dashboard | Rename to `/dashboard` |
+| `/admin/assessment/:id` | Assessment detail | Rename to `/dashboard/assessment/:id` |
+| `/dashboard` (unauthenticated) | N/A | Redirect to `/` with modal auto-open |
+| `/dashboard` (authenticated) | N/A | Dashboard (formerly admin) |
 
 ## Files to Modify
 
-- `frontend/src/pages/Home.jsx` - Complete rewrite
-- `frontend/src/App.jsx` - Remove `/admin/login` route
-- `frontend/src/components/LoginModal.jsx` - New component (extract from AdminLogin)
+- `frontend/src/pages/Home.jsx` - Complete rewrite with new homepage
+- `frontend/src/App.jsx` - Update routes (remove `/admin/*`, add `/dashboard/*`)
+- `frontend/src/components/LoginModal.jsx` - New component (extract logic from AdminLogin)
+- `frontend/src/components/Navigation.jsx` - New component for sticky header
+- `frontend/src/components/ProtectedRoute.jsx` - Update redirect to `/` with modal trigger
+- `frontend/src/pages/admin/` - Rename directory to `frontend/src/pages/dashboard/`
 - `frontend/src/pages/admin/AdminLogin.jsx` - Remove file
-- `frontend/src/components/ProtectedRoute.jsx` - Update redirect behavior
+- `frontend/src/pages/admin/AdminDashboard.jsx` - Rename to `dashboard/Dashboard.jsx`
+- `frontend/src/pages/admin/AssessmentDetail.jsx` - Move to `dashboard/AssessmentDetail.jsx`
 
 ## Demo Test Requirement
 
