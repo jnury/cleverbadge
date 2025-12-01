@@ -33,7 +33,7 @@ export default defineConfig({
   webServer: reuseExistingServer ? [] : [
     {
       command: 'cd ../backend && npm run reset-test-schema && npm run dev:e2e',
-      url: `http://localhost:${BACKEND_PORT}/health`,
+      url: `http://localhost:${BACKEND_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 120000,
       env: {

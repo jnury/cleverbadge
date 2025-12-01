@@ -8,7 +8,7 @@ const Footer = () => {
 
   useEffect(() => {
     // Fetch backend version from health endpoint
-    fetch(`${apiUrl}/health`)
+    fetch(`${apiUrl}/api/health`)
       .then(res => res.json())
       .then(data => {
         setBackendVersion(data.version || 'unknown');

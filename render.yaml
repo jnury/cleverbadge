@@ -16,8 +16,6 @@ projects:
             rootDir: backend
             buildCommand: npm install
             startCommand: node index.js
-            domains:
-              - api-staging.cleverbadge.com
             envVars:
               - key: DATABASE_URL
                 sync: false  # Set manually with cleverbadge_staging user
@@ -38,10 +36,13 @@ projects:
               - staging.cleverbadge.com
             envVars:
               - key: VITE_API_URL
-                value: https://api-staging.cleverbadge.com
+                value: https://staging.cleverbadge.com
               - key: VITE_ENV
                 value: staging
             routes:
+              - type: rewrite
+                source: /api/*
+                destination: https://cleverbadge-backend-staging.onrender.com/api/*
               - type: rewrite
                 source: /*
                 destination: /index.html
@@ -90,8 +91,6 @@ projects:
             rootDir: backend
             buildCommand: npm install
             startCommand: node index.js
-            domains:
-              - api.cleverbadge.com
             envVars:
               - key: DATABASE_URL
                 sync: false  # Set manually with cleverbadge_prod user
@@ -113,10 +112,13 @@ projects:
               - www.cleverbadge.com
             envVars:
               - key: VITE_API_URL
-                value: https://api.cleverbadge.com
+                value: https://cleverbadge.com
               - key: VITE_ENV
                 value: production
             routes:
+              - type: rewrite
+                source: /api/*
+                destination: https://cleverbadge-backend-production.onrender.com/api/*
               - type: rewrite
                 source: /*
                 destination: /index.html

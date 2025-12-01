@@ -155,7 +155,7 @@ cd ..
 # Wait for backend to be ready
 echo "  Waiting for backend to be ready..."
 for i in {1..30}; do
-  if curl -s "http://localhost:$TEST_BACKEND_PORT/health" >/dev/null 2>&1; then
+  if curl -s "http://localhost:$TEST_BACKEND_PORT/api/health" >/dev/null 2>&1; then
     echo "  ✓ Backend is ready"
     break
   fi
