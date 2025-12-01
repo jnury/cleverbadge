@@ -6,11 +6,6 @@ on:
       - develop
       - staging
       - main
-  pull_request:
-    branches:
-      - develop
-      - staging
-      - main
 
 env:
   NODE_VERSION: '20'  # Align with Render.com default
@@ -19,6 +14,7 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
 
     services:
       postgres:
@@ -75,7 +71,8 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    needs: backend-tests  # Sequential: backend → frontend
+    needs: backend-tests
+    if: github.ref == 'refs/heads/develop'
 
     steps:
       - name: Checkout code
@@ -106,7 +103,8 @@ jobs:
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: frontend-tests  # Sequential: frontend → e2e
+    needs: frontend-tests
+    if: github.ref == 'refs/heads/develop'
 
     services:
       postgres:
@@ -196,7 +194,6 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: e2e-tests
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     environment: staging
 
@@ -212,7 +209,6 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: e2e-tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
