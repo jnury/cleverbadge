@@ -9,7 +9,7 @@ projects:
           # Staging Backend Service
           - type: web
             name: cleverbadge-backend-staging
-            region: frankfurt
+            region: oregon
             branch: staging
             runtime: node
             plan: free
@@ -65,7 +65,7 @@ projects:
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
             name: cleverbadge-migrate-staging
             branch: staging
-            region: frankfurt
+            region: oregon
             runtime: node
             rootDir: backend
             buildCommand: npm install
@@ -85,7 +85,7 @@ projects:
           - type: web
             name: cleverbadge-backend-production
             branch: main
-            region: frankfurt
+            region: oregon
             runtime: node
             plan: starter
             rootDir: backend
@@ -141,7 +141,7 @@ projects:
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
             name: cleverbadge-migrate-production
             branch: main
-            region: frankfurt
+            region: oregon
             runtime: node
             rootDir: backend
             buildCommand: npm install
@@ -162,7 +162,7 @@ projects:
           - type: cron
             schedule: "0 0 31 2 *"  # Feb 31st = never (trigger manually)
             name: cleverbadge-refresh-db
-            region: frankfurt
+            region: oregon
             runtime: node
             rootDir: backend
             buildCommand: npm install
@@ -175,7 +175,7 @@ projects:
           # Shared PostgreSQL Database (with schema isolation)
           # Uses staging/production schemas within the same database
           - name: cleverbadge-db
-            region: frankfurt
+            region: oregon
             databaseName: cleverbadge
             user: cleverbadge_superuser
             plan: basic-256mb
