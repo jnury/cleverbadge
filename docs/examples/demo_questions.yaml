@@ -1,0 +1,238 @@
+# Demo Questions for CleverBadge
+# These questions showcase the platform's capabilities:
+# - Single and multiple choice questions
+# - Markdown formatting with code snippets
+# - Detailed explanations for learning
+# - Various tech subjects for broad appeal
+
+- title: "JavaScript Array Methods"
+  text: |
+    What is the output of the following code?
+
+    ```javascript
+    const numbers = [1, 2, 3, 4, 5];
+    const result = numbers.filter(n => n > 2).map(n => n * 2);
+    console.log(result);
+    ```
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "`[6, 8, 10]`"
+      is_correct: true
+      explanation: "First, `filter(n => n > 2)` keeps [3, 4, 5], then `map(n => n * 2)` doubles each value to [6, 8, 10]."
+    - text: "`[2, 4, 6, 8, 10]`"
+      is_correct: false
+      explanation: "This would be the result of only mapping without filtering."
+    - text: "`[3, 4, 5]`"
+      is_correct: false
+      explanation: "This is the result after filter, but before map."
+    - text: "`[6, 8]`"
+      is_correct: false
+      explanation: "The filter keeps all numbers greater than 2, not just 3 and 4."
+  tags: ["javascript", "arrays", "functional"]
+
+- title: "Python List Comprehension"
+  text: |
+    Which of the following Python expressions creates a list of squares for even numbers from 0 to 9?
+
+    ```python
+    # Expected output: [0, 4, 16, 36, 64]
+    ```
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "`[x**2 for x in range(10) if x % 2 == 0]`"
+      is_correct: true
+      explanation: "This comprehension iterates 0-9, filters even numbers with `if x % 2 == 0`, then squares them with `x**2`."
+    - text: "`[x**2 if x % 2 == 0 for x in range(10)]`"
+      is_correct: false
+      explanation: "Invalid syntax. The condition must come after the `for` clause in a filtering comprehension."
+    - text: "`[x*x for x in range(10) where x % 2 == 0]`"
+      is_correct: false
+      explanation: "Python uses `if`, not `where` for filtering in list comprehensions."
+    - text: "`[x**2 for x in range(0, 10, 2)]`"
+      is_correct: false
+      explanation: "While this produces the same output, it uses step parameter instead of a condition. The question asks specifically about filtering even numbers."
+  tags: ["python", "list-comprehension", "syntax"]
+
+- title: "SQL JOIN Types"
+  text: |
+    Given two tables:
+
+    ```sql
+    -- employees: id, name, department_id
+    -- departments: id, name
+
+    SELECT e.name, d.name
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.id;
+    ```
+
+    What does this query return?
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "All employees with their department, NULL for employees without a department"
+      is_correct: true
+      explanation: "A LEFT JOIN returns all rows from the left table (employees) and matching rows from the right table (departments). Unmatched rows get NULL."
+    - text: "Only employees who have a matching department"
+      is_correct: false
+      explanation: "That would be an INNER JOIN, which only returns rows with matches in both tables."
+    - text: "All departments with their employees, NULL for empty departments"
+      is_correct: false
+      explanation: "That would be a RIGHT JOIN with the tables in this order, or a LEFT JOIN with tables reversed."
+    - text: "All possible combinations of employees and departments"
+      is_correct: false
+      explanation: "That would be a CROSS JOIN, which creates a Cartesian product."
+  tags: ["sql", "joins", "databases"]
+
+- title: "CSS Flexbox Alignment"
+  text: |
+    Which CSS properties would you use to **center an element both horizontally and vertically** inside a flex container?
+
+    ```css
+    .container {
+      display: flex;
+      /* What goes here? */
+    }
+    ```
+  type: "MULTIPLE"
+  visibility: "public"
+  options:
+    - text: "`justify-content: center`"
+      is_correct: true
+      explanation: "This centers items along the main axis (horizontal by default)."
+    - text: "`align-items: center`"
+      is_correct: true
+      explanation: "This centers items along the cross axis (vertical by default)."
+    - text: "`text-align: center`"
+      is_correct: false
+      explanation: "This only centers inline content and text, not flex items."
+    - text: "`vertical-align: middle`"
+      is_correct: false
+      explanation: "This property is for inline/table elements, not flexbox."
+  tags: ["css", "flexbox", "layout"]
+
+- title: "Git Branch Operations"
+  text: |
+    You're on the `main` branch and want to create a new branch called `feature` and switch to it immediately. Which command(s) will accomplish this?
+  type: "MULTIPLE"
+  visibility: "public"
+  options:
+    - text: "`git checkout -b feature`"
+      is_correct: true
+      explanation: "The `-b` flag creates a new branch and checks it out in one command."
+    - text: "`git switch -c feature`"
+      is_correct: true
+      explanation: "Modern Git alternative. The `-c` flag creates a new branch with `switch`."
+    - text: "`git branch feature && git checkout feature`"
+      is_correct: true
+      explanation: "Creates the branch first, then switches to it. Works but requires two commands."
+    - text: "`git checkout feature`"
+      is_correct: false
+      explanation: "This only works if the branch already exists. It won't create a new branch."
+  tags: ["git", "version-control", "branching"]
+
+- title: "HTTP Status Codes"
+  text: |
+    A REST API returns status code **404**. What does this indicate?
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "The requested resource was not found"
+      is_correct: true
+      explanation: "404 Not Found means the server cannot find the requested resource. The URL may be wrong or the resource may have been deleted."
+    - text: "The request was successful"
+      is_correct: false
+      explanation: "Success codes are in the 2xx range (e.g., 200 OK, 201 Created)."
+    - text: "The server encountered an internal error"
+      is_correct: false
+      explanation: "Server errors are in the 5xx range (e.g., 500 Internal Server Error)."
+    - text: "The client is not authorized to access the resource"
+      is_correct: false
+      explanation: "Authorization issues use 401 (Unauthorized) or 403 (Forbidden)."
+  tags: ["http", "rest-api", "web"]
+
+- title: "Linux File Permissions"
+  text: |
+    What does the following command do?
+
+    ```bash
+    chmod 755 script.sh
+    ```
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "Owner can read/write/execute; group and others can read/execute"
+      is_correct: true
+      explanation: "755 = rwxr-xr-x. 7 (owner) = 4+2+1 = read+write+execute. 5 (group/others) = 4+1 = read+execute."
+    - text: "Everyone can read, write, and execute the file"
+      is_correct: false
+      explanation: "That would be 777 (rwxrwxrwx)."
+    - text: "Only the owner can access the file"
+      is_correct: false
+      explanation: "That would be 700 (rwx------)."
+    - text: "The file becomes read-only for everyone"
+      is_correct: false
+      explanation: "Read-only would be 444 (r--r--r--)."
+  tags: ["linux", "bash", "permissions"]
+
+- title: "Data Structures - Time Complexity"
+  text: |
+    What is the **average time complexity** for searching an element in a hash table (hash map)?
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "O(1) - Constant time"
+      is_correct: true
+      explanation: "Hash tables use a hash function to compute an index directly, allowing constant-time average lookup regardless of size."
+    - text: "O(n) - Linear time"
+      is_correct: false
+      explanation: "O(n) is the worst case when all elements hash to the same bucket. Average case is O(1)."
+    - text: "O(log n) - Logarithmic time"
+      is_correct: false
+      explanation: "This is typical for balanced binary search trees, not hash tables."
+    - text: "O(n log n) - Linearithmic time"
+      is_correct: false
+      explanation: "This complexity is common for efficient sorting algorithms, not hash table operations."
+  tags: ["algorithms", "data-structures", "complexity"]
+
+- title: "Docker Fundamentals"
+  text: |
+    Which of the following statements about Docker containers are **true**?
+  type: "MULTIPLE"
+  visibility: "public"
+  options:
+    - text: "Containers share the host OS kernel"
+      is_correct: true
+      explanation: "Unlike VMs, containers don't need a full OS. They share the host kernel, making them lightweight."
+    - text: "Containers are isolated from each other by default"
+      is_correct: true
+      explanation: "Each container has its own filesystem, network, and process space, providing isolation."
+    - text: "Containers require a hypervisor to run"
+      is_correct: false
+      explanation: "Hypervisors are for VMs. Containers use the container runtime (like Docker Engine) directly on the host OS."
+    - text: "A Docker image is a running instance of a container"
+      is_correct: false
+      explanation: "It's the opposite: a container is a running instance of an image. Images are read-only templates."
+  tags: ["docker", "containers", "devops"]
+
+- title: "Web Security - HTTPS"
+  text: |
+    What security benefits does **HTTPS** provide over HTTP? Select all that apply.
+  type: "MULTIPLE"
+  visibility: "public"
+  options:
+    - text: "Encryption of data in transit"
+      is_correct: true
+      explanation: "HTTPS uses TLS to encrypt all data between client and server, preventing eavesdropping."
+    - text: "Server identity verification"
+      is_correct: true
+      explanation: "SSL/TLS certificates verify the server's identity, protecting against impersonation attacks."
+    - text: "Protection against SQL injection"
+      is_correct: false
+      explanation: "SQL injection is an application-level vulnerability. HTTPS doesn't prevent it - proper input validation does."
+    - text: "Data integrity verification"
+      is_correct: true
+      explanation: "TLS includes message authentication codes (MACs) to detect if data was tampered with in transit."
+  tags: ["security", "https", "web"]

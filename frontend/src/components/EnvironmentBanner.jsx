@@ -18,7 +18,7 @@ const EnvironmentBanner = () => {
   const bgColor = colors[environment] || colors.development;
 
   return (
-    <div className={`${bgColor} py-2 px-4 text-center text-sm font-semibold`}>
+    <div className={`${bgColor} py-2 px-4 text-center text-sm font-semibold fixed top-0 left-0 right-0 z-[60]`}>
       {environment.toUpperCase()} ENVIRONMENT
     </div>
   );

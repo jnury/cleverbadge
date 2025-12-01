@@ -418,15 +418,32 @@ router.post('/:assessmentId/submit',
       let feedback = null;
 
       if (tests[0].show_explanations === 'after_submit') {
-        // Build feedback for all questions
+        // Get ALL questions for this test (including unanswered ones)
+        const allTestQuestions = await sql`
+          SELECT
+            q.id as question_id,
+            q.options
+          FROM ${sql(dbSchema)}.test_questions tq
+          INNER JOIN ${sql(dbSchema)}.questions q ON tq.question_id = q.id
+          WHERE tq.test_id = ${assessment.test_id}
+          ORDER BY tq.id
+        `;
+
+        // Create a map of answers by question_id for quick lookup
+        const answersMap = {};
+        for (const answer of answers) {
+          answersMap[answer.question_id] = answer.selected_options.map(String);
+        }
+
+        // Build feedback for ALL questions
         feedback = [];
 
-        for (const answer of answers) {
-          const options = typeof answer.options === 'string'
-            ? JSON.parse(answer.options)
-            : answer.options;
+        for (const question of allTestQuestions) {
+          const options = typeof question.options === 'string'
+            ? JSON.parse(question.options)
+            : question.options;
 
-          const selectedIds = answer.selected_options.map(String);
+          const selectedIds = answersMap[question.question_id] || [];
           const selectedFeedback = selectedIds.map(id => ({
             id,
             text: options[id]?.text,
@@ -435,7 +452,7 @@ router.post('/:assessmentId/submit',
           }));
 
           feedback.push({
-            question_id: answer.question_id,
+            question_id: question.question_id,
             selected: selectedFeedback,
             all: tests[0].explanation_scope === 'all_answers'
               ? Object.entries(options).map(([id, opt]) => ({

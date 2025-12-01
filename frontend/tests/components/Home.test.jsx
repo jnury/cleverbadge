@@ -3,27 +3,35 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Home from '../../src/pages/Home';
 
-// Helper to render with router
 const renderWithRouter = (component) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe('Home', () => {
-  it('renders welcome message', () => {
+  it('renders navigation', () => {
     renderWithRouter(<Home />);
-    expect(screen.getByText('Clever Badge')).toBeInTheDocument();
-    expect(screen.getByText('Online Skills Assessment Platform')).toBeInTheDocument();
+    const navLogo = screen.getAllByAltText('Clever Badge')[0];
+    expect(navLogo).toBeInTheDocument();
   });
 
-  it('renders admin login link', () => {
+  it('renders hero section with headline', () => {
     renderWithRouter(<Home />);
-    const link = screen.getByRole('link', { name: /admin login/i });
-    expect(link).toBeInTheDocument();
+    expect(screen.getByText('Create tests. Share links. Get results.')).toBeInTheDocument();
   });
 
-  it('link points to correct URL', () => {
+  it('renders features section', () => {
     renderWithRouter(<Home />);
-    const link = screen.getByRole('link', { name: /admin login/i });
-    expect(link).toHaveAttribute('href', '/admin/login');
+    expect(screen.getByText('Everything you need to assess skills')).toBeInTheDocument();
+  });
+
+  it('renders CTA section', () => {
+    renderWithRouter(<Home />);
+    expect(screen.getByText('Ready to get started?')).toBeInTheDocument();
+  });
+
+  it('has smooth scroll behavior', () => {
+    const { container } = renderWithRouter(<Home />);
+    const wrapper = container.firstChild;
+    expect(wrapper).toHaveClass('scroll-smooth');
   });
 });

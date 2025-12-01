@@ -11,7 +11,7 @@ const pkg = require('./package.json');
 import express from 'express';
 import cors from 'cors';
 import { sql } from './db/index.js';
-import { ensureDefaultAdmin } from './db/init.js';
+import { ensureDefaultAdmin, ensureDemoTest } from './db/init.js';
 import authRouter from './routes/auth.js';
 import questionsRouter from './routes/questions.js';
 import testsRouter from './routes/tests.js';
@@ -66,6 +66,9 @@ app.listen(PORT, async () => {
 
     // Ensure default admin user exists
     await ensureDefaultAdmin();
+
+    // Ensure demo test exists
+    await ensureDemoTest();
 
     // Start scheduled jobs
     startAssessmentCleanupJob();

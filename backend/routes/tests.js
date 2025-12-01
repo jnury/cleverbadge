@@ -7,6 +7,9 @@ import { canChangeTestVisibility, getIncompatibleQuestions, canQuestionBeInTest 
 
 const router = express.Router();
 
+// Protected demo test slug - cannot be deleted or have slug regenerated
+const PROTECTED_DEMO_SLUG = 'demo';
+
 // Validation middleware helper
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -201,6 +204,14 @@ router.put('/:id',
 
       const currentTest = currentTests[0];
 
+      // Prevent disabling the demo test
+      if (currentTest.slug === PROTECTED_DEMO_SLUG && is_enabled === false) {
+        return res.status(403).json({
+          error: 'Cannot disable the demo test',
+          code: 'PROTECTED_TEST'
+        });
+      }
+
       // If visibility is changing, check compatibility with existing questions
       if (visibility && visibility !== currentTest.visibility) {
         const questionsInTest = await sql`
@@ -262,6 +273,14 @@ router.post('/:id/regenerate-slug',
 
       const oldSlug = tests[0].slug;
 
+      // Check if this is the protected demo test
+      if (oldSlug === PROTECTED_DEMO_SLUG) {
+        return res.status(403).json({
+          error: 'Cannot regenerate slug for the demo test',
+          code: 'PROTECTED_TEST'
+        });
+      }
+
       // Generate new unique slug
       const newSlug = await generateUniqueSlug();
 
@@ -293,6 +312,18 @@ router.delete('/:id',
   handleValidationErrors,
   async (req, res) => {
     try {
+      // Check if this is the protected demo test
+      const testCheck = await sql`
+        SELECT slug FROM ${sql(dbSchema)}.tests WHERE id = ${req.params.id}
+      `;
+
+      if (testCheck.length > 0 && testCheck[0].slug === PROTECTED_DEMO_SLUG) {
+        return res.status(403).json({
+          error: 'Cannot delete the demo test',
+          code: 'PROTECTED_TEST'
+        });
+      }
+
       // First, remove all questions from the test
       await sql`
         DELETE FROM ${sql(dbSchema)}.test_questions

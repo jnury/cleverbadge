@@ -26,6 +26,7 @@ const QuestionRunner = () => {
   const [answers, setAnswers] = useState(savedAnswers);
   const [submitting, setSubmitting] = useState(false);
   const [questionFeedback, setQuestionFeedback] = useState({}); // Store feedback per question
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const isAfterEachQuestion = showExplanations === 'after_each_question';
 
@@ -56,6 +57,10 @@ const QuestionRunner = () => {
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
+
+  // Calculate unanswered questions
+  const answeredCount = questions.filter(q => answers[q.id] && answers[q.id].length > 0).length;
+  const unansweredCount = totalQuestions - answeredCount;
 
   // Get current answer
   const currentAnswer = answers[currentQuestion.id] || [];
@@ -176,11 +181,12 @@ const QuestionRunner = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!window.confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
-      return;
-    }
+  const handleOpenSubmitModal = () => {
+    setShowSubmitModal(true);
+  };
 
+  const handleConfirmSubmit = async () => {
+    setShowSubmitModal(false);
     setSubmitting(true);
 
     // Save current answer
@@ -217,7 +223,13 @@ const QuestionRunner = () => {
         state: {
           score: data.score_percentage,
           candidateName,
-          passThreshold: data.pass_threshold
+          passThreshold: data.pass_threshold,
+          // Pass data for review mode (only if show_explanations is after_submit)
+          questions: showExplanations === 'after_submit' ? questions : null,
+          answers: showExplanations === 'after_submit' ? answers : null,
+          feedback: data.feedback,
+          showExplanations,
+          explanationScope
         }
       });
     } catch (err) {
@@ -392,23 +404,65 @@ const QuestionRunner = () => {
           Previous
         </button>
 
-        {isLastQuestion ? (
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="px-8 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Submitting...' : 'Submit Test'}
-          </button>
-        ) : (
-          <button
-            onClick={handleNext}
-            className="px-6 py-2 bg-tech hover:bg-tech/90 text-white font-semibold rounded-md"
-          >
-            Next
-          </button>
-        )}
+        <button
+          onClick={handleOpenSubmitModal}
+          disabled={submitting}
+          className="px-8 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Submitting...' : 'Submit Test'}
+        </button>
+
+        <button
+          onClick={handleNext}
+          disabled={isLastQuestion}
+          className="px-6 py-2 bg-tech hover:bg-tech/90 text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
       </div>
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Submit Test?
+            </h3>
+
+            {unansweredCount > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span className="font-medium">
+                    {unansweredCount} question{unansweredCount > 1 ? 's' : ''} not answered
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to submit your test? You cannot change your answers after submission.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="px-4 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-md"
+              >
+                Submit Test
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

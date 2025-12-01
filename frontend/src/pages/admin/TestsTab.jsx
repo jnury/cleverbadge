@@ -6,6 +6,9 @@ import TestModal from './TestModal';
 import SortableHeader from '../../components/ui/SortableHeader';
 import { apiRequest } from '../../utils/api';
 
+// Protected demo test slug - cannot be deleted or have slug regenerated
+const PROTECTED_DEMO_SLUG = 'demo';
+
 const TestsTab = () => {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -172,8 +175,15 @@ const TestsTab = () => {
 
   const handleBulkEnable = async (enable) => {
     try {
+      let updatedCount = 0;
+      let skippedDemo = false;
       for (const testId of selectedIds) {
         const test = tests.find(t => t.id === testId);
+        // Skip demo test when disabling
+        if (test && test.slug === PROTECTED_DEMO_SLUG && !enable) {
+          skippedDemo = true;
+          continue;
+        }
         if (test && test.is_enabled !== enable) {
           await apiRequest(`/api/tests/${testId}`, {
             method: 'PUT',
@@ -187,9 +197,14 @@ const TestsTab = () => {
               explanation_scope: test.explanation_scope
             })
           });
+          updatedCount++;
         }
       }
-      setSuccessMessage(`${enable ? 'Enabled' : 'Disabled'} ${selectedIds.size} test${selectedIds.size > 1 ? 's' : ''}`);
+      let message = `${enable ? 'Enabled' : 'Disabled'} ${updatedCount} test${updatedCount !== 1 ? 's' : ''}`;
+      if (skippedDemo) {
+        message += ' (demo test skipped)';
+      }
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 3000);
       setSelectedIds(new Set());
       setBulkAction(null);
@@ -529,9 +544,14 @@ const TestsTab = () => {
                       </button>
                       {/* Regenerate link icon */}
                       <button
-                        onClick={() => setRegenerateConfirm(test)}
-                        className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded"
-                        title="Regenerate link"
+                        onClick={() => test.slug !== PROTECTED_DEMO_SLUG && setRegenerateConfirm(test)}
+                        className={`p-1.5 rounded ${
+                          test.slug === PROTECTED_DEMO_SLUG
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-500 hover:text-orange-600 hover:bg-orange-50'
+                        }`}
+                        title={test.slug === PROTECTED_DEMO_SLUG ? 'Demo test link cannot be changed' : 'Regenerate link'}
+                        disabled={test.slug === PROTECTED_DEMO_SLUG}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -539,13 +559,16 @@ const TestsTab = () => {
                       </button>
                       {/* Toggle enabled icon */}
                       <button
-                        onClick={() => handleToggleEnabled(test)}
-                        className={`p-1.5 text-gray-500 rounded ${
-                          test.is_enabled
-                            ? 'hover:text-red-600 hover:bg-red-50'
-                            : 'hover:text-green-600 hover:bg-green-50'
+                        onClick={() => test.slug !== PROTECTED_DEMO_SLUG && handleToggleEnabled(test)}
+                        className={`p-1.5 rounded ${
+                          test.slug === PROTECTED_DEMO_SLUG
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : test.is_enabled
+                              ? 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                              : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
                         }`}
-                        title={test.is_enabled ? 'Disable test' : 'Enable test'}
+                        title={test.slug === PROTECTED_DEMO_SLUG ? 'Demo test cannot be disabled' : (test.is_enabled ? 'Disable test' : 'Enable test')}
+                        disabled={test.slug === PROTECTED_DEMO_SLUG}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           {test.is_enabled ? (
@@ -557,9 +580,14 @@ const TestsTab = () => {
                       </button>
                       {/* Delete icon */}
                       <button
-                        onClick={() => handleDeleteTest(test)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                        title="Delete test"
+                        onClick={() => test.slug !== PROTECTED_DEMO_SLUG && handleDeleteTest(test)}
+                        className={`p-1.5 rounded ${
+                          test.slug === PROTECTED_DEMO_SLUG
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title={test.slug === PROTECTED_DEMO_SLUG ? 'Demo test cannot be deleted' : 'Delete test'}
+                        disabled={test.slug === PROTECTED_DEMO_SLUG}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

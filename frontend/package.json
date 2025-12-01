@@ -1,6 +1,6 @@
 {
   "name": "cleverbadge-frontend",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Clever Badge Frontend",
   "type": "module",
   "scripts": {
