@@ -1,11 +1,9 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
     branches:
       - develop
-      - staging
-      - main
 
 env:
   NODE_VERSION: '20'  # Align with Render.com default
@@ -190,33 +188,3 @@ jobs:
           name: playwright-test-results
           path: frontend/test-results/
           if-no-files-found: warn
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
-    environment: staging
-
-    steps:
-      - name: Trigger Render backend deploy
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND_STAGING }}"
-
-      - name: Trigger Render frontend deploy
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND_STAGING }}"
-
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-
-    steps:
-      - name: Trigger Render backend deploy
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND_PRODUCTION }}"
-
-      - name: Trigger Render frontend deploy
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND_PRODUCTION }}"
