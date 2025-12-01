@@ -81,9 +81,12 @@ test.describe('Candidate Test Taking Flow', () => {
     await selectCheckboxByText(page, '2');
     await selectCheckboxByText(page, '4');
 
-    // Submit test with confirmation
-    page.once('dialog', dialog => dialog.accept());
+    // Submit test - click Submit Test button to open modal
     await page.click('button:has-text("Submit Test")');
+
+    // Wait for confirmation modal and click Submit Test button in modal
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await page.locator('div.fixed button:has-text("Submit Test")').click();
 
     // Wait for results page
     await page.waitForURL('**/t/math-geo/result');
@@ -198,9 +201,10 @@ test.describe('Candidate Test Taking Flow', () => {
     // Correct answers are "2" and "4", we'll only select "2"
     await selectCheckboxByText(page, '2');
 
-    // Submit test
-    page.once('dialog', dialog => dialog.accept());
+    // Submit test - click Submit Test button to open modal
     await page.click('button:has-text("Submit Test")');
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await page.locator('div.fixed button:has-text("Submit Test")').click();
     await page.waitForURL('**/t/math-geo/result');
 
     // Calculate expected score:
@@ -296,15 +300,16 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Next")');
     await page.locator('div.p-4.border-2.rounded-lg').first().click();
 
-    page.once('dialog', dialog => dialog.accept());
     await page.click('button:has-text("Submit Test")');
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await page.locator('div.fixed button:has-text("Submit Test")').click();
     await page.waitForURL('**/t/math-geo/result');
 
     // Candidate name should be visible in results
     await expect(page.locator(`text=${candidateName}`)).toBeVisible();
   });
 
-  test('should show submit confirmation dialog', async ({ page }) => {
+  test('should show submit confirmation modal', async ({ page }) => {
     await page.fill('input#name', 'Confirmation Tester');
     await page.click('button:has-text("Start Test")');
     await page.waitForURL('**/t/math-geo/run');
@@ -316,15 +321,18 @@ test.describe('Candidate Test Taking Flow', () => {
     await page.click('button:has-text("Next")');
     await page.locator('div.p-4.border-2.rounded-lg').first().click();
 
-    // Setup dialog handler to dismiss (cancel)
-    page.once('dialog', dialog => {
-      expect(dialog.message()).toContain('Are you sure');
-      dialog.dismiss();
-    });
-
+    // Click Submit Test to open modal
     await page.click('button:has-text("Submit Test")');
 
-    // Should still be on question runner (not submitted)
+    // Modal should be visible with confirmation message
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await expect(page.locator('text=Are you sure you want to submit')).toBeVisible();
+
+    // Click Cancel button in modal
+    await page.locator('div.fixed button:has-text("Cancel")').click();
+
+    // Modal should be closed, should still be on question runner (not submitted)
+    await expect(page.locator('h3:has-text("Submit Test?")')).not.toBeVisible();
     await expect(page).toHaveURL(/\/t\/math-geo\/run$/);
     await expect(page.getByRole('heading', { name: 'Even Numbers' })).toBeVisible();
   });
@@ -349,8 +357,9 @@ test.describe('Candidate Test Taking Flow', () => {
     // Q3: Wrong (select "1" which is odd, weight 2)
     await selectCheckboxByText(page, '1');
 
-    page.once('dialog', dialog => dialog.accept());
     await page.click('button:has-text("Submit Test")');
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await page.locator('div.fixed button:has-text("Submit Test")').click();
     await page.waitForURL('**/t/math-geo/result');
 
     // Score = (1 + 2) / 5 * 100 = 60%
@@ -374,8 +383,9 @@ test.describe('Candidate Test Taking Flow', () => {
     // Q3: Wrong - select "1" (odd number, incorrect)
     await selectCheckboxByText(page, '1');
 
-    page.once('dialog', dialog => dialog.accept());
     await page.click('button:has-text("Submit Test")');
+    await expect(page.locator('h3:has-text("Submit Test?")')).toBeVisible();
+    await page.locator('div.fixed button:has-text("Submit Test")').click();
     await page.waitForURL('**/t/math-geo/result');
 
     // Score = 0%

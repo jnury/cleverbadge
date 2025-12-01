@@ -231,34 +231,32 @@ test.describe('Tests Management', () => {
     // Wait for table to load
     await page.waitForSelector('table tbody tr');
 
-    // Check if we have at least 2 tests
-    const rowCount = await page.locator('tbody tr').count();
+    // Find the disabled test row and select it
+    const disabledTestRow = page.locator('tbody tr', { has: page.locator('text=Disabled Test') });
+    await disabledTestRow.locator('input[type="checkbox"]').check();
 
-    if (rowCount >= 2) {
-      // Select first two tests
-      await page.locator('tbody tr').first().locator('input[type="checkbox"]').check();
-      await page.locator('tbody tr').nth(1).locator('input[type="checkbox"]').check();
+    // Verify selection count is shown
+    await expect(page.locator('text=1 selected')).toBeVisible();
 
-      // Verify selection count is shown
-      await expect(page.locator('text=2 selected')).toBeVisible();
+    // Click Bulk Actions dropdown
+    await page.click('button:has-text("Bulk Actions")');
 
-      // Click Bulk Actions dropdown
-      await page.click('button:has-text("Bulk Actions")');
+    // Click Enable selected
+    await page.click('text=Enable selected');
 
-      // Click Enable selected
-      await page.click('text=Enable selected');
+    // Confirmation modal should appear
+    await expect(page.locator('text=Are you sure')).toBeVisible();
 
-      // Confirmation modal should appear
-      await expect(page.locator('text=Are you sure')).toBeVisible();
+    // Click Enable button in confirmation modal
+    await page.click('button:has-text("Enable")');
 
-      // Click Enable button in confirmation modal
-      await page.click('button:has-text("Enable")');
+    // Wait for success message
+    await page.waitForTimeout(500);
 
-      // Wait for success message
-      await page.waitForTimeout(500);
+    // Should show success message
+    await expect(page.locator('text=Enabled 1 test')).toBeVisible({ timeout: 3000 });
 
-      // Should show success message
-      await expect(page.locator('text=Enabled 2 test')).toBeVisible({ timeout: 3000 });
-    }
+    // Verify the test is now enabled
+    await expect(disabledTestRow.locator('text=Enabled')).toBeVisible();
   });
 });

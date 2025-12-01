@@ -21,7 +21,6 @@ test.describe('Visibility Features', () => {
       // Fill in form (modal is now tabbed - Settings tab is active by default)
       await page.fill('input[name="title"]', 'Test With Default Visibility');
       await page.fill('textarea[name="description"]', 'Testing default visibility');
-      await page.check('input[name="is_enabled"]');
 
       // Verify default visibility is 'private'
       const visibilitySelect = page.locator('select[name="visibility"]');
@@ -46,7 +45,6 @@ test.describe('Visibility Features', () => {
       await page.fill('input[name="title"]', 'Public Test');
       await page.fill('textarea[name="description"]', 'Testing public visibility');
       await page.selectOption('select[name="visibility"]', 'public');
-      await page.check('input[name="is_enabled"]');
 
       // Submit form
       const modal = page.locator('div[role="dialog"], .z-50');
@@ -67,7 +65,6 @@ test.describe('Visibility Features', () => {
       await page.fill('input[name="title"]', 'Protected Test E2E');
       await page.fill('textarea[name="description"]', 'Testing protected visibility');
       await page.selectOption('select[name="visibility"]', 'protected');
-      await page.check('input[name="is_enabled"]');
 
       // Submit form
       const modal = page.locator('div[role="dialog"], .z-50');
