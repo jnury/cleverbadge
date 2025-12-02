@@ -6,10 +6,9 @@ import Home from './pages/Home';
 import TestLanding from './pages/TestLanding';
 import QuestionRunner from './pages/QuestionRunner';
 import TestResults from './pages/TestResults';
-import AdminLogin from './pages/admin/AdminLogin';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AssessmentDetail from './pages/admin/AssessmentDetail';
+import Dashboard from './pages/dashboard/Dashboard';
+import AssessmentDetail from './pages/dashboard/AssessmentDetail';
 
 // Layout wrapper that handles environment banner padding
 function AppLayout({ children }) {
@@ -48,14 +47,13 @@ function App() {
                 <Route path="/t/:slug/run" element={<QuestionRunner />} />
                 <Route path="/t/:slug/result" element={<TestResults />} />
 
-                {/* Admin routes */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin" element={
+                {/* Dashboard routes (formerly admin) */}
+                <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <AdminDashboard />
+                    <Dashboard />
                   </ProtectedRoute>
                 } />
-                <Route path="/admin/assessment/:assessmentId" element={
+                <Route path="/dashboard/assessment/:assessmentId" element={
                   <ProtectedRoute>
                     <AssessmentDetail />
                   </ProtectedRoute>

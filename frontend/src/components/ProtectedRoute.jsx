@@ -1,13 +1,16 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { isLoggedIn } from '../utils/api';
 
 /**
- * ProtectedRoute - Redirects to login if not authenticated
+ * ProtectedRoute - Redirects to homepage with login modal trigger if not authenticated
  */
 const ProtectedRoute = ({ children }) => {
+  const location = useLocation();
+
   if (!isLoggedIn()) {
-    return <Navigate to="/admin/login" replace />;
+    // Redirect to home with state to trigger login modal
+    return <Navigate to="/" state={{ openLoginModal: true, from: location }} replace />;
   }
 
   return children;

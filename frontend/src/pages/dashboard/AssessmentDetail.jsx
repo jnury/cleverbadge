@@ -12,7 +12,7 @@ const AssessmentDetail = () => {
   const location = useLocation();
 
   // Store the referrer URL from location state, or default to assessments tab
-  const backUrl = location.state?.from || '/admin?tab=assessments';
+  const backUrl = location.state?.from || '/dashboard?tab=assessments';
   const [assessment, setAssessment] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);

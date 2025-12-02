@@ -385,8 +385,8 @@ const AssessmentsTab = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-1">
                         <button
-                          onClick={() => navigate(`/admin/assessment/${assessment.id}`, {
-                            state: { from: `/admin${location.search}` }
+                          onClick={() => navigate(`/dashboard/assessment/${assessment.id}`, {
+                            state: { from: `/dashboard${location.search}` }
                           })}
                           className="p-1.5 text-gray-500 hover:text-tech hover:bg-gray-100 rounded"
                           title="View Details"
