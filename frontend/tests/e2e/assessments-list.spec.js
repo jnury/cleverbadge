@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginViaModal } from './helpers.js';
 
 test.describe('Assessments List', () => {
   // Helper function to login
   async function login(page) {
-    await page.goto('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin');
+    await loginViaModal(page);
   }
 
   test('should display assessments tab', async ({ page }) => {

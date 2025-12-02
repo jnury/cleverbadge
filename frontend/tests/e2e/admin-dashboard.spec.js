@@ -1,26 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { loginViaModal } from './helpers.js';
 
-test.describe('Admin Dashboard', () => {
-  test('should redirect to login when not authenticated', async ({ page }) => {
-    await page.goto('/admin');
+test.describe('Dashboard', () => {
+  test('should show login modal when not authenticated and trying to access dashboard', async ({ page }) => {
+    // Try to access dashboard directly (should redirect to home and open modal)
+    await page.goto('/dashboard');
 
-    // Should redirect to login
-    await page.waitForURL('/admin/login');
-    await expect(page.locator('h2')).toContainText('Admin Login');
+    // Should redirect to homepage
+    await page.waitForURL('/');
   });
 
   test('should display dashboard after login', async ({ page }) => {
-    // Login first
-    await page.goto('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'admin123');
-    await page.click('button[type="submit"]');
-
-    // Wait for redirect to dashboard
-    await page.waitForURL('/admin');
+    // Login via modal
+    await loginViaModal(page);
 
     // Check dashboard elements
-    await expect(page.locator('h1')).toContainText('Admin Dashboard');
+    await expect(page.locator('h1')).toContainText('Dashboard');
     await expect(page.locator('text=/Welcome.*admin/i')).toBeVisible();
 
     // Check tabs (use role="tab" to avoid matching other buttons)
@@ -32,11 +27,7 @@ test.describe('Admin Dashboard', () => {
 
   test('should switch between tabs', async ({ page }) => {
     // Login and go to dashboard
-    await page.goto('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin');
+    await loginViaModal(page);
 
     // Click Tests tab and wait for content to load
     await page.getByRole('tab', { name: 'Tests' }).click();
@@ -47,13 +38,9 @@ test.describe('Admin Dashboard', () => {
     await expect(page.locator('h2:has-text("View all candidate assessment results")')).toBeVisible({ timeout: 10000 });
   });
 
-  test('should logout and redirect to login', async ({ page }) => {
+  test('should logout and redirect to homepage', async ({ page }) => {
     // Login and go to dashboard
-    await page.goto('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin');
+    await loginViaModal(page);
 
     // Open user dropdown menu
     await page.click('button:has-text("admin")');
@@ -61,8 +48,8 @@ test.describe('Admin Dashboard', () => {
     // Click logout in dropdown
     await page.click('button:has-text("Logout")');
 
-    // Should redirect to login
-    await page.waitForURL('/admin/login');
+    // Should redirect to homepage
+    await page.waitForURL('/');
 
     // Token should be cleared
     const token = await page.evaluate(() => localStorage.getItem('auth_token'));

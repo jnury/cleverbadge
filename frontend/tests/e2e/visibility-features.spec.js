@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginViaModal } from './helpers.js';
 
 test.describe('Visibility Features', () => {
   test.beforeEach(async ({ page }) => {
     // Login first
-    await page.goto('/admin/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin');
+    await loginViaModal(page);
   });
 
   test.describe('Test Creation with Visibility', () => {

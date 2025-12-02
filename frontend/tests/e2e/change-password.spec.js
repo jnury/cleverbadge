@@ -1,15 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { loginViaModal } from './helpers.js';
 
 test.describe('Change Password', () => {
   test.beforeEach(async ({ page }) => {
     // Login first
-    await page.goto('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin');
+    await loginViaModal(page);
     // Wait for dashboard to be fully loaded
-    await expect(page.locator('h1:has-text("Admin Dashboard")')).toBeVisible();
+    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible();
   });
 
   test('should open change password modal from dropdown', async ({ page }) => {
@@ -90,14 +87,20 @@ test.describe('Change Password', () => {
     await page.click('button:has-text("admin")');
     await page.click('button:has-text("Logout")');
 
-    // Login with new password
-    await page.waitForURL('/admin/login');
-    await page.fill('input#username', 'admin');
-    await page.fill('input#password', 'newadmin456');
-    await page.click('button[type="submit"]');
+    // Should redirect to homepage
+    await page.waitForURL('/');
 
-    // Should succeed
-    await page.waitForURL('/admin');
+    // Login with new password via modal
+    await page.getByRole('navigation').getByRole('button', { name: 'Login' }).click();
+    await page.waitForSelector('h2:has-text("Login")');
+    await page.fill('input#login-username', 'admin');
+    await page.fill('input#login-password', 'newadmin456');
+    await page.click('button[type="submit"]:has-text("Login")');
+
+    // Should succeed - Dashboard link appears
+    await page.waitForSelector('nav a:has-text("Dashboard")', { timeout: 10000 });
+    await page.goto('/dashboard');
+    await page.waitForURL('/dashboard');
 
     // Change password back to original for other tests
     await page.click('button:has-text("admin")');
@@ -132,7 +135,7 @@ test.describe('Change Password', () => {
     await expect(page.locator('button:has-text("Change Password")')).toBeVisible();
 
     // Click outside
-    await page.click('h1:has-text("Admin Dashboard")');
+    await page.click('h1:has-text("Dashboard")');
 
     // Dropdown should be closed
     await expect(page.locator('.absolute.right-0.mt-2')).not.toBeVisible();
