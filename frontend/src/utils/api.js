@@ -34,9 +34,9 @@ export async function apiRequest(endpoint, options = {}) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
 
-        // Redirect to login if not already there
-        if (!window.location.pathname.includes('/admin/login')) {
-          window.location.href = '/admin/login';
+        // Redirect to homepage if accessing dashboard
+        if (window.location.pathname.startsWith('/dashboard')) {
+          window.location.href = '/';
         }
       }
 
