@@ -1,13 +1,25 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Home from '../../src/pages/Home';
+
+// Mock api
+vi.mock('../../src/utils/api', () => ({
+  isLoggedIn: vi.fn(() => false),
+  login: vi.fn()
+}));
+
+import { isLoggedIn } from '../../src/utils/api';
 
 const renderWithRouter = (component) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe('Home', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isLoggedIn.mockReturnValue(false);
+  });
   it('renders navigation', () => {
     renderWithRouter(<Home />);
     const navLogo = screen.getAllByAltText('Clever Badge')[0];
