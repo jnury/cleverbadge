@@ -487,4 +487,71 @@ router.post('/reset-password',
   }
 );
 
+/**
+ * POST /api/auth/resend-verification
+ * Resend verification email
+ */
+router.post('/resend-verification',
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  handleValidationErrors,
+
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      // Find user
+      const users = await sql`
+        SELECT id, email, display_name, is_active, email_verified
+        FROM ${sql(dbSchema)}.users
+        WHERE email = ${email}
+      `;
+
+      // Always return success to prevent email enumeration
+      if (users.length === 0) {
+        return res.json({
+          message: 'If an unverified account with that email exists, a new verification link has been sent.'
+        });
+      }
+
+      const user = users[0];
+
+      // Check if already verified
+      if (user.email_verified) {
+        return res.status(400).json({
+          error: 'This email is already verified. You can log in.'
+        });
+      }
+
+      // Delete existing verification tokens
+      await sql`
+        DELETE FROM ${sql(dbSchema)}.email_tokens
+        WHERE user_id = ${user.id}
+          AND type = 'verification'
+      `;
+
+      // Generate new token
+      const { token, expiresAt } = generateEmailToken('verification');
+
+      // Store token
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.email_tokens (user_id, token, type, expires_at)
+        VALUES (${user.id}, ${token}, 'verification', ${expiresAt})
+      `;
+
+      // Send email
+      await sendVerificationEmail(email, user.display_name, token);
+
+      res.json({
+        message: 'If an unverified account with that email exists, a new verification link has been sent.'
+      });
+
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
 export default router;
