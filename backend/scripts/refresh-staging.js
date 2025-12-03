@@ -65,38 +65,31 @@ async function refreshStaging() {
 
     // Start transaction
     await sql.begin(async (tx) => {
-      // Step 1: Disable triggers
-      console.log('Step 1: Disabling triggers on staging tables...');
+      // Step 1: Truncate staging tables using CASCADE (handles FK constraints)
+      // This avoids needing table ownership for DISABLE TRIGGER
+      console.log('Step 1: Truncating staging tables (CASCADE handles FK constraints)...');
       for (const table of [...TABLES_TO_SYNC].reverse()) {
-        await tx.unsafe(`ALTER TABLE ${STAGING_SCHEMA}.${table} DISABLE TRIGGER ALL`);
-      }
-      console.log('   ✓ Triggers disabled');
-      console.log('');
-
-      // Step 2: Truncate staging tables (in reverse order for FK constraints)
-      console.log('Step 2: Truncating staging tables...');
-      for (const table of [...TABLES_TO_SYNC].reverse()) {
-        await tx.unsafe(`TRUNCATE TABLE ${STAGING_SCHEMA}.${table}`);
+        await tx.unsafe(`TRUNCATE TABLE ${STAGING_SCHEMA}.${table} CASCADE`);
         console.log(`   ✓ Truncated ${table}`);
       }
       console.log('');
 
-      // Step 3: Copy data from production to staging
-      console.log('Step 3: Copying data from production to staging...');
+      // Step 2: Copy data from production to staging
+      console.log('Step 2: Copying data from production to staging...');
 
       // questions
       console.log('   Copying questions...');
       await tx.unsafe(`
-        INSERT INTO ${STAGING_SCHEMA}.questions (id, text, type, options, correct_answers, tags, created_at, updated_at)
-        SELECT id, text, type, options, correct_answers, tags, created_at, updated_at
+        INSERT INTO ${STAGING_SCHEMA}.questions (id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at)
+        SELECT id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.questions
       `);
 
       // tests
       console.log('   Copying tests...');
       await tx.unsafe(`
-        INSERT INTO ${STAGING_SCHEMA}.tests (id, title, description, slug, is_enabled, pass_threshold, created_at, updated_at)
-        SELECT id, title, description, slug, is_enabled, pass_threshold, created_at, updated_at
+        INSERT INTO ${STAGING_SCHEMA}.tests (id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at)
+        SELECT id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.tests
       `);
 
@@ -111,8 +104,8 @@ async function refreshStaging() {
       // assessments
       console.log('   Copying assessments...');
       await tx.unsafe(`
-        INSERT INTO ${STAGING_SCHEMA}.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at)
-        SELECT id, test_id, candidate_name, status, score_percentage, started_at, completed_at
+        INSERT INTO ${STAGING_SCHEMA}.assessments (id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived)
+        SELECT id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived
         FROM ${PRODUCTION_SCHEMA}.assessments
       `);
 
@@ -127,16 +120,8 @@ async function refreshStaging() {
       console.log('   ✓ All data copied');
       console.log('');
 
-      // Step 4: Re-enable triggers
-      console.log('Step 4: Re-enabling triggers on staging tables...');
-      for (const table of TABLES_TO_SYNC) {
-        await tx.unsafe(`ALTER TABLE ${STAGING_SCHEMA}.${table} ENABLE TRIGGER ALL`);
-      }
-      console.log('   ✓ Triggers re-enabled');
-      console.log('');
-
-      // Step 5: Verify counts
-      console.log('Step 5: Verifying data counts...');
+      // Step 3: Verify counts
+      console.log('Step 3: Verifying data counts...');
       console.log('');
       console.log('   Table                  | Production | Staging | Status');
       console.log('   -----------------------|------------|---------|--------');
