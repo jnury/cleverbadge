@@ -89,11 +89,11 @@ async function refreshStaging() {
       // Step 3: Copy data from production to staging
       console.log('Step 3: Copying data from production to staging...');
 
-      // users
+      // users (V1 schema - no role column)
       console.log('   Copying users...');
       await tx.unsafe(`
-        INSERT INTO ${STAGING_SCHEMA}.users (id, username, password_hash, role, created_at, updated_at)
-        SELECT id, username, password_hash, role, created_at, updated_at
+        INSERT INTO ${STAGING_SCHEMA}.users (id, username, password_hash, created_at, updated_at)
+        SELECT id, username, password_hash, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.users
       `);
 
