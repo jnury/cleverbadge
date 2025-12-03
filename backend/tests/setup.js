@@ -26,10 +26,18 @@ beforeAll(async () => {
   await testSql.unsafe(`DROP SCHEMA IF EXISTS ${TEST_SCHEMA} CASCADE`);
   await testSql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
-  // Run consolidated migration with __SCHEMA__ replacement
-  const migrationSQL = fs.readFileSync('./db/migrations/001_init.sql', 'utf8');
-  const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-  await testSql.unsafe(testMigrationSQL);
+  // Run all migrations with __SCHEMA__ replacement
+  const migrationFiles = [
+    './db/migrations/001_init.sql',
+    './db/migrations/002_add_assessments_is_archived.sql',
+    './db/migrations/003_add_abandoned_status.sql'
+  ];
+
+  for (const file of migrationFiles) {
+    const migrationSQL = fs.readFileSync(file, 'utf8');
+    const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+    await testSql.unsafe(testMigrationSQL);
+  }
 
   // Seed test data
   await seedTestData();
