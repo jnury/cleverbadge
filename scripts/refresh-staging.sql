@@ -8,7 +8,7 @@
 -- IMPORTANT:
 -- - Run this script as the 'cleverbadge_refresh' user
 -- - All staging data will be DELETED and replaced with production data
--- - Foreign key constraints are handled by disabling triggers during copy
+-- - Foreign key constraints are handled via TRUNCATE CASCADE
 --
 -- Usage:
 --   PGPASSWORD=<refresh_pwd> psql -h <render-host> -U cleverbadge_refresh -d <dbname> -f refresh-staging.sql
@@ -24,27 +24,13 @@
 -- Start transaction for atomicity
 BEGIN;
 
-\echo 'Step 1: Disabling triggers on staging tables...'
+\echo 'Step 1: Truncating staging tables (CASCADE handles FK constraints)...'
 
--- Disable triggers to avoid FK constraint issues during truncate/insert
-ALTER TABLE staging.assessment_answers DISABLE TRIGGER ALL;
-ALTER TABLE staging.assessments DISABLE TRIGGER ALL;
-ALTER TABLE staging.test_questions DISABLE TRIGGER ALL;
-ALTER TABLE staging.tests DISABLE TRIGGER ALL;
-ALTER TABLE staging.questions DISABLE TRIGGER ALL;
-ALTER TABLE staging.users DISABLE TRIGGER ALL;
+-- Truncate all tables with CASCADE - this handles FK constraints automatically
+-- without needing table ownership for DISABLE TRIGGER
+TRUNCATE TABLE staging.users CASCADE;
 
-\echo 'Step 2: Truncating staging tables...'
-
--- Truncate in reverse dependency order (children first)
-TRUNCATE TABLE staging.assessment_answers;
-TRUNCATE TABLE staging.assessments;
-TRUNCATE TABLE staging.test_questions;
-TRUNCATE TABLE staging.tests;
-TRUNCATE TABLE staging.questions;
-TRUNCATE TABLE staging.users;
-
-\echo 'Step 3: Copying data from production to staging...'
+\echo 'Step 2: Copying data from production to staging...'
 
 -- Copy data in dependency order (parents first)
 
@@ -54,13 +40,13 @@ SELECT id, username, password_hash, created_at, updated_at
 FROM production.users;
 
 \echo '  - Copying questions...'
-INSERT INTO staging.questions (id, text, type, options, correct_answers, tags, created_at, updated_at)
-SELECT id, text, type, options, correct_answers, tags, created_at, updated_at
+INSERT INTO staging.questions (id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at)
+SELECT id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at
 FROM production.questions;
 
 \echo '  - Copying tests...'
-INSERT INTO staging.tests (id, title, description, slug, is_enabled, pass_threshold, created_at, updated_at)
-SELECT id, title, description, slug, is_enabled, pass_threshold, created_at, updated_at
+INSERT INTO staging.tests (id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at)
+SELECT id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at
 FROM production.tests;
 
 \echo '  - Copying test_questions...'
@@ -69,8 +55,8 @@ SELECT id, test_id, question_id, weight
 FROM production.test_questions;
 
 \echo '  - Copying assessments...'
-INSERT INTO staging.assessments (id, test_id, candidate_name, status, score_percentage, started_at, completed_at)
-SELECT id, test_id, candidate_name, status, score_percentage, started_at, completed_at
+INSERT INTO staging.assessments (id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived)
+SELECT id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived
 FROM production.assessments;
 
 \echo '  - Copying assessment_answers...'
@@ -78,17 +64,7 @@ INSERT INTO staging.assessment_answers (id, assessment_id, question_id, selected
 SELECT id, assessment_id, question_id, selected_options, is_correct, answered_at
 FROM production.assessment_answers;
 
-\echo 'Step 4: Re-enabling triggers on staging tables...'
-
--- Re-enable triggers
-ALTER TABLE staging.users ENABLE TRIGGER ALL;
-ALTER TABLE staging.questions ENABLE TRIGGER ALL;
-ALTER TABLE staging.tests ENABLE TRIGGER ALL;
-ALTER TABLE staging.test_questions ENABLE TRIGGER ALL;
-ALTER TABLE staging.assessments ENABLE TRIGGER ALL;
-ALTER TABLE staging.assessment_answers ENABLE TRIGGER ALL;
-
-\echo 'Step 5: Verifying data counts...'
+\echo 'Step 3: Verifying data counts...'
 
 -- Verify row counts match
 SELECT 'users' AS table_name,
