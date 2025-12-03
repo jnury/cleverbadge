@@ -1,8 +1,7 @@
 /**
  * Refresh Staging from Production
  *
- * This script copies all data from production schema to staging schema,
- * EXCEPT for the users table (staging users are preserved).
+ * This script copies all data from production schema to staging schema.
  *
  * Usage:
  *   DATABASE_REFRESH_URL=postgresql://cleverbadge_refresh:pwd@host:5432/db npm run refresh_db
@@ -21,8 +20,8 @@ const STAGING_SCHEMA = 'staging';
 const PRODUCTION_SCHEMA = 'production';
 
 // Tables to sync (in dependency order - parents first)
-// NOTE: 'users' is intentionally excluded to preserve staging admin accounts
 const TABLES_TO_SYNC = [
+  'users',
   'questions',
   'tests',
   'test_questions',
@@ -46,8 +45,8 @@ async function refreshStaging() {
   console.log('CleverBadge - Refreshing Staging from Production');
   console.log('=============================================================================');
   console.log('');
-  console.log('⚠️  WARNING: This will DELETE all data in staging (except users) and replace');
-  console.log('    it with production data.');
+  console.log('⚠️  WARNING: This will DELETE all data in staging and replace it with');
+  console.log('    production data.');
   console.log('');
 
   const sql = postgres(connectionString, {
@@ -76,6 +75,14 @@ async function refreshStaging() {
 
       // Step 2: Copy data from production to staging
       console.log('Step 2: Copying data from production to staging...');
+
+      // users
+      console.log('   Copying users...');
+      await tx.unsafe(`
+        INSERT INTO ${STAGING_SCHEMA}.users (id, username, password_hash, role, created_at, updated_at)
+        SELECT id, username, password_hash, role, created_at, updated_at
+        FROM ${PRODUCTION_SCHEMA}.users
+      `);
 
       // questions (cast enums through text to handle cross-schema enum types)
       console.log('   Copying questions...');
@@ -142,11 +149,6 @@ async function refreshStaging() {
         console.log(`   ${tablePadded} | ${prodPadded} | ${stagingPadded} | ${status}`);
       }
 
-      // Also show users count (not synced)
-      const [prodUsers] = await tx.unsafe(`SELECT COUNT(*) as count FROM ${PRODUCTION_SCHEMA}.users`);
-      const [stagingUsers] = await tx.unsafe(`SELECT COUNT(*) as count FROM ${STAGING_SCHEMA}.users`);
-      console.log(`   ${'users (preserved)'.padEnd(21)} | ${String(prodUsers.count).padStart(10)} | ${String(stagingUsers.count).padStart(7)} | ℹ️  NOT SYNCED`);
-
       console.log('');
 
       if (!allMatch) {
@@ -157,8 +159,6 @@ async function refreshStaging() {
     console.log('=============================================================================');
     console.log('✅ Staging refresh complete!');
     console.log('=============================================================================');
-    console.log('');
-    console.log('Note: Users table was NOT synced - staging admin accounts are preserved.');
     console.log('');
 
   } catch (error) {
