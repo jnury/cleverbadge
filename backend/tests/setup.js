@@ -27,14 +27,16 @@ beforeAll(async () => {
   await testSql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
   // Run all migrations with __SCHEMA__ replacement
-  const migrationFiles = [
-    './db/migrations/001_init.sql',
-    './db/migrations/002_add_assessments_is_archived.sql',
-    './db/migrations/003_add_abandoned_status.sql'
+  const migrations = [
+    '001_init.sql',
+    '002_add_assessments_is_archived.sql',
+    '003_add_abandoned_status.sql',
+    '004_extend_users_table.sql',
+    '005_email_tokens_table.sql'
   ];
 
-  for (const file of migrationFiles) {
-    const migrationSQL = fs.readFileSync(file, 'utf8');
+  for (const migration of migrations) {
+    const migrationSQL = fs.readFileSync(`./db/migrations/${migration}`, 'utf8');
     const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
     await testSql.unsafe(testMigrationSQL);
   }

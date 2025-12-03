@@ -6,6 +6,8 @@ import { hashPassword } from '../../utils/password.js';
 import { body, validationResult } from 'express-validator';
 import { verifyPassword } from '../../utils/password.js';
 import { signToken, verifyToken } from '../../utils/jwt.js';
+import { generateEmailToken } from '../../utils/tokens.js';
+import { sendVerificationEmail } from '../../services/email.js';
 
 // Create test-specific auth router
 const createTestAuthRouter = (sql, schema) => {
@@ -36,6 +38,90 @@ const createTestAuthRouter = (sql, schema) => {
     req.user = decoded;
     next();
   };
+
+  // Registration endpoint
+  router.post('/register',
+    // Validation
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+    body('displayName').trim().isLength({ min: 2, max: 100 }).withMessage('Display name must be 2-100 characters'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    handleValidationErrors,
+
+    async (req, res) => {
+      try {
+        const { email, displayName, password } = req.body;
+
+        // Check if email already exists
+        const existingEmail = await sql`
+          SELECT id FROM ${sql(schema)}.users
+          WHERE email = ${email}
+        `;
+
+        if (existingEmail.length > 0) {
+          return res.status(409).json({
+            error: 'An account with this email already exists'
+          });
+        }
+
+        // Check if display name already exists
+        const existingDisplayName = await sql`
+          SELECT id FROM ${sql(schema)}.users
+          WHERE display_name = ${displayName}
+        `;
+
+        if (existingDisplayName.length > 0) {
+          return res.status(409).json({
+            error: 'This display name is already taken'
+          });
+        }
+
+        // Hash password
+        const passwordHash = await hashPassword(password);
+
+        // Create user (inactive until email verified)
+        const newUser = await sql`
+          INSERT INTO ${sql(schema)}.users (
+            email, display_name, password_hash, role, is_active, email_verified
+          )
+          VALUES (
+            ${email}, ${displayName}, ${passwordHash}, 'USER', FALSE, FALSE
+          )
+          RETURNING id, email, display_name, role, created_at
+        `;
+
+        const user = newUser[0];
+
+        // Generate verification token
+        const { token, expiresAt } = generateEmailToken('verification');
+
+        // Store token in database
+        await sql`
+          INSERT INTO ${sql(schema)}.email_tokens (user_id, token, type, expires_at)
+          VALUES (${user.id}, ${token}, 'verification', ${expiresAt})
+        `;
+
+        // Send verification email
+        await sendVerificationEmail(email, displayName, token);
+
+        res.status(201).json({
+          message: 'Registration successful. Please check your email for verification link.',
+          user: {
+            id: user.id,
+            email: user.email,
+            displayName: user.display_name,
+            role: user.role,
+            createdAt: user.created_at
+          }
+        });
+
+      } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({
+          error: 'Internal server error'
+        });
+      }
+    }
+  );
 
   router.post('/login',
     body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
@@ -306,6 +392,106 @@ describe('PUT /api/auth/password', () => {
         newPassword: 'newpass456'
       })
       .expect(401);
+  });
+});
+
+describe('POST /api/auth/register', () => {
+  it('should register a new user', async () => {
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'newuser@example.com',
+        displayName: 'New User',
+        password: 'password123'
+      })
+      .expect(201);
+
+    expect(response.body).toHaveProperty('message');
+    expect(response.body.message).toContain('verification');
+    expect(response.body).toHaveProperty('user');
+    expect(response.body.user.email).toBe('newuser@example.com');
+    expect(response.body.user.displayName).toBe('New User');
+    expect(response.body.user.role).toBe('USER');
+    expect(response.body.user).not.toHaveProperty('password_hash');
+  });
+
+  it('should reject duplicate email', async () => {
+    // First registration
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'duplicate@example.com',
+        displayName: 'First User',
+        password: 'password123'
+      });
+
+    // Second registration with same email
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'duplicate@example.com',
+        displayName: 'Second User',
+        password: 'password123'
+      })
+      .expect(409);
+
+    expect(response.body.error).toContain('email');
+  });
+
+  it('should reject duplicate display name', async () => {
+    // First registration
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'user1@example.com',
+        displayName: 'SameName',
+        password: 'password123'
+      });
+
+    // Second registration with same display name
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'user2@example.com',
+        displayName: 'SameName',
+        password: 'password123'
+      })
+      .expect(409);
+
+    expect(response.body.error).toContain('display name');
+  });
+
+  it('should reject invalid email format', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'not-an-email',
+        displayName: 'Test User',
+        password: 'password123'
+      })
+      .expect(400);
+  });
+
+  it('should reject password less than 8 characters', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'test@example.com',
+        displayName: 'Test User',
+        password: 'short'
+      })
+      .expect(400);
+  });
+
+  it('should reject display name less than 2 characters', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'test@example.com',
+        displayName: 'A',
+        password: 'password123'
+      })
+      .expect(400);
   });
 });
 

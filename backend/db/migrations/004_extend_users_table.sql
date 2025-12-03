@@ -16,6 +16,10 @@ END $$;
 -- ALTER USERS TABLE
 -- ===========================================
 
+-- Make username nullable (new users will use email instead)
+ALTER TABLE __SCHEMA__.users
+  ALTER COLUMN username DROP NOT NULL;
+
 -- Add email column (will migrate existing users later)
 ALTER TABLE __SCHEMA__.users
   ADD COLUMN IF NOT EXISTS email VARCHAR(255);
