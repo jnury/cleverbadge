@@ -64,17 +64,30 @@ async function refreshStaging() {
 
     // Start transaction
     await sql.begin(async (tx) => {
-      // Step 1: Truncate staging tables using CASCADE (handles FK constraints)
+      // Step 1: Save staging admin password (to restore after refresh)
+      console.log('Step 1: Saving staging admin password...');
+      const [adminUser] = await tx.unsafe(`
+        SELECT password_hash FROM ${STAGING_SCHEMA}.users WHERE username = 'admin'
+      `);
+      const stagingAdminPassword = adminUser?.password_hash;
+      if (stagingAdminPassword) {
+        console.log('   ✓ Admin password saved');
+      } else {
+        console.log('   ℹ️  No admin user found in staging (will use production password)');
+      }
+      console.log('');
+
+      // Step 2: Truncate staging tables using CASCADE (handles FK constraints)
       // This avoids needing table ownership for DISABLE TRIGGER
-      console.log('Step 1: Truncating staging tables (CASCADE handles FK constraints)...');
+      console.log('Step 2: Truncating staging tables (CASCADE handles FK constraints)...');
       for (const table of [...TABLES_TO_SYNC].reverse()) {
         await tx.unsafe(`TRUNCATE TABLE ${STAGING_SCHEMA}.${table} CASCADE`);
         console.log(`   ✓ Truncated ${table}`);
       }
       console.log('');
 
-      // Step 2: Copy data from production to staging
-      console.log('Step 2: Copying data from production to staging...');
+      // Step 3: Copy data from production to staging
+      console.log('Step 3: Copying data from production to staging...');
 
       // users
       console.log('   Copying users...');
@@ -83,6 +96,17 @@ async function refreshStaging() {
         SELECT id, username, password_hash, role, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.users
       `);
+
+      // Restore staging admin password if we saved one
+      if (stagingAdminPassword) {
+        console.log('   Restoring staging admin password...');
+        await tx.unsafe(`
+          UPDATE ${STAGING_SCHEMA}.users
+          SET password_hash = '${stagingAdminPassword}'
+          WHERE username = 'admin'
+        `);
+        console.log('   ✓ Admin password restored');
+      }
 
       // questions (cast enums through text to handle cross-schema enum types)
       console.log('   Copying questions...');
@@ -127,8 +151,8 @@ async function refreshStaging() {
       console.log('   ✓ All data copied');
       console.log('');
 
-      // Step 3: Verify counts
-      console.log('Step 3: Verifying data counts...');
+      // Step 4: Verify counts
+      console.log('Step 4: Verifying data counts...');
       console.log('');
       console.log('   Table                  | Production | Staging | Status');
       console.log('   -----------------------|------------|---------|--------');
