@@ -5,7 +5,7 @@ import { verifyPassword, hashPassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { generateEmailToken } from '../utils/tokens.js';
-import { sendVerificationEmail } from '../services/email.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email.js';
 
 const router = express.Router();
 
@@ -344,6 +344,142 @@ router.post('/verify-email',
 
     } catch (error) {
       console.error('Email verification error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/forgot-password
+ * Request password reset email
+ */
+router.post('/forgot-password',
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  handleValidationErrors,
+
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      // Find user (but don't reveal if exists)
+      const users = await sql`
+        SELECT id, email, display_name
+        FROM ${sql(dbSchema)}.users
+        WHERE email = ${email}
+          AND is_active = TRUE
+          AND is_disabled = FALSE
+      `;
+
+      // Always return success to prevent email enumeration
+      if (users.length === 0) {
+        return res.json({
+          message: 'If an account with that email exists, a password reset link has been sent.'
+        });
+      }
+
+      const user = users[0];
+
+      // Delete any existing reset tokens for this user
+      await sql`
+        DELETE FROM ${sql(dbSchema)}.email_tokens
+        WHERE user_id = ${user.id}
+          AND type = 'password_reset'
+      `;
+
+      // Generate new reset token
+      const { token, expiresAt } = generateEmailToken('password_reset');
+
+      // Store token
+      await sql`
+        INSERT INTO ${sql(dbSchema)}.email_tokens (user_id, token, type, expires_at)
+        VALUES (${user.id}, ${token}, 'password_reset', ${expiresAt})
+      `;
+
+      // Send email
+      await sendPasswordResetEmail(email, user.display_name, token);
+
+      res.json({
+        message: 'If an account with that email exists, a password reset link has been sent.'
+      });
+
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password with token
+ */
+router.post('/reset-password',
+  body('token').notEmpty().withMessage('Token is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  handleValidationErrors,
+
+  async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      // Find valid token
+      const tokens = await sql`
+        SELECT t.id, t.user_id, t.expires_at, t.used_at
+        FROM ${sql(dbSchema)}.email_tokens t
+        WHERE t.token = ${token}
+          AND t.type = 'password_reset'
+      `;
+
+      if (tokens.length === 0) {
+        return res.status(400).json({
+          error: 'Invalid or expired reset token'
+        });
+      }
+
+      const tokenRecord = tokens[0];
+
+      // Check if already used
+      if (tokenRecord.used_at) {
+        return res.status(400).json({
+          error: 'This reset link has already been used'
+        });
+      }
+
+      // Check if expired
+      if (new Date(tokenRecord.expires_at) < new Date()) {
+        return res.status(400).json({
+          error: 'This reset link has expired. Please request a new one.',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+
+      // Hash new password
+      const passwordHash = await hashPassword(newPassword);
+
+      // Update password
+      await sql`
+        UPDATE ${sql(dbSchema)}.users
+        SET password_hash = ${passwordHash}
+        WHERE id = ${tokenRecord.user_id}
+      `;
+
+      // Mark token as used
+      await sql`
+        UPDATE ${sql(dbSchema)}.email_tokens
+        SET used_at = NOW()
+        WHERE id = ${tokenRecord.id}
+      `;
+
+      res.json({
+        message: 'Password reset successfully. You can now log in with your new password.'
+      });
+
+    } catch (error) {
+      console.error('Reset password error:', error);
       res.status(500).json({
         error: 'Internal server error'
       });
