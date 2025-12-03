@@ -123,20 +123,40 @@ const createTestAuthRouter = (sql, schema) => {
     }
   );
 
+  // Login endpoint - supports both username (legacy) and email
   router.post('/login',
-    body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
+    // Validation - accept either email or username
+    body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('username').optional().trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     handleValidationErrors,
 
     async (req, res) => {
       try {
-        const { username, password } = req.body;
+        const { email, username, password } = req.body;
 
-        const users = await sql`
-          SELECT id, username, password_hash, created_at
-          FROM ${sql(schema)}.users
-          WHERE username = ${username}
-        `;
+        // Require either email or username
+        if (!email && !username) {
+          return res.status(400).json({
+            error: 'Email or username is required'
+          });
+        }
+
+        // Find user by email or username
+        let users;
+        if (email) {
+          users = await sql`
+            SELECT id, username, email, display_name, password_hash, role, is_active, is_disabled, email_verified, created_at
+            FROM ${sql(schema)}.users
+            WHERE email = ${email}
+          `;
+        } else {
+          users = await sql`
+            SELECT id, username, email, display_name, password_hash, role, is_active, is_disabled, email_verified, created_at
+            FROM ${sql(schema)}.users
+            WHERE username = ${username}
+          `;
+        }
 
         if (users.length === 0) {
           return res.status(401).json({
@@ -145,6 +165,8 @@ const createTestAuthRouter = (sql, schema) => {
         }
 
         const user = users[0];
+
+        // Verify password
         const isValid = await verifyPassword(user.password_hash, password);
 
         if (!isValid) {
@@ -153,19 +175,52 @@ const createTestAuthRouter = (sql, schema) => {
           });
         }
 
+        // Check if account is disabled
+        if (user.is_disabled === true) {
+          return res.status(403).json({
+            error: 'Your account has been disabled. Please contact support.',
+            code: 'ACCOUNT_DISABLED'
+          });
+        }
+
+        // Check if account needs email verification
+        // Skip check for legacy users (those without email or with username-only login)
+        const isLegacyUser = !user.email || !user.display_name;
+        const needsVerification = !isLegacyUser && user.is_active === false && user.email_verified === false;
+
+        if (needsVerification) {
+          return res.status(403).json({
+            error: 'Please verify your email before logging in',
+            code: 'EMAIL_NOT_VERIFIED'
+          });
+        }
+
+        // Update last login
+        await sql`
+          UPDATE ${sql(schema)}.users
+          SET last_login_at = NOW()
+          WHERE id = ${user.id}
+        `;
+
+        // Create JWT token
         const token = signToken({
           id: user.id,
           username: user.username,
-          role: 'ADMIN'
+          email: user.email,
+          displayName: user.display_name,
+          role: user.role
         });
 
+        // Return token and user info (without password_hash)
         res.json({
           token,
           user: {
             id: user.id,
             username: user.username,
-            role: 'ADMIN',
-            created_at: user.created_at
+            email: user.email,
+            displayName: user.display_name,
+            role: user.role,
+            createdAt: user.created_at
           }
         });
 
@@ -237,8 +292,8 @@ describe('Auth API Endpoints', () => {
     // Create test admin user with known password
     const passwordHash = await hashPassword('testpass123');
     await sql.unsafe(`
-      INSERT INTO ${schema}.users (id, username, password_hash)
-      VALUES ('550e8400-e29b-41d4-a716-446655440099', 'testauthadmin', '${passwordHash}')
+      INSERT INTO ${schema}.users (id, username, password_hash, role, is_active, email_verified)
+      VALUES ('550e8400-e29b-41d4-a716-446655440099', 'testauthadmin', '${passwordHash}', 'ADMIN', TRUE, TRUE)
       ON CONFLICT (username) DO NOTHING
     `);
   });
@@ -492,6 +547,100 @@ describe('POST /api/auth/register', () => {
         password: 'password123'
       })
       .expect(400);
+  });
+});
+
+describe('POST /api/auth/login (with email)', () => {
+  it('should login with email and password', async () => {
+    // First register a user
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'emaillogin@example.com',
+        displayName: 'Email Login User',
+        password: 'password123'
+      });
+
+    // Manually activate the user for testing
+    await sql`
+      UPDATE ${sql(schema)}.users
+      SET is_active = TRUE, email_verified = TRUE
+      WHERE email = 'emaillogin@example.com'
+    `;
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'emaillogin@example.com',
+        password: 'password123'
+      })
+      .expect(200);
+
+    expect(response.body).toHaveProperty('token');
+    expect(response.body.user.email).toBe('emaillogin@example.com');
+    expect(response.body.user.displayName).toBe('Email Login User');
+  });
+
+  it('should reject login for inactive user', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'inactive@example.com',
+        displayName: 'Inactive User',
+        password: 'password123'
+      });
+
+    // Don't activate the user
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'inactive@example.com',
+        password: 'password123'
+      })
+      .expect(403);
+
+    expect(response.body.error).toContain('verify');
+  });
+
+  it('should reject login for disabled user', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'disabled@example.com',
+        displayName: 'Disabled User',
+        password: 'password123'
+      });
+
+    // Activate but disable
+    await sql`
+      UPDATE ${sql(schema)}.users
+      SET is_active = TRUE, email_verified = TRUE, is_disabled = TRUE
+      WHERE email = 'disabled@example.com'
+    `;
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'disabled@example.com',
+        password: 'password123'
+      })
+      .expect(403);
+
+    expect(response.body.error).toContain('disabled');
+  });
+
+  it('should still allow username login for legacy admins', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        username: 'testauthadmin',
+        password: 'testpass123'
+      })
+      .expect(200);
+
+    expect(response.body).toHaveProperty('token');
+    expect(response.body.user.username).toBe('testauthadmin');
   });
 });
 

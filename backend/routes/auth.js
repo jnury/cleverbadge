@@ -107,24 +107,42 @@ router.post('/register',
 
 /**
  * POST /api/auth/login
- * Authenticate admin user and return JWT token
+ * Authenticate user and return JWT token
+ * Supports both username (legacy) and email login
  */
 router.post('/login',
-  // Validation
-  body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
+  // Validation - accept either email or username
+  body('email').optional().isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('username').optional().trim().isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   handleValidationErrors,
 
   async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const { email, username, password } = req.body;
 
-      // Find user by username
-      const users = await sql`
-        SELECT id, username, password_hash, created_at
-        FROM ${sql(dbSchema)}.users
-        WHERE username = ${username}
-      `;
+      // Require either email or username
+      if (!email && !username) {
+        return res.status(400).json({
+          error: 'Email or username is required'
+        });
+      }
+
+      // Find user by email or username
+      let users;
+      if (email) {
+        users = await sql`
+          SELECT id, username, email, display_name, password_hash, role, is_active, is_disabled, email_verified, created_at
+          FROM ${sql(dbSchema)}.users
+          WHERE email = ${email}
+        `;
+      } else {
+        users = await sql`
+          SELECT id, username, email, display_name, password_hash, role, is_active, is_disabled, email_verified, created_at
+          FROM ${sql(dbSchema)}.users
+          WHERE username = ${username}
+        `;
+      }
 
       if (users.length === 0) {
         return res.status(401).json({
@@ -143,11 +161,40 @@ router.post('/login',
         });
       }
 
-      // Create JWT token (all users in users table are admins)
+      // Check if account is disabled
+      if (user.is_disabled === true) {
+        return res.status(403).json({
+          error: 'Your account has been disabled. Please contact support.',
+          code: 'ACCOUNT_DISABLED'
+        });
+      }
+
+      // Check if account needs email verification
+      // Skip check for legacy users (those without email or with username-only login)
+      const isLegacyUser = !user.email || !user.display_name;
+      const needsVerification = !isLegacyUser && user.is_active === false && user.email_verified === false;
+
+      if (needsVerification) {
+        return res.status(403).json({
+          error: 'Please verify your email before logging in',
+          code: 'EMAIL_NOT_VERIFIED'
+        });
+      }
+
+      // Update last login
+      await sql`
+        UPDATE ${sql(dbSchema)}.users
+        SET last_login_at = NOW()
+        WHERE id = ${user.id}
+      `;
+
+      // Create JWT token
       const token = signToken({
         id: user.id,
         username: user.username,
-        role: 'ADMIN'
+        email: user.email,
+        displayName: user.display_name,
+        role: user.role
       });
 
       // Return token and user info (without password_hash)
@@ -156,8 +203,10 @@ router.post('/login',
         user: {
           id: user.id,
           username: user.username,
-          role: 'ADMIN',
-          created_at: user.created_at
+          email: user.email,
+          displayName: user.display_name,
+          role: user.role,
+          createdAt: user.created_at
         }
       });
 
