@@ -275,6 +275,74 @@ const createTestAuthRouter = (sql, schema) => {
     }
   );
 
+  // Verify email endpoint
+  router.post('/verify-email',
+    body('token').notEmpty().withMessage('Token is required'),
+    handleValidationErrors,
+
+    async (req, res) => {
+      try {
+        const { token } = req.body;
+
+        // Find valid token
+        const tokens = await sql`
+          SELECT t.id, t.user_id, t.expires_at, t.used_at, u.email
+          FROM ${sql(schema)}.email_tokens t
+          JOIN ${sql(schema)}.users u ON u.id = t.user_id
+          WHERE t.token = ${token}
+            AND t.type = 'verification'
+        `;
+
+        if (tokens.length === 0) {
+          return res.status(400).json({
+            error: 'Invalid verification token'
+          });
+        }
+
+        const tokenRecord = tokens[0];
+
+        // Check if already used
+        if (tokenRecord.used_at) {
+          return res.status(400).json({
+            error: 'This token has already been used'
+          });
+        }
+
+        // Check if expired
+        if (new Date(tokenRecord.expires_at) < new Date()) {
+          return res.status(400).json({
+            error: 'This verification link has expired. Please request a new one.',
+            code: 'TOKEN_EXPIRED'
+          });
+        }
+
+        // Mark token as used
+        await sql`
+          UPDATE ${sql(schema)}.email_tokens
+          SET used_at = NOW()
+          WHERE id = ${tokenRecord.id}
+        `;
+
+        // Activate user
+        await sql`
+          UPDATE ${sql(schema)}.users
+          SET is_active = TRUE, email_verified = TRUE
+          WHERE id = ${tokenRecord.user_id}
+        `;
+
+        res.json({
+          message: 'Email verified successfully. You can now log in.'
+        });
+
+      } catch (error) {
+        console.error('Email verification error:', error);
+        res.status(500).json({
+          error: 'Internal server error'
+        });
+      }
+    }
+  );
+
   return router;
 };
 
@@ -641,6 +709,84 @@ describe('POST /api/auth/login (with email)', () => {
 
     expect(response.body).toHaveProperty('token');
     expect(response.body.user.username).toBe('testauthadmin');
+  });
+});
+
+describe('POST /api/auth/verify-email', () => {
+  it('should verify email with valid token', async () => {
+    // Register a user
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'verify@example.com',
+        displayName: 'Verify User',
+        password: 'password123'
+      });
+
+    // Get the token from database
+    const tokens = await sql`
+      SELECT token FROM ${sql(schema)}.email_tokens
+      WHERE type = 'verification'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    const response = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: tokens[0].token })
+      .expect(200);
+
+    expect(response.body.message).toContain('verified');
+
+    // Verify user is now active
+    const users = await sql`
+      SELECT is_active, email_verified
+      FROM ${sql(schema)}.users
+      WHERE email = 'verify@example.com'
+    `;
+    expect(users[0].is_active).toBe(true);
+    expect(users[0].email_verified).toBe(true);
+  });
+
+  it('should reject invalid token', async () => {
+    const response = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: 'invalid-token-12345' })
+      .expect(400);
+
+    expect(response.body.error).toContain('Invalid');
+  });
+
+  it('should reject expired token', async () => {
+    // Register user
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'expired@example.com',
+        displayName: 'Expired Token User',
+        password: 'password123'
+      });
+
+    // Get and expire the token
+    const tokens = await sql`
+      SELECT token FROM ${sql(schema)}.email_tokens
+      WHERE type = 'verification'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    await sql`
+      UPDATE ${sql(schema)}.email_tokens
+      SET expires_at = NOW() - INTERVAL '1 hour'
+      WHERE token = ${tokens[0].token}
+    `;
+
+    const response = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: tokens[0].token })
+      .expect(400);
+
+    expect(response.body.error).toContain('expired');
   });
 });
 

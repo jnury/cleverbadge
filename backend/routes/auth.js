@@ -280,4 +280,75 @@ router.put('/password',
   }
 );
 
+/**
+ * POST /api/auth/verify-email
+ * Verify email with token
+ */
+router.post('/verify-email',
+  body('token').notEmpty().withMessage('Token is required'),
+  handleValidationErrors,
+
+  async (req, res) => {
+    try {
+      const { token } = req.body;
+
+      // Find valid token
+      const tokens = await sql`
+        SELECT t.id, t.user_id, t.expires_at, t.used_at, u.email
+        FROM ${sql(dbSchema)}.email_tokens t
+        JOIN ${sql(dbSchema)}.users u ON u.id = t.user_id
+        WHERE t.token = ${token}
+          AND t.type = 'verification'
+      `;
+
+      if (tokens.length === 0) {
+        return res.status(400).json({
+          error: 'Invalid verification token'
+        });
+      }
+
+      const tokenRecord = tokens[0];
+
+      // Check if already used
+      if (tokenRecord.used_at) {
+        return res.status(400).json({
+          error: 'This token has already been used'
+        });
+      }
+
+      // Check if expired
+      if (new Date(tokenRecord.expires_at) < new Date()) {
+        return res.status(400).json({
+          error: 'This verification link has expired. Please request a new one.',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+
+      // Mark token as used
+      await sql`
+        UPDATE ${sql(dbSchema)}.email_tokens
+        SET used_at = NOW()
+        WHERE id = ${tokenRecord.id}
+      `;
+
+      // Activate user
+      await sql`
+        UPDATE ${sql(dbSchema)}.users
+        SET is_active = TRUE, email_verified = TRUE
+        WHERE id = ${tokenRecord.user_id}
+      `;
+
+      res.json({
+        message: 'Email verified successfully. You can now log in.'
+      });
+
+    } catch (error) {
+      console.error('Email verification error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
 export default router;
