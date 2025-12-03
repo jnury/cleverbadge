@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getTestDb, getTestSchema } from '../setup.js';
+import request from 'supertest';
+import app from '../../index.js';
 
 describe('Tests Integration Tests', () => {
   const sql = getTestDb();
@@ -112,7 +114,75 @@ describe('Tests Integration Tests', () => {
     expect(q3.weight).toBe(2);
 
     // Calculate total weight
+    // Calculate total weight
     const totalWeight = testQuestions.reduce((sum, tq) => sum + tq.weight, 0);
     expect(totalWeight).toBe(5);
+  });
+
+  describe('Test Enable/Disable API', () => {
+    let token;
+
+    // Login before tests
+    beforeEach(async () => {
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'testadmin',
+          password: 'password123'
+        });
+      token = loginRes.body.token;
+    });
+
+    it('should prevent access to disabled test', async () => {
+      // 1. Create a disabled test via API
+      const title = 'Disabled Test API';
+      const isEnabled = false;
+      const visibility = 'public';
+
+      const createRes = await request(app)
+        .post('/api/tests')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          title,
+          is_enabled: isEnabled,
+          visibility
+        });
+
+      expect(createRes.status).toBe(201);
+      const slug = createRes.body.slug;
+
+      // 2. Try to access via public API
+      const response = await request(app)
+        .get(`/api/tests/slug/${slug}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should allow access to enabled test', async () => {
+      // 1. Create an enabled test via API
+      const title = 'Enabled Test API';
+      const isEnabled = true;
+      const visibility = 'public';
+
+      const createRes = await request(app)
+        .post('/api/tests')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          title,
+          is_enabled: isEnabled,
+          visibility
+        });
+
+      expect(createRes.status).toBe(201);
+      const slug = createRes.body.slug;
+
+      // 2. Try to access via public API
+      const response = await request(app)
+        .get(`/api/tests/slug/${slug}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.slug).toBe(slug);
+    });
   });
 });

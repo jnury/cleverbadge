@@ -87,7 +87,9 @@ echo ""
 # Run backend tests (matching CI workflow lines 61-66)
 echo "🚀 Running backend tests with coverage..."
 export TEST_DATABASE_URL=postgresql://cleverbadge_admin:testpass@localhost:5433/cleverbadge
+export DATABASE_URL=$TEST_DATABASE_URL
 export NODE_ENV=test
+export PORT=3005
 
 if npm run test:coverage; then
   echo ""

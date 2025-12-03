@@ -8,7 +8,7 @@ const TEST_DB_URL = process.env.TEST_DATABASE_URL ||
 
 // Use max: 1 connection for transaction support
 const testSql = postgres(TEST_DB_URL, {
-  onnotice: () => {},
+  onnotice: () => { },
   prepare: false,
   max: 1
 });
@@ -66,7 +66,7 @@ async function seedTestData() {
   const adminId = '550e8400-e29b-41d4-a716-446655440001';
   await testSql.unsafe(`
     INSERT INTO ${TEST_SCHEMA}.users (id, username, password_hash)
-    VALUES ('${adminId}', 'testadmin', '$argon2id$v=19$m=65536,t=3,p=4$fakehash')
+    VALUES ('${adminId}', 'testadmin', '$argon2id$v=19$m=65536,t=3,p=4$cSPWVLBt0kAB1jJnR8f9lg$IyTMU47fj+nSLjE9ekLf20c1xRxeeC1cF7m0p132VVY')
   `);
 
   // Questions: Comprehensive set (using new dict options format with is_correct per option)

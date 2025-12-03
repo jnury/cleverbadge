@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { getTestDb, getTestSchema } from '../setup.js';
+import request from 'supertest';
+import app from '../../index.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 describe('Questions Integration Tests', () => {
   const sql = getTestDb();
@@ -198,6 +202,95 @@ describe('Questions Integration Tests', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].text).toBe(text);
+    });
+  });
+
+  describe('Import Questions API', () => {
+    const adminToken = 'mock-admin-token'; // We might need a real token or mock the auth middleware
+    // Note: The integration tests setup might need to handle auth mocking if not already done.
+    // Based on auth.test.js, we can get a real token.
+
+    it('should import questions from YAML file', async () => {
+      // 1. Login to get token
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'testadmin',
+          password: 'password123'
+        });
+      const token = loginRes.body.token;
+
+      // 2. Create a temporary YAML file
+      const yamlContent = `
+- title: "Imported Question 1"
+  text: "What is imported?"
+  type: "SINGLE"
+  visibility: "public"
+  options:
+    - text: "Nothing"
+      is_correct: false
+    - text: "Something"
+      is_correct: true
+  tags: ["import", "test"]
+`;
+      const filePath = path.join(__dirname, 'temp_import.yaml');
+      await fs.writeFile(filePath, yamlContent);
+
+      try {
+        // 3. Upload file
+        const response = await request(app)
+          .post('/api/questions/import')
+          .set('Authorization', `Bearer ${token}`)
+          .attach('file', filePath);
+
+        expect(response.status).toBe(201);
+        expect(response.body).toHaveProperty('imported_count');
+        expect(response.body.imported_count).toBe(1);
+
+        // 4. Verify in DB
+        const questions = await sql`
+          SELECT * FROM ${sql(schema)}.questions
+          WHERE title = 'Imported Question 1'
+        `;
+        expect(questions).toHaveLength(1);
+        expect(questions[0].text).toBe('What is imported?');
+      } finally {
+        // Cleanup
+        await fs.unlink(filePath).catch(() => { });
+      }
+    });
+
+    it('should reject invalid YAML format', async () => {
+      // 1. Login
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'testadmin',
+          password: 'password123'
+        });
+      const token = loginRes.body.token;
+
+      // 2. Create invalid YAML
+      const yamlContent = `
+- title: "Invalid Question"
+  text: "Missing options"
+  type: "SINGLE"
+`;
+      const filePath = path.join(__dirname, 'temp_invalid.yaml');
+      await fs.writeFile(filePath, yamlContent);
+
+      try {
+        // 3. Upload
+        const response = await request(app)
+          .post('/api/questions/import')
+          .set('Authorization', `Bearer ${token}`)
+          .attach('file', filePath);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('error');
+      } finally {
+        await fs.unlink(filePath).catch(() => { });
+      }
     });
   });
 });

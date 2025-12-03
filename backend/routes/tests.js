@@ -111,6 +111,11 @@ router.get('/slug/:slug',
 
       const test = tests[0];
 
+      // Check if test is enabled
+      if (!test.is_enabled) {
+        return res.status(404).json({ error: 'Test not found or disabled' });
+      }
+
       // Check visibility - protected tests require login (v2)
       if (test.visibility === 'protected') {
         return res.status(403).json({
