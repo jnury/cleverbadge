@@ -45,16 +45,18 @@ describe('Navigation', () => {
   });
 
   describe('when not logged in', () => {
-    it('renders Login button', () => {
+    it('renders Login link', () => {
       renderWithRouter(<Navigation />);
-      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+      const loginLink = screen.getByRole('link', { name: /^login$/i });
+      expect(loginLink).toBeInTheDocument();
+      expect(loginLink).toHaveAttribute('href', '/login');
     });
 
-    it('opens login modal when Login clicked', () => {
+    it('renders Register link', () => {
       renderWithRouter(<Navigation />);
-      const loginBtn = screen.getByRole('button', { name: /login/i });
-      fireEvent.click(loginBtn);
-      expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+      const registerLink = screen.getByRole('link', { name: /register/i });
+      expect(registerLink).toBeInTheDocument();
+      expect(registerLink).toHaveAttribute('href', '/register');
     });
   });
 
@@ -63,10 +65,11 @@ describe('Navigation', () => {
       isLoggedIn.mockReturnValue(true);
     });
 
-    it('renders Dashboard link instead of Login', () => {
+    it('renders Dashboard link instead of Login and Register', () => {
       renderWithRouter(<Navigation />);
       expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /login/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^login$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /register/i })).not.toBeInTheDocument();
     });
 
     it('Dashboard link points to /dashboard', () => {

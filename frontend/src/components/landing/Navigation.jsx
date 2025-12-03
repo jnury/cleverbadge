@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { isLoggedIn } from '../../utils/api';
-import LoginModal from '../LoginModal';
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(isLoggedIn());
 
   // Check if environment banner should be shown
@@ -33,10 +31,6 @@ const Navigation = () => {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
 
   return (
     <>
@@ -75,12 +69,20 @@ const Navigation = () => {
                   Dashboard
                 </Link>
               ) : (
-                <button
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="px-4 py-2 bg-tech text-white rounded-lg hover:bg-tech/90 transition-colors"
-                >
-                  Login
-                </button>
+                <div className="flex items-center space-x-3">
+                  <Link
+                    to="/login"
+                    className="text-gray-600 hover:text-primary transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-4 py-2 bg-tech text-white rounded-lg hover:bg-tech/90 transition-colors"
+                  >
+                    Register
+                  </Link>
+                </div>
               )}
             </div>
 
@@ -127,27 +129,28 @@ const Navigation = () => {
                     Dashboard
                   </Link>
                 ) : (
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsLoginModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-tech text-white rounded-lg hover:bg-tech/90 transition-colors"
-                  >
-                    Login
-                  </button>
+                  <>
+                    <Link
+                      to="/login"
+                      className="text-gray-600 hover:text-primary transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="px-4 py-2 bg-tech text-white rounded-lg hover:bg-tech/90 transition-colors text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Register
+                    </Link>
+                  </>
                 )}
               </div>
             </div>
           )}
         </div>
       </nav>
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onSuccess={handleLoginSuccess}
-      />
     </>
   );
 };
