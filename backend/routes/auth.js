@@ -60,15 +60,20 @@ router.post('/register',
       // Hash password
       const passwordHash = await hashPassword(password);
 
+      // Generate unique username from email prefix
+      const emailPrefix = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const username = `${emailPrefix}_${randomSuffix}`;
+
       // Create user (inactive until email verified)
       const newUser = await sql`
         INSERT INTO ${sql(dbSchema)}.users (
-          email, display_name, password_hash, role, is_active, email_verified
+          username, email, display_name, password_hash, role, is_active, email_verified
         )
         VALUES (
-          ${email}, ${displayName}, ${passwordHash}, 'USER', FALSE, FALSE
+          ${username}, ${email}, ${displayName}, ${passwordHash}, 'USER', FALSE, FALSE
         )
-        RETURNING id, email, display_name, role, created_at
+        RETURNING id, username, email, display_name, role, created_at
       `;
 
       const user = newUser[0];
