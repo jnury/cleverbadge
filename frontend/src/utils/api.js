@@ -111,6 +111,88 @@ export async function changePassword(currentPassword, newPassword) {
   });
 }
 
+/**
+ * Register a new user
+ * @param {string} email
+ * @param {string} displayName
+ * @param {string} password
+ * @returns {Promise<object>} Registration result
+ */
+export async function register(email, displayName, password) {
+  return await apiRequest('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, displayName, password })
+  });
+}
+
+/**
+ * Verify email with token
+ * @param {string} token
+ * @returns {Promise<object>} Verification result
+ */
+export async function verifyEmail(token) {
+  return await apiRequest('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  });
+}
+
+/**
+ * Request password reset email
+ * @param {string} email
+ * @returns {Promise<object>} Result message
+ */
+export async function forgotPassword(email) {
+  return await apiRequest('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+/**
+ * Reset password with token
+ * @param {string} token
+ * @param {string} newPassword
+ * @returns {Promise<object>} Result message
+ */
+export async function resetPassword(token, newPassword) {
+  return await apiRequest('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword })
+  });
+}
+
+/**
+ * Resend verification email
+ * @param {string} email
+ * @returns {Promise<object>} Result message
+ */
+export async function resendVerification(email) {
+  return await apiRequest('/api/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+/**
+ * Login with email (new auth flow)
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<object>} User data and token
+ */
+export async function loginWithEmail(email, password) {
+  const data = await apiRequest('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password })
+  });
+
+  // Store token and user in localStorage
+  localStorage.setItem('auth_token', data.token);
+  localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+  return data;
+}
+
 // ============ Tests API ============
 
 /**
