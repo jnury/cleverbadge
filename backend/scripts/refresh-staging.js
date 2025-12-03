@@ -77,19 +77,19 @@ async function refreshStaging() {
       // Step 2: Copy data from production to staging
       console.log('Step 2: Copying data from production to staging...');
 
-      // questions
+      // questions (cast enums through text to handle cross-schema enum types)
       console.log('   Copying questions...');
       await tx.unsafe(`
         INSERT INTO ${STAGING_SCHEMA}.questions (id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at)
-        SELECT id, title, text, type, options, tags, author_id, visibility, is_archived, created_at, updated_at
+        SELECT id, title, text, type::text::${STAGING_SCHEMA}.question_type, options, tags, author_id, visibility::text::${STAGING_SCHEMA}.visibility_type, is_archived, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.questions
       `);
 
-      // tests
+      // tests (cast enums through text)
       console.log('   Copying tests...');
       await tx.unsafe(`
         INSERT INTO ${STAGING_SCHEMA}.tests (id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at)
-        SELECT id, title, description, slug, is_enabled, pass_threshold, visibility, show_explanations, explanation_scope, is_archived, created_at, updated_at
+        SELECT id, title, description, slug, is_enabled, pass_threshold, visibility::text::${STAGING_SCHEMA}.visibility_type, show_explanations::text::${STAGING_SCHEMA}.show_explanations_type, explanation_scope::text::${STAGING_SCHEMA}.explanation_scope_type, is_archived, created_at, updated_at
         FROM ${PRODUCTION_SCHEMA}.tests
       `);
 
@@ -101,11 +101,11 @@ async function refreshStaging() {
         FROM ${PRODUCTION_SCHEMA}.test_questions
       `);
 
-      // assessments
+      // assessments (cast enum through text)
       console.log('   Copying assessments...');
       await tx.unsafe(`
         INSERT INTO ${STAGING_SCHEMA}.assessments (id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived)
-        SELECT id, test_id, candidate_name, access_slug, status, score_percentage, started_at, completed_at, is_archived
+        SELECT id, test_id, candidate_name, access_slug, status::text::${STAGING_SCHEMA}.assessment_status, score_percentage, started_at, completed_at, is_archived
         FROM ${PRODUCTION_SCHEMA}.assessments
       `);
 
