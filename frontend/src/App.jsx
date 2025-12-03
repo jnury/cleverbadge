@@ -9,6 +9,11 @@ import TestResults from './pages/TestResults';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/dashboard/Dashboard';
 import AssessmentDetail from './pages/dashboard/AssessmentDetail';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Layout wrapper that handles environment banner padding
 function AppLayout({ children }) {
@@ -38,6 +43,31 @@ function App() {
             <Home />
             <Footer />
           </>
+        } />
+        <Route path="/login" element={
+          <AppLayout>
+            <LoginPage />
+          </AppLayout>
+        } />
+        <Route path="/register" element={
+          <AppLayout>
+            <RegisterPage />
+          </AppLayout>
+        } />
+        <Route path="/verify-email/:token" element={
+          <AppLayout>
+            <VerifyEmailPage />
+          </AppLayout>
+        } />
+        <Route path="/forgot-password" element={
+          <AppLayout>
+            <ForgotPasswordPage />
+          </AppLayout>
+        } />
+        <Route path="/reset-password/:token" element={
+          <AppLayout>
+            <ResetPasswordPage />
+          </AppLayout>
         } />
         <Route path="/*" element={
           <AppLayout>
