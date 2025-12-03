@@ -11,9 +11,8 @@ vi.mock('../../src/utils/api', () => ({
 import { isLoggedIn } from '../../src/utils/api';
 
 // Component to capture navigation state
-const HomePage = () => {
-  const location = window.location;
-  return <div data-testid="home-page">Home Page</div>;
+const LoginPage = () => {
+  return <div data-testid="login-page">Login Page</div>;
 };
 
 const ProtectedContent = () => <div data-testid="protected-content">Protected Content</div>;
@@ -24,7 +23,7 @@ const renderWithRouter = (initialRoute = '/dashboard', isAuthenticated = false) 
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route
           path="/dashboard"
           element={
@@ -47,13 +46,13 @@ describe('ProtectedRoute', () => {
     renderWithRouter('/dashboard', true);
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
   });
 
-  it('should redirect to home when user is not logged in', () => {
+  it('should redirect to login when user is not logged in', () => {
     renderWithRouter('/dashboard', false);
 
-    expect(screen.getByTestId('home-page')).toBeInTheDocument();
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
@@ -69,7 +68,7 @@ describe('ProtectedRoute', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <Routes>
-          <Route path="/" element={<div>Home</div>} />
+          <Route path="/login" element={<LoginPage />} />
           <Route
             path="/dashboard"
             element={
