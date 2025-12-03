@@ -49,3 +49,23 @@ export function requireAdmin(req, res, next) {
 
   next();
 }
+
+/**
+ * Middleware to check if user is author or admin
+ * Must be used after authenticateToken
+ */
+export function requireAuthor(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Authentication required.'
+    });
+  }
+
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'AUTHOR') {
+    return res.status(403).json({
+      error: 'Author or admin access required.'
+    });
+  }
+
+  next();
+}
