@@ -26,6 +26,21 @@ beforeAll(async () => {
   await testSql.unsafe(`DROP SCHEMA IF EXISTS ${TEST_SCHEMA} CASCADE`);
   await testSql.unsafe(`CREATE SCHEMA ${TEST_SCHEMA}`);
 
+  // Grant permissions to runtime users (cleverbadge_dev, cleverbadge_test)
+  // This allows the app's database connection to access the test schema
+  const runtimeUsers = ['cleverbadge_dev', 'cleverbadge_test'];
+  for (const user of runtimeUsers) {
+    try {
+      await testSql.unsafe(`GRANT USAGE ON SCHEMA ${TEST_SCHEMA} TO ${user}`);
+      await testSql.unsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${TEST_SCHEMA} TO ${user}`);
+      await testSql.unsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${TEST_SCHEMA} TO ${user}`);
+      await testSql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL ON TABLES TO ${user}`);
+      await testSql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL ON SEQUENCES TO ${user}`);
+    } catch (e) {
+      // User might not exist, ignore
+    }
+  }
+
   // Run all migrations with __SCHEMA__ replacement
   const migrations = [
     '001_init.sql',
@@ -39,6 +54,16 @@ beforeAll(async () => {
     const migrationSQL = fs.readFileSync(`./db/migrations/${migration}`, 'utf8');
     const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
     await testSql.unsafe(testMigrationSQL);
+  }
+
+  // Re-apply table grants after migrations created the tables
+  for (const user of runtimeUsers) {
+    try {
+      await testSql.unsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${TEST_SCHEMA} TO ${user}`);
+      await testSql.unsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${TEST_SCHEMA} TO ${user}`);
+    } catch (e) {
+      // User might not exist, ignore
+    }
   }
 
   // Seed test data

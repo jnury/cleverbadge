@@ -36,11 +36,27 @@ async function resetTestSchema() {
     await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON TABLES TO cleverbadge_test`);
     await sql.unsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${TEST_SCHEMA} GRANT ALL PRIVILEGES ON SEQUENCES TO cleverbadge_test`);
 
-    // Run init migration (consolidated schema)
-    console.log('Running init migration...');
-    const initSQL = fs.readFileSync('./db/migrations/001_init.sql', 'utf8');
-    const testInitSQL = initSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
-    await sql.unsafe(testInitSQL);
+    // Run all migrations with __SCHEMA__ replacement
+    console.log('Running migrations...');
+    const migrations = [
+      '001_init.sql',
+      '002_add_assessments_is_archived.sql',
+      '003_add_abandoned_status.sql',
+      '004_extend_users_table.sql',
+      '005_email_tokens_table.sql'
+    ];
+
+    for (const migration of migrations) {
+      const migrationSQL = fs.readFileSync(`./db/migrations/${migration}`, 'utf8');
+      const testMigrationSQL = migrationSQL.replaceAll('__SCHEMA__', TEST_SCHEMA);
+      await sql.unsafe(testMigrationSQL);
+      console.log(`  ✓ ${migration}`);
+    }
+
+    // Re-apply grants after migrations created tables
+    console.log('Re-applying grants after migrations...');
+    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_test`);
+    await sql.unsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${TEST_SCHEMA} TO cleverbadge_test`);
 
     // Seed test data
     console.log('Seeding test data...');
@@ -60,12 +76,13 @@ async function resetTestSchema() {
 
 async function seedTestData(sql, schema) {
   // Create admin user (username: admin, password: admin123)
+  // Include all columns from migration 004 (email, display_name, role, is_active, email_verified)
   console.log('  Creating admin user...');
   const adminId = '550e8400-e29b-41d4-a716-446655440001';
   const passwordHash = await hashPassword('admin123');
   await sql.unsafe(`
-    INSERT INTO ${schema}.users (id, username, password_hash)
-    VALUES ('${adminId}', 'admin', '${passwordHash}')
+    INSERT INTO ${schema}.users (id, username, password_hash, email, display_name, role, is_active, email_verified)
+    VALUES ('${adminId}', 'admin', '${passwordHash}', 'admin@test.local', 'admin', 'ADMIN', TRUE, TRUE)
   `);
 
   // Create questions matching E2E test expectations
