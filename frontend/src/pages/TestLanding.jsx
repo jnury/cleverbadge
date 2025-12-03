@@ -14,8 +14,11 @@ const TestLanding = () => {
   const [accessRestricted, setAccessRestricted] = useState(false);
   const [existingAssessment, setExistingAssessment] = useState(null);
   const apiUrl = import.meta.env.VITE_API_URL;
+  console.log('[DEBUG] TestLanding mounted, slug:', slug);
+  console.log('[DEBUG] API URL:', apiUrl);
 
   useEffect(() => {
+    console.log('[DEBUG] Fetching test from:', `${apiUrl}/api/tests/slug/${slug}`);
     // Fetch test by slug
     fetch(`${apiUrl}/api/tests/slug/${slug}`)
       .then(async res => {
@@ -150,8 +153,9 @@ const TestLanding = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">SUPER ERROR</h1>
           <p className="text-gray-600">{error}</p>
+          <p className="text-xs text-gray-400 mt-2">API: {apiUrl}</p>
         </div>
       </div>
     );

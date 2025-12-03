@@ -105,11 +105,18 @@ router.get('/slug/:slug',
         WHERE slug = ${req.params.slug} AND is_archived = false
       `;
 
+      console.log(`[DEBUG] Querying slug: ${req.params.slug}, Schema: ${dbSchema}`);
+      console.log(`[DEBUG] Found tests: ${tests.length}`);
+
       if (tests.length === 0) {
+        // Debug: list all tests
+        const allTests = await sql`SELECT slug, is_enabled, is_archived FROM ${sql(dbSchema)}.tests`;
+        console.log('[DEBUG] All tests in DB:', JSON.stringify(allTests));
         return res.status(404).json({ error: 'Test not found' });
       }
 
       const test = tests[0];
+      console.log(`[DEBUG] Fetching test: ${test.slug}, is_enabled: ${test.is_enabled} (${typeof test.is_enabled})`);
 
       // Check if test is enabled
       if (!test.is_enabled) {

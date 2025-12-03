@@ -101,9 +101,9 @@ test.describe('Candidate Test Taking Flow', () => {
   test('should handle disabled test', async ({ page }) => {
     await page.goto('/t/disabled-test');
 
-    // Should show that test is disabled (page renders but shows disabled message in red)
-    // Use class selector since description also contains "This test is disabled"
-    await expect(page.locator('p.text-red-600:has-text("This test is disabled")')).toBeVisible();
+    // Should show error page since disabled tests now return 404
+    await expect(page.locator('h1:has-text("Error")')).toBeVisible();
+    await expect(page.getByText('Test not found or disabled')).toBeVisible();
 
     // Should not show start button when test is disabled
     await expect(page.locator('button:has-text("Start Test")')).not.toBeVisible();
