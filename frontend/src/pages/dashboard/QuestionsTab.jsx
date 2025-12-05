@@ -502,7 +502,7 @@ const QuestionsTab = () => {
           >
             <option value="ALL">All Authors</option>
             {authors.map(author => (
-              <option key={author.id} value={author.id}>{author.username}</option>
+              <option key={author.id} value={author.id}>{author.display_name || author.username}</option>
             ))}
           </select>
         </div>
@@ -590,7 +590,7 @@ const QuestionsTab = () => {
                     {getVisibilityBadge(question.visibility)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {question.author_username || '-'}
+                    {question.author_display_name || question.author_username || '-'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-600 truncate max-w-[250px]" title={question.tags?.join(', ')}>
@@ -955,7 +955,7 @@ const QuestionsTab = () => {
               >
                 <option value="">Select author...</option>
                 {users.map(user => (
-                  <option key={user.id} value={user.id}>{user.username}</option>
+                  <option key={user.id} value={user.id}>{user.display_name || user.username}</option>
                 ))}
               </select>
             </div>

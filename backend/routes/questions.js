@@ -67,7 +67,7 @@ router.get('/',
 
       if (author_id && visibility) {
         questions = await sql`
-          SELECT q.*, u.username as author_username
+          SELECT q.*, u.username as author_username, u.display_name as author_display_name
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
           WHERE q.author_id = ${author_id} AND q.visibility = ${visibility} AND q.is_archived = false
@@ -75,7 +75,7 @@ router.get('/',
         `;
       } else if (author_id) {
         questions = await sql`
-          SELECT q.*, u.username as author_username
+          SELECT q.*, u.username as author_username, u.display_name as author_display_name
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
           WHERE q.author_id = ${author_id} AND q.is_archived = false
@@ -83,7 +83,7 @@ router.get('/',
         `;
       } else if (visibility) {
         questions = await sql`
-          SELECT q.*, u.username as author_username
+          SELECT q.*, u.username as author_username, u.display_name as author_display_name
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
           WHERE q.visibility = ${visibility} AND q.is_archived = false
@@ -91,7 +91,7 @@ router.get('/',
         `;
       } else {
         questions = await sql`
-          SELECT q.*, u.username as author_username
+          SELECT q.*, u.username as author_username, u.display_name as author_display_name
           FROM ${sql(dbSchema)}.questions q
           LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
           WHERE q.is_archived = false
@@ -113,11 +113,11 @@ router.get('/authors',
   async (req, res) => {
     try {
       const authors = await sql`
-        SELECT DISTINCT u.id, u.username
+        SELECT DISTINCT u.id, u.username, u.display_name
         FROM ${sql(dbSchema)}.users u
         INNER JOIN ${sql(dbSchema)}.questions q ON q.author_id = u.id
         WHERE q.is_archived = false
-        ORDER BY u.username
+        ORDER BY COALESCE(u.display_name, u.username)
       `;
       res.json({ authors });
     } catch (error) {
@@ -173,9 +173,9 @@ router.get('/users',
   async (req, res) => {
     try {
       const users = await sql`
-        SELECT id, username
+        SELECT id, username, display_name
         FROM ${sql(dbSchema)}.users
-        ORDER BY username
+        ORDER BY COALESCE(display_name, username)
       `;
       res.json({ users });
     } catch (error) {
@@ -193,7 +193,7 @@ router.get('/:id',
   async (req, res) => {
     try {
       const questions = await sql`
-        SELECT q.*, u.username as author_username
+        SELECT q.*, u.username as author_username, u.display_name as author_display_name
         FROM ${sql(dbSchema)}.questions q
         LEFT JOIN ${sql(dbSchema)}.users u ON q.author_id = u.id
         WHERE q.id = ${req.params.id} AND q.is_archived = false

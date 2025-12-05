@@ -73,7 +73,7 @@ const Dashboard = () => {
                 Dashboard
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Welcome, {user?.username}
+                Welcome, {user?.displayName || user?.username}
               </p>
             </div>
 
@@ -83,7 +83,7 @@ const Dashboard = () => {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors"
               >
-                <span>{user?.username}</span>
+                <span>{user?.displayName || user?.username}</span>
                 <svg
                   className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
                   fill="none"
