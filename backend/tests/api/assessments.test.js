@@ -185,6 +185,16 @@ const createAssessmentsRouter = (sql, schema) => {
           return res.status(400).json({ error: 'Assessment already completed' });
         }
 
+        // Get ALL questions from the test to calculate max score
+        const allTestQuestions = await sql`
+          SELECT tq.question_id, tq.weight
+          FROM ${sql(schema)}.test_questions tq
+          WHERE tq.test_id = ${assessment.test_id}
+        `;
+
+        // Calculate max score from ALL questions in the test
+        const maxScore = allTestQuestions.reduce((sum, q) => sum + q.weight, 0);
+
         const answers = await sql`
           SELECT
             aa.id,
@@ -200,10 +210,8 @@ const createAssessmentsRouter = (sql, schema) => {
         `;
 
         let totalScore = 0;
-        let maxScore = 0;
 
         for (const answer of answers) {
-          maxScore += answer.weight;
 
           const correctAnswers = getCorrectOptionIds(answer.options);
           const correct = isAnswerCorrect(
@@ -415,6 +423,42 @@ describe('Assessments API Endpoints', () => {
     expect(response.body.assessment_id).toBe(assessmentId);
     expect(response.body.score_percentage).toBe(100);
     expect(response.body.total_questions).toBe(3);
+    expect(response.body.status).toBe('COMPLETED');
+  });
+
+  it('should score unanswered questions as wrong (not ignored)', async () => {
+    // Regression test: answering 1 of 3 questions correctly should give ~33%, not 100%
+    const testId = '550e8400-e29b-41d4-a716-446655440020';
+    const startResponse = await request(app)
+      .post('/api/assessments/start')
+      .send({
+        test_id: testId,
+        candidate_name: 'Partial Answer Candidate'
+      });
+
+    const assessmentId = startResponse.body.assessment_id;
+    const questions = startResponse.body.questions;
+
+    // Find Q1 and answer it correctly
+    const q1 = questions.find(q => q.text === 'What is 2 + 2?');
+
+    // Only answer Q1 correctly, leave Q2 and Q3 unanswered
+    await request(app)
+      .post(`/api/assessments/${assessmentId}/answer`)
+      .send({
+        question_id: q1.id,
+        selected_options: [1] // Correct answer
+      });
+
+    // Submit without answering other questions
+    const response = await request(app)
+      .post(`/api/assessments/${assessmentId}/submit`)
+      .expect(200);
+
+    // Q1 weight=1, Q2 weight=2, Q3 weight=2 (total=5)
+    // Answered correctly: Q1 (weight=1)
+    // Expected score: 1/5 = 20%
+    expect(response.body.score_percentage).toBe(20);
     expect(response.body.status).toBe('COMPLETED');
   });
 

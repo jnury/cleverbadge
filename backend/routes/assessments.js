@@ -345,7 +345,18 @@ router.post('/:assessmentId/submit',
         });
       }
 
-      // Get all answers with options and weights
+      // Get ALL questions from the test to calculate max score
+      // (unanswered questions count as wrong but still contribute to max score)
+      const allTestQuestions = await sql`
+        SELECT tq.question_id, tq.weight
+        FROM ${sql(dbSchema)}.test_questions tq
+        WHERE tq.test_id = ${assessment.test_id}
+      `;
+
+      // Calculate max score from ALL questions in the test
+      const maxScore = allTestQuestions.reduce((sum, q) => sum + q.weight, 0);
+
+      // Get answered questions with their details
       const answers = await sql`
         SELECT
           aa.id,
@@ -360,12 +371,10 @@ router.post('/:assessmentId/submit',
         WHERE aa.assessment_id = ${assessmentId}
       `;
 
-      // Calculate scores and update is_correct
+      // Calculate earned score from answered questions only
       let totalScore = 0;
-      let maxScore = 0;
 
       for (const answer of answers) {
-        maxScore += answer.weight;
 
         // Parse options if stored as JSON string
         const options = typeof answer.options === 'string'
